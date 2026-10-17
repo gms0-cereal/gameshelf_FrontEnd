@@ -7,7 +7,7 @@ import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
-import ForgotPassword from "./components/ForgotPassword";
+import ForgotPassword from "./pages/ForgetPassword";
 const queryClient = new QueryClient();
 
 const App = () => (

@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { ArrowLeft, Info, Loader2, Mail } from "lucide-react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+import Navbar from "../components/layout/Navbar";
+import Footer from "../components/layout/Footer";
 import { useAuth } from "../context/AuthContext";
 import { requestPasswordReset } from "../services/authService";
 
