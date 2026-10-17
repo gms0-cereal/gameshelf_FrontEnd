@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
+import ForgotPassword from "./pages/ForgetPassword";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -21,6 +22,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
