@@ -11,8 +11,6 @@ import { Link, useNavigate } from 'react-router-dom';
 // ─── UI Components ────────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-// import Navbar from '@/components/Navbar';
-// import Footer from '@/components/Footer';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 // ─── Icons ────────────────────────────────────────────────────────────────────

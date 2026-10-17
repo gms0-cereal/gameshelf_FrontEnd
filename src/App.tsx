@@ -6,6 +6,7 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Home from "./pages/Home";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -19,6 +20,7 @@ const App = () => (
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/home" element={<Home />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
