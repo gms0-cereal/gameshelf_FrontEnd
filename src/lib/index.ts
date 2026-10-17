@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { gameApi } from "./api/GameApi";
-import { userApi } from "./api/UserApi";
+import { gameApi } from "./gameApi";
+import { userApi } from "./userApit";
 
 export const store = configureStore({
   reducer: {

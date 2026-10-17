@@ -1,5 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
-import { baseQuery } from "./baseQuery";
+import { baseQuery } from "./basequery";
 
 export type Visibility = "public" | "friends" | "private";
 export type LibraryStatus = "playing" | "completed" | "on_hold" | "dropped" | "plan_to_play";
