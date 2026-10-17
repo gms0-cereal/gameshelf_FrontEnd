@@ -7,6 +7,7 @@ import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
 import { login } from "../services/authService";
 
+
 // Replace with your own asset path (the forest artwork from the reference).
 const HERO_IMAGE = "/images/login-hero.jpg";
 
@@ -17,6 +18,8 @@ function toText(value: unknown): string | undefined {
   if (Array.isArray(value) && typeof value[0] === "string") return value.join(" ");
   return undefined;
 }
+
+
 
 /** Handles DRF-style payloads: { detail }, { non_field_errors }, { username: [...] }. */
 function parseApiError(err: unknown): { general?: string; fields: FieldErrors } {

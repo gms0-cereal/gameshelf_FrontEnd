@@ -48,3 +48,14 @@ export const getCurrentUser = async () => {
   const response = await api.get<AuthUser>("/auth/me/");
   return response.data;
 };
+
+export interface PasswordResetRequestData {
+  email: string;
+}
+
+export const requestPasswordReset = async (email: string) => {
+  await getCsrfToken();
+
+  const response = await api.post("/auth/password-reset/", { email });
+  return response.data;
+};
