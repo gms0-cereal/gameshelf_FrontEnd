@@ -5,8 +5,9 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
-import ForgetPassword from "./pages/ForgetPassword";
-
+import Register from "./pages/Register";
+import Home from "./pages/Home";
+import ForgotPassword from "./components/ForgotPassword";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -19,7 +20,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgetPassword />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
