@@ -5,7 +5,8 @@ import { ArrowLeft, Info, Loader2, Mail } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import { useAuth } from "../context/AuthContext";
-import { requestPasswordReset } from "../services/authService";
+//import { requestPasswordReset } from "../services/authService";
+import {forgotPassword} from "../services/authService";
 
 // Same artwork as the Login page.
 const HERO_IMAGE = "/images/login-hero.jpg";
@@ -75,7 +76,7 @@ const ForgotPassword = () => {
 
     setSubmitting(true);
     try {
-      await requestPasswordReset(value);
+      await forgotPassword({ email: value });
       setSent(true);
     } catch (err) {
       const parsed = parseApiError(err);

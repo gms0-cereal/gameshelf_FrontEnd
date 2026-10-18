@@ -61,9 +61,6 @@
 // };
 
 import api from "../lib/api";
-// import { User } from "./UserService";
-// import UserService from "./UserService";
-
 
 export interface RegisterBody {
   username: string;
@@ -71,9 +68,23 @@ export interface RegisterBody {
   password: string;
 }
 
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  role: "user" | "moderator" | "admin";
+}
+
+export type AuthUser = User;
+
 export interface LoginBody {
   username: string;
   password: string;
+}
+export interface ForgotPasswordBody {
+  email: string;
 }
 
 export interface ChangePasswordBody {
@@ -112,6 +123,12 @@ export async function logout(): Promise<void> {
   await api.post("/auth/logout/");
 }
 
+// GET /auth/me/
+export async function getCurrentUser(): Promise<AuthUser> {
+  const { data } = await api.get<AuthUser>("/auth/me/");
+  return data;
+}
+
 // POST /auth/verify-email/
 export async function verifyEmail(body: VerifyEmailBody): Promise<MessageResponse> {
   const { data } = await api.post<MessageResponse>("/auth/verify-email/", body);
@@ -127,5 +144,17 @@ export async function resendVerification(): Promise<MessageResponse> {
 // POST /auth/password/change/
 export async function changePassword(body: ChangePasswordBody): Promise<MessageResponse> {
   const { data } = await api.post<MessageResponse>("/auth/password/change/", body);
+  return data;
+}
+
+// POST /auth/password-reset/
+export async function forgotPassword(
+  body: ForgotPasswordBody
+): Promise<MessageResponse> {
+  const { data } = await api.post<MessageResponse>(
+    "/auth/password-reset/",
+    body
+  );
+
   return data;
 }
