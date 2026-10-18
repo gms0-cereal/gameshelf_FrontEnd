@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Check, Plus } from "lucide-react";
-
+import { getSteamGames, type SteamGame } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -14,6 +14,8 @@ type Game = {
   genre: string;
   reason: string;
 };
+
+const STEAM_PAGE_SIZE = 12;
 
 const HOLLOW_KNIGHT_RECOMMENDATIONS: Game[] = [
   {
@@ -109,11 +111,8 @@ function GameCard({
       </Link>
 
       <CardContent className="flex h-[240px] flex-col items-start gap-3 p-[18px]">
-        <h3 className="h-[46px] w-full shrink-0 text-[18px] font-semibold leading-[22.5px]">
-          <Link
-            to={`/games/${game.slug}`}
-            className="hover:text-[#c2ade7]"
-          >
+        <h3 className="h-[46px] w-full shrink-0 overflow-hidden text-[18px] font-semibold leading-[22.5px]">
+          <Link to={`/games/${game.slug}`} className="hover:text-[#c2ade7]">
             {game.title}
           </Link>
         </h3>
@@ -180,21 +179,63 @@ function SectionHeading({
         {title}
       </h2>
 
-      <p className="text-[13px] leading-4 text-[#b4aec7]">
-        {description}
-      </p>
+      <p className="text-[13px] leading-4 text-[#b4aec7]">{description}</p>
     </div>
   );
 }
 
 export default function Home() {
-  const [saved, setSaved] = useState<Set<string>>(
-    () => new Set()
-  );
+  const [saved, setSaved] = useState<Set<string>>(() => new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
 
-  const [dismissed, setDismissed] = useState<Set<string>>(
-    () => new Set()
-  );
+  // Steam data: hooks must live inside the component
+  const [steamGames, setSteamGames] = useState<SteamGame[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Steam paginates with a cursor (last_appid), not page numbers.
+  // cursors[i] is the cursor used to fetch page i, so "Previous" just pops.
+  const [cursors, setCursors] = useState<number[]>([0]);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const pageNumber = cursors.length;
+  const currentCursor = cursors[cursors.length - 1];
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    getSteamGames(STEAM_PAGE_SIZE, currentCursor)
+      .then((data) => {
+        if (cancelled) return;
+        setSteamGames(data.games);
+        setNextCursor(data.last_appid);
+        setHasMore(Boolean(data.have_more_results && data.last_appid));
+      })
+      .catch(() => {
+        if (!cancelled) setError("Failed to load games. Please try again.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCursor]);
+
+  function goToNextPage() {
+    if (hasMore && nextCursor !== null) {
+      setCursors((previous) => [...previous, nextCursor]);
+    }
+  }
+
+  function goToPreviousPage() {
+    setCursors((previous) =>
+      previous.length > 1 ? previous.slice(0, -1) : previous
+    );
+  }
 
   function addGame(slug: string) {
     setSaved((previous) => new Set(previous).add(slug));
@@ -204,8 +245,9 @@ export default function Home() {
     setDismissed((previous) => new Set(previous).add(slug));
   }
 
-  function renderGames(games: Game[]) {
-    return games
+  // Static, hand-picked recommendations
+  function renderStaticGames(list: Game[]) {
+    return list
       .filter((game) => !dismissed.has(game.slug))
       .map((game) => (
         <GameCard
@@ -216,6 +258,33 @@ export default function Home() {
           onDismiss={() => dismissGame(game.slug)}
         />
       ));
+  }
+
+  // Games coming from the Steam API
+  function renderSteamGames(list: SteamGame[]) {
+    return list
+      .filter((game) => game.name && !dismissed.has(String(game.appid)))
+      .map((game) => {
+        const slug = String(game.appid);
+
+        const item: Game = {
+          slug,
+          title: game.name,
+          image: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${game.appid}/header.jpg`,
+          genre: "Steam Game",
+          reason: "Discover your next game",
+        };
+
+        return (
+          <GameCard
+            key={game.appid}
+            game={item}
+            saved={saved.has(slug)}
+            onAdd={() => addGame(slug)}
+            onDismiss={() => dismissGame(slug)}
+          />
+        );
+      });
   }
 
   return (
@@ -295,14 +364,11 @@ export default function Home() {
             />
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {renderGames(HOLLOW_KNIGHT_RECOMMENDATIONS)}
+              {renderStaticGames(HOLLOW_KNIGHT_RECOMMENDATIONS)}
             </div>
           </section>
 
-          <section
-            aria-labelledby="rpg-title"
-            className="flex flex-col gap-8"
-          >
+          <section aria-labelledby="rpg-title" className="flex flex-col gap-8">
             <SectionHeading
               id="rpg-title"
               title="More RPGs for you"
@@ -310,8 +376,61 @@ export default function Home() {
             />
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {renderGames(RPG_RECOMMENDATIONS)}
+              {renderStaticGames(RPG_RECOMMENDATIONS)}
             </div>
+          </section>
+
+          <section aria-labelledby="steam-title" className="flex flex-col gap-8">
+            <SectionHeading
+              id="steam-title"
+              title="Discover on Steam"
+              description="Pulled live from the Steam catalog"
+            />
+
+            {loading && (
+              <p role="status" className="text-sm text-[#b4aec7]">
+                Loading games…
+              </p>
+            )}
+
+            {error && (
+              <p role="alert" className="text-sm text-[#e58d91]">
+                {error}
+              </p>
+            )}
+
+            {!loading && !error && (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {renderSteamGames(steamGames)}
+              </div>
+            )}
+
+            <nav
+              aria-label="Steam games pagination"
+              className="flex items-center justify-center gap-4"
+            >
+              <Button
+                type="button"
+                onClick={goToPreviousPage}
+                disabled={pageNumber === 1 || loading}
+                className="h-10 rounded-lg border-0 bg-[#373646] px-5 text-sm font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a] disabled:opacity-50"
+              >
+                Previous
+              </Button>
+
+              <span className="text-[13px] text-[#b4aec7]" aria-live="polite">
+                Page {pageNumber}
+              </span>
+
+              <Button
+                type="button"
+                onClick={goToNextPage}
+                disabled={!hasMore || loading}
+                className="h-10 rounded-lg border-0 bg-[#9f4044] px-5 text-sm font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e] disabled:opacity-50"
+              >
+                Next
+              </Button>
+            </nav>
           </section>
         </main>
 
