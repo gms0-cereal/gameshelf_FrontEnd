@@ -4,7 +4,10 @@ export function createImage(src: string): Promise<HTMLImageElement> {
     const image = new Image();
 
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Image failed to load."));
+    image.onerror = () => reject(
+      new Error(`Image failed to load: ${src}`)
+    );
+
     image.src = src;
   });
 }

@@ -16,10 +16,14 @@ export default function ImageCropDialog({
   onCancel,
   onComplete,
 }: ImageCropDialogProps) {
-  const imageUrl = useMemo(
-    () => URL.createObjectURL(file),
-    [file],
-  );
+const [imageUrl, setImageUrl] = useState("");
+
+useEffect(() => {
+  const url = URL.createObjectURL(file);
+  setImageUrl(url);
+
+  return () => URL.revokeObjectURL(url);
+}, [file]);
 
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -34,6 +38,9 @@ export default function ImageCropDialog({
   }, [imageUrl]);
 
   async function handleCrop() {
+    if (!imageUrl) return;
+
+    const image = await createImage(imageUrl);
     if (!croppedArea) return;
 
     setSaving(true);
@@ -73,10 +80,16 @@ export default function ImageCropDialog({
       });
 
       onComplete(blob);
-    } catch {
-      setError("Couldn't crop this image. Try another file.");
-      setSaving(false);
-    }
+    }  catch (err) {
+        console.error("Image crop failed:", err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't crop this image."
+        );
+      } finally {
+        setSaving(false);
+      }
   }
 
   return (
