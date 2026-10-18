@@ -1,8 +1,8 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, UserRound } from "lucide-react";
-
+import { ArrowLeft, Gamepad2, Save, UserRound } from "lucide-react";
+import ImageCropDialog from "@/components/ImageCropDialog";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
@@ -58,6 +58,14 @@ export default function EditProfile() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [bannerPreview, setBannerPreview] = useState("");
+
+  const [avatarUpload, setAvatarUpload] = useState<File | null>(null);
+  const [bannerUpload, setBannerUpload] = useState<File | null>(null);
+
+  const [cropTarget, setCropTarget] = useState<"avatar" | "banner" | null>(null);
+  const [cropSource, setCropSource] = useState<File | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -70,6 +78,9 @@ export default function EditProfile() {
       library_visibility: user.library_visibility ?? "public",
       friends_visibility: user.friends_visibility ?? "public",
     });
+
+     setAvatarPreview(user.avatar_url ?? "");
+     setBannerPreview(user.banner_url ?? "");
   }, [user]);
 
   function updateField(field: keyof ProfileForm, value: string) {
@@ -78,7 +89,52 @@ export default function EditProfile() {
       [field]: value,
     }));
   }
+  function startCrop(target: "avatar" | "banner", file?: File) {
+  if (!file) return;
 
+  if (!file.type.startsWith("image/")) {
+    setError("Please choose an image file.");
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    setError("Image must be 10 MB or smaller.");
+    return;
+  }
+
+  setError("");
+  setCropTarget(target);
+  setCropSource(file);
+}
+
+function handleCroppedImage(blob: Blob) {
+    if (!cropTarget) return;
+
+    const file = new File(
+      [blob],
+      `${cropTarget}-${Date.now()}.jpg`,
+      { type: "image/jpeg" },
+    );
+
+    const preview = URL.createObjectURL(file);
+
+    if (cropTarget === "avatar") {
+      setAvatarUpload(file);
+      setAvatarPreview((previous) => {
+        if (previous.startsWith("blob:")) URL.revokeObjectURL(previous);
+        return preview;
+      });
+    } else {
+      setBannerUpload(file);
+      setBannerPreview((previous) => {
+        if (previous.startsWith("blob:")) URL.revokeObjectURL(previous);
+        return preview;
+      });
+    }
+
+    setCropSource(null);
+    setCropTarget(null);
+  }
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -86,35 +142,45 @@ export default function EditProfile() {
     setError("");
 
     try {
-      await api.patch("/users/me/", {
-        nickname: form.nickname.trim() || null,
-        bio: form.bio,
-        avatar_url: form.avatar_url.trim() || null,
-        banner_url: form.banner_url.trim() || null,
-        library_visibility: form.library_visibility,
-        friends_visibility: form.friends_visibility,
-      });
+        const payload = new FormData();
 
-      navigate("/profile");
-    } catch (err: any) {
-      const data = err?.response?.data;
+        payload.append("nickname", form.nickname.trim());
+        payload.append("bio", form.bio);
+        payload.append("library_visibility", form.library_visibility);
+        payload.append("friends_visibility", form.friends_visibility);
 
-      setError(
-        typeof data === "object" && data !== null
-          ? Object.entries(data)
-              .map(([key, value]) => {
-                const message = Array.isArray(value)
-                  ? value.join(", ")
-                  : String(value);
+        if (avatarUpload) {
+          payload.append("avatar_file", avatarUpload);
+        }
 
-                return `${key}: ${message}`;
-              })
-              .join(" | ")
-          : "Couldn't save your profile. Please try again.",
-      );
-    } finally {
-      setSaving(false);
-    }
+        if (bannerUpload) {
+          payload.append("banner_file", bannerUpload);
+        }
+
+        await api.patch("/users/me/", payload);
+
+        navigate("/profile");
+      } catch (err: any) {
+        const data = err?.response?.data;
+
+        setError(
+          typeof data === "object" && data !== null
+            ? Object.entries(data)
+                .map(([key, value]) => {
+                  const message = Array.isArray(value)
+                    ? value.join(", ")
+                    : typeof value === "object"
+                      ? JSON.stringify(value)
+                      : String(value);
+
+                  return `${key}: ${message}`;
+                })
+                .join(" | ")
+            : "Couldn't save your profile. Please try again.",
+        );
+      } finally {
+        setSaving(false);
+      }
   }
 
   if (loading) {
@@ -182,13 +248,14 @@ export default function EditProfile() {
               </h2>
 
               <div className="flex flex-wrap items-center gap-4">
-                <Avatar className="size-20 rounded-2xl border border-[#8870b6]">
+                <Avatar className="size-24 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
                   <AvatarImage
                     src={form.avatar_url || undefined}
+                    alt={user?.nickname || user?.username || "Player"}
+                    className="object-cover"
                   />
-
-                  <AvatarFallback className="rounded-2xl bg-[#4d3e68]">
-                    <UserRound className="size-9 text-[#c2ade7]" />
+                  <AvatarFallback className="bg-[#4d3e68]">
+                    <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
                   </AvatarFallback>
                 </Avatar>
 
@@ -246,41 +313,63 @@ export default function EditProfile() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className={LABEL} htmlFor="avatar_url">
-                  Avatar image URL
-                </label>
+                  <label className={LABEL}>Avatar image</label>
 
-                <Input
-                  id="avatar_url"
-                  type="url"
-                  className={FIELD}
-                  placeholder="https://example.com/avatar.png"
-                  value={form.avatar_url}
-                  onChange={(event) =>
-                    updateField("avatar_url", event.target.value)
-                  }
-                />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label
+                      htmlFor="avatar-upload"
+                      className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-[#8870b6] px-4 text-sm font-semibold text-white hover:bg-[#76609f]"
+                    >
+                      Choose avatar
+                    </label>
+
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        startCrop("avatar", event.target.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+
+                    <span className="text-xs text-[#b4aec7]">
+                      JPG, PNG, or WebP · Max 10 MB
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-[#8f899f]">
+                    Select an image to reposition and crop it.
+                  </p>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className={LABEL} htmlFor="banner_url">
-                  Banner image URL
-                </label>
+                <label className={LABEL}>Profile banner</label>
 
-                <Input
-                  id="banner_url"
-                  type="url"
-                  className={FIELD}
-                  placeholder="https://example.com/banner.png"
-                  value={form.banner_url}
-                  onChange={(event) =>
-                    updateField("banner_url", event.target.value)
-                  }
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <label
+                    htmlFor="banner-upload"
+                    className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-[#8870b6] px-4 text-sm font-semibold text-white hover:bg-[#76609f]"
+                  >
+                    Choose banner
+                  </label>
 
-                {form.banner_url && (
+                  <input
+                    id="banner-upload"
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) => {
+                      startCrop("banner", event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </div>
+
+                {bannerPreview && (
                   <img
-                    src={form.banner_url}
+                    src={bannerPreview}
                     alt="Banner preview"
                     className="mt-2 h-32 w-full rounded-xl border border-[#55516c] object-cover"
                     onError={(event) => {
@@ -288,6 +377,10 @@ export default function EditProfile() {
                     }}
                   />
                 )}
+
+                <p className="text-xs text-[#8f899f]">
+                  Choose a wide image and adjust which part is visible.
+                </p>
               </div>
             </Card>
 
@@ -381,6 +474,17 @@ export default function EditProfile() {
 
         <Footer />
       </div>
-    </div>
+      {cropSource && cropTarget && (
+        <ImageCropDialog
+          file={cropSource}
+          mode={cropTarget}
+          onCancel={() => {
+            setCropSource(null);
+            setCropTarget(null);
+          }}
+          onComplete={handleCroppedImage}
+        />
+      )}
+    </div >
   );
 }

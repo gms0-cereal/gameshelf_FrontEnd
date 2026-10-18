@@ -1,5 +1,4 @@
-import api from "../lib/api";
-import type { User } from "./Userservice";
+import api from "@/lib/api";
 
 export interface RegisterBody {
   username: string;
