@@ -1,4 +1,6 @@
 import api from "../lib/api";
+import type { User } from "./Userservice";
+
 export interface RegisterBody {
   username: string;
   email: string;
@@ -103,14 +105,24 @@ export async function changePassword(body: ChangePasswordBody): Promise<MessageR
   return data;
 }
 
-// POST /auth/password-reset/
-export async function forgotPassword(
-  body: ForgotPasswordBody
-): Promise<MessageResponse> {
-  const { data } = await api.post<MessageResponse>(
-    "/auth/password-reset/",
-    body
-  );
 
+
+// POST /auth/password/forgot/
+export async function forgotPassword(body: ForgotPasswordBody): Promise<MessageResponse> {
+  const { data } = await api.post<MessageResponse>("/auth/password/forgot/", body);
+  return data;
+}
+
+// The name ForgotPassword.tsx already imports
+export const requestPasswordReset = (email: string) => forgotPassword({ email });
+
+// POST /auth/password/reset/validate/  (stores the link in the session cookie)
+export async function validateResetLink(uid: string, token: string): Promise<void> {
+  await api.post("/auth/password/reset/validate/", { uid, token });
+}
+
+// POST /auth/password/reset/  (new password only)
+export async function confirmPasswordReset(new_password: string): Promise<MessageResponse> {
+  const { data } = await api.post<MessageResponse>("/auth/password/reset/", { new_password });
   return data;
 }

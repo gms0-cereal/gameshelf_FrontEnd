@@ -1,4 +1,3 @@
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -10,6 +9,8 @@ import Home from "./pages/Home";
 import ForgotPassword from "./pages/ForgetPassword";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
+import GameDetails from "./pages/GameDetails";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -24,10 +25,10 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />
+            <Route path="/gamedetails/:appid" element={<GameDetails />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/profile/edit" element={<EditProfile/>} />
-
+            <Route path="/profile/edit" element={<EditProfile />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
