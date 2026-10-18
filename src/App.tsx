@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import ForgotPassword from "./pages/ForgetPassword";
 import Profile from "./pages/Profile";
+import EditProfile from "./pages/EditProfile";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -25,6 +26,8 @@ const App = () => (
             <Route path="/home" element={<Home />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/profile/edit" element={<EditProfile/>} />
+
           </Routes>
         </AuthProvider>
       </BrowserRouter>

@@ -103,6 +103,7 @@ export interface MessageResponse {
 export interface AuthUser {
   id: number;
   username: string;
+  avatar: string | null;
   email: string;
   email_verified: boolean;
   role: string;
