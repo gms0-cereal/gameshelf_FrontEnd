@@ -17,6 +17,9 @@ import Footer from '../components/layout/Footer';
 import { Eye, EyeOff, Mail, User } from 'lucide-react';
 import { toast } from 'sonner';
 
+// ─── Services ───────────────────────────────────────────────────────────────
+import { isAxiosError } from 'axios';
+import { register } from '../services/authService';
 // ─── Types & constants ────────────────────────────────────────────────────────
 type FormValues = {
     username: string;
@@ -164,28 +167,23 @@ function SignUp() {
         setErrors(found);
         if (Object.keys(found).length > 0) return;
 
-        setStatus('submitting');
-        try {
-            const res = await fetch(REGISTER_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // With session auth also add: credentials: 'include' and an X-CSRFToken header
-                body: JSON.stringify({
+          setStatus('submitting');
+            try {
+                await register({
                     username: values.username.trim(),
                     email: values.email.trim(),
                     password: values.password,
-                }),
-            });
-            if (res.ok) {
+                });
                 setStatus('success');
                 return;
+            } catch (error) {
+                if (isAxiosError(error) && error.response) {
+                    setErrors(fromApi(error.response.data));
+                } else {
+                    toast.error("Can't reach the server. Check your connection and try again.");
+                }
             }
-            setErrors(fromApi(await res.json().catch(() => ({}))));
-        } catch (error) {
-            console.error('Failed to register:', error);
-            toast.error("Can't reach the server. Check your connection and try again.");
-        }
-        setStatus('idle');
+            setStatus('idle');
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -234,7 +232,7 @@ function SignUp() {
                             </p>
                             <Button
                                 className="h-10 bg-[#b0464f] px-6 text-sm font-semibold text-white hover:bg-[#c25660]"
-                                onClick={() => navigate('/login')}
+                                onClick={() => navigate('/login', { state: { username: values.username.trim() } })}
                             >
                                 Go to Log In
                             </Button>

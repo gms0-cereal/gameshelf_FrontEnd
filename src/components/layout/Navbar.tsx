@@ -1,7 +1,20 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type FormEvent,
+} from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Library, Search, User as UserIcon } from "lucide-react";
+import {
+  Library,
+  Search,
+  User as UserIcon,
+  ChevronDown,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 
 const navLinks = [
   { to: "/discover", label: "Discover" },
@@ -15,46 +28,84 @@ const menuItems = [
   { to: "/settings", label: "Settings" },
 ];
 
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `text-sm transition-colors hover:text-white ${
-    isActive ? "text-white" : "text-[#b4b1cc]"
-  }`;
-
 const menuItemClass =
-  "block w-full px-4 py-2 text-left text-sm text-[#d9d6ee] hover:bg-[#35324b] focus:bg-[#35324b] focus:outline-none";
+  "block w-full px-4 py-2.5 text-left text-sm text-[#d9d6ee] hover:bg-[#373646] focus:bg-[#373646] focus:outline-none";
 
-const Navbar = () => {
+export default function Navbar() {
   const { user, loading, logoutUser } = useAuth();
   const navigate = useNavigate();
+
   const [open, setOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  // Close on outside click.
+  // Close the profile menu when clicking outside.
   useEffect(() => {
     if (!open) return;
+
     const onClick = (e: MouseEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrapperRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
+
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+    };
   }, [open]);
 
-  // Focus first item when opening.
+  // Focus the first menu item when opening the menu.
   useEffect(() => {
-    if (open) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    if (open) {
+      menuRef.current
+        ?.querySelector<HTMLElement>('[role="menuitem"]')
+        ?.focus();
+    }
   }, [open]);
+
+  // Ctrl+K / Cmd+K opens search.
+  useEffect(() => {
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "k"
+      ) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(
-      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []
+      menuRef.current?.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]'
+      ) ?? []
     );
-    const index = items.indexOf(document.activeElement as HTMLElement);
+
+    const index = items.indexOf(
+      document.activeElement as HTMLElement
+    );
+
     if (e.key === "Escape") {
       setOpen(false);
-      wrapperRef.current?.querySelector<HTMLElement>("button")?.focus();
+
+      wrapperRef.current
+        ?.querySelector<HTMLButtonElement>("button")
+        ?.focus();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       items[(index + 1) % items.length]?.focus();
@@ -66,9 +117,21 @@ const Navbar = () => {
     }
   };
 
+  const handleSearch = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const query = searchQuery.trim();
+
+    if (query) {
+      navigate(`/discover?q=${encodeURIComponent(query)}`);
+      setSearchQuery("");
+    }
+  };
+
   const handleLogout = async () => {
     setLogoutError(null);
     setLoggingOut(true);
+
     try {
       await logoutUser();
       setOpen(false);
@@ -80,121 +143,193 @@ const Navbar = () => {
     }
   };
 
-  const initial = (user?.nickname || user?.username || "").charAt(0).toUpperCase();
+  const initial = (
+    user?.nickname ||
+    user?.username ||
+    ""
+  )
+    .charAt(0)
+    .toUpperCase();
 
   return (
-    <header className="border-b border-[#3a3750] bg-[#211f31]">
+    <header className="border-b border-[#55516c] bg-[#201e2f]">
       <nav
-        aria-label="Main"
-        className="mx-auto flex h-[70px] max-w-[1200px] items-center gap-4 px-4 sm:px-6 lg:gap-8 lg:px-[52px]"
+        aria-label="Main navigation"
+        className="mx-auto flex min-h-[88px] w-full max-w-[1440px] flex-wrap items-center gap-5 px-5 py-4 md:px-8 xl:h-[88px] xl:flex-nowrap xl:gap-[34px] xl:px-16 xl:py-0"
       >
-        <Link to="/" className="flex items-center gap-2 text-[#e6e3f5]" aria-label="GameShelf home">
-          <Library className="h-5 w-5 text-[#8b6fd6]" aria-hidden="true" />
-          <span className="text-lg font-light tracking-wide">GAMESHELF</span>
+        {/* Brand */}
+        <Link
+          to="/"
+          aria-label="GameShelf home"
+          className="flex w-[163px] shrink-0 items-center gap-2.5 text-[#e0deeb]"
+        >
+          <Library
+            className="size-[26px] shrink-0 text-[#8870b6]"
+            strokeWidth={1.7}
+            aria-hidden="true"
+          />
+
+          <span className="text-[21px] leading-[25px] tracking-[-0.6px]">
+            GAMESHELF
+          </span>
         </Link>
 
-        <ul className="hidden items-center gap-6 md:flex">
-          {navLinks.map((l) => (
-            <li key={l.label}>
-              <NavLink to={l.to} end={l.to === "/"} className={linkClass}>
-                {l.label}
+        {/* Main navigation */}
+        <ul className="flex items-center gap-5 text-sm leading-[17px] xl:gap-[34px]">
+          {navLinks.map((link) => (
+            <li key={link.label}>
+              <NavLink
+                to={link.to}
+                end={link.to === "/"}
+                className={({ isActive }) =>
+                  `whitespace-nowrap transition-colors ${
+                    isActive
+                      ? "font-semibold text-[#c2ade7]"
+                      : "text-[#b4aec7] hover:text-[#e0deeb]"
+                  }`
+                }
+              >
+                {link.label}
               </NavLink>
             </li>
           ))}
         </ul>
 
+        {/* Search */}
         <form
           role="search"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const q = new FormData(e.currentTarget).get("q")?.toString().trim();
-            if (q) navigate(`/discover?q=${encodeURIComponent(q)}`);
-          }}
-          className="relative mx-auto hidden h-9 max-w-[476px] flex-1 lg:block"
+          onSubmit={handleSearch}
+          className="order-last flex h-10 w-full min-w-0 items-center gap-2.5 rounded-lg bg-[#373646] px-[14px] focus-within:ring-2 focus-within:ring-[#c2ade7] xl:order-none xl:w-auto xl:flex-1"
         >
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f8ca9]"
+            className="size-[18px] shrink-0 text-[#8f8ca9]"
+            strokeWidth={1.7}
             aria-hidden="true"
           />
-          <input
-            name="q"
+
+          <Input
+            ref={searchRef}
             type="search"
-            placeholder="Search games..."
+            name="q"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             aria-label="Search games"
-            className="h-full w-full rounded-md border border-transparent bg-[#2c2a40] pl-10 pr-14 text-sm text-[#d9d6ee] placeholder:text-[#9a97b5] focus:border-[#8b6fd6] focus:outline-none"
+            placeholder="Search games..."
+            className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13px] leading-4 text-[#e0deeb] shadow-none placeholder:text-[#b4aec7] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
           />
-          <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#8f8ca9]">
+
+          <kbd className="shrink-0 whitespace-nowrap text-[11px] leading-[13px] text-[#b4aec7]">
             ⌘ K
           </kbd>
         </form>
 
-        <div className="ml-auto flex items-center gap-3 sm:gap-5 lg:ml-0">
+        {/* Authentication and profile */}
+        <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5 xl:ml-0">
           {loading ? (
-            // Reserve space so controls don't flash while the session is checked.
-            <div className="h-9 w-40 animate-pulse rounded-md bg-[#2c2a40]" aria-hidden="true" />
+            <div
+              className="h-9 w-9 animate-pulse rounded-full bg-[#373646]"
+              aria-hidden="true"
+            />
           ) : user ? (
-            <div ref={wrapperRef} className="relative">
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={open}
-                aria-label="Open profile menu"
-                onClick={() => setOpen((v) => !v)}
-                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[#4a4766] bg-[#35324b] text-sm font-medium text-[#e6e3f5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
+            <>
+              <Link
+                to="/profile"
+                className="hidden text-sm leading-[17px] text-[#b4aec7] hover:text-[#e0deeb] sm:block"
               >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : initial ? (
-                  <span aria-hidden="true">{initial}</span>
-                ) : (
-                  <UserIcon className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
+                Profile
+              </Link>
 
-              {open && (
-                <div
-                  ref={menuRef}
-                  role="menu"
-                  aria-label="Profile menu"
-                  onKeyDown={onMenuKeyDown}
-                  className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-lg border border-[#3a3750] bg-[#2c2a40] py-1 shadow-xl"
+              <div ref={wrapperRef} className="relative">
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={open}
+                  aria-label="Open profile menu"
+                  onClick={() => setOpen((v) => !v)}
+                  className="flex shrink-0 items-center gap-2.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c2ade7]"
                 >
-                  {menuItems.map((item) => (
-                    <Link
-                      key={item.label}
-                      to={item.to}
-                      role="menuitem"
-                      onClick={() => setOpen(false)}
-                      className={menuItemClass}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={handleLogout}
-                    disabled={loggingOut}
-                    className={`${menuItemClass} border-t border-[#3a3750] disabled:opacity-60`}
+                  <Avatar className="size-[34px] border border-[#4a4766]">
+                    {user.avatar_url ? (
+                      <img
+                        src={user.avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
+
+                    <AvatarFallback className="bg-[#4d3e68] text-xs font-bold text-[#c2ade7]">
+                      {initial || (
+                        <UserIcon
+                          className="size-4"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <ChevronDown
+                    className={`size-[14px] text-[#8f8ca9] transition-transform ${
+                      open ? "rotate-180" : ""
+                    }`}
+                    strokeWidth={1.7}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {open && (
+                  <div
+                    ref={menuRef}
+                    role="menu"
+                    aria-label="Profile menu"
+                    onKeyDown={onMenuKeyDown}
+                    className="absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-lg border border-[#55516c] bg-[#2c2a40] py-1 shadow-xl"
                   >
-                    {loggingOut ? "Logging out…" : "Logout"}
-                  </button>
-                  {logoutError && (
-                    <p role="alert" className="px-4 py-2 text-xs text-[#f0a0a5]">
-                      {logoutError}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+                    {menuItems.map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.to}
+                        role="menuitem"
+                        onClick={() => setOpen(false)}
+                        className={menuItemClass}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className={`${menuItemClass} border-t border-[#55516c] disabled:opacity-60`}
+                    >
+                      {loggingOut ? "Logging out…" : "Logout"}
+                    </button>
+
+                    {logoutError && (
+                      <p
+                        role="alert"
+                        className="px-4 py-2 text-xs text-[#f0a0a5]"
+                      >
+                        {logoutError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <>
-              <Link to="/login" className="text-sm text-[#e6e3f5] hover:text-white">
+              <Link
+                to="/login"
+                className="whitespace-nowrap text-sm text-[#b4aec7] hover:text-[#e0deeb]"
+              >
                 Log In
               </Link>
+
               <Link
                 to="/register"
-                className="rounded-md bg-[#a8454b] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#b9525a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e6e3f5]"
+                className="whitespace-nowrap rounded-lg bg-[#4d3e68] px-4 py-2.5 text-sm font-medium text-[#e0deeb] transition-colors hover:bg-[#5b497b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c2ade7]"
               >
                 Sign Up
               </Link>
@@ -204,6 +339,4 @@ const Navbar = () => {
       </nav>
     </header>
   );
-};
-
-export default Navbar;
+}

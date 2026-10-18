@@ -54,9 +54,10 @@ const Login = () => {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = (location.state as { from?: string } | null)?.from ?? "/";
+  const routeState = location.state as { from?: string; username?: string } | null;
+  const redirectTo = routeState?.from ?? "/";
 
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(routeState?.username || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);

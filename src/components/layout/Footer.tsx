@@ -1,39 +1,39 @@
 import { Link } from "react-router-dom";
 
 const links = [
-  { to: "/", label: "Home" },
-  { to: "/discover", label: "Discover Games" },
-  { to: "/mygamelist", label: "My Game List" },
-  { to: "/about", label: "About" },
-  { to: "/contact", label: "Contact" },
-  { to: "/privacy", label: "Privacy Policy" },
-  { to: "/terms", label: "Terms" },
+  ["About", "/about"],
+  ["Contact", "/contact"],
+  ["Help", "/help"],
+  ["Privacy Policy", "/privacy"],
+  ["Terms", "/terms"],
 ];
 
-const Footer = () => {
+export default function Footer() {
   return (
-    <footer className="border-t border-[#3a3750] bg-[#35334a]">
-      <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-4 px-4 py-6 text-center sm:px-6 md:h-16 md:flex-row md:justify-between md:py-0 md:text-left lg:px-[52px]">
-        <Link to="/" className="text-base text-[#e6e3f5]">
-          GameShelf
-        </Link>
-        <nav aria-label="Footer">
-          <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            {links.map((l) => (
-              <li key={l.label}>
-                <Link to={l.to} className="text-xs text-[#b4b1cc] transition-colors hover:text-white">
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <p className="text-xs text-[#b4b1cc]">
-          © {new Date().getFullYear()} GameShelf • Sample content
-        </p>
-      </div>
+    <footer className="flex min-h-[79px] flex-wrap items-center justify-between gap-6 bg-[#373646] px-5 py-6 text-xs leading-[15px] text-[#b4aec7] md:px-8 xl:px-16">
+      <Link
+        to="/"
+        className="text-base leading-[19px] text-[#e0deeb]"
+      >
+        GameShelf
+      </Link>
+
+      <nav
+        aria-label="Footer navigation"
+        className="flex flex-wrap items-center gap-[26px]"
+      >
+        {links.map(([label, to]) => (
+          <Link
+            key={to}
+            to={to}
+            className="hover:text-[#e0deeb]"
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+
+      <span>Demo • Sample content</span>
     </footer>
   );
-};
-
-export default Footer;
+}

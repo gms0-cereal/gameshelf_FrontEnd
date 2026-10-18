@@ -1,15 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ChevronDown, Library, Plus, Search } from "lucide-react";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { Check, Plus } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-
-// import "@fontsource/inter/400.css";
-// import "@fontsource/inter/600.css";
-// import "@fontsource/inter/700.css";
 
 type Game = {
   slug: string;
@@ -81,106 +77,6 @@ const RPG_RECOMMENDATIONS: Game[] = [
   },
 ];
 
-function Navbar() {
-  return (
-    <header className="border-b border-[#55516c] bg-[#201e2f]">
-      <nav
-        aria-label="Main navigation"
-        className="flex min-h-[88px] flex-wrap items-center gap-5 px-5 py-4 md:px-8 xl:h-[88px] xl:flex-nowrap xl:gap-[34px] xl:px-16 xl:py-0"
-      >
-        <Link
-          to="/"
-          aria-label="GameShelf home"
-          className="flex w-[163px] shrink-0 items-center gap-2.5"
-        >
-          <Library
-            className="size-[26px] shrink-0 text-[#8870b6]"
-            strokeWidth={1.7}
-            aria-hidden="true"
-          />
-          <span className="text-[21px] leading-[25px] tracking-[-0.6px]">
-            GAMESHELF
-          </span>
-        </Link>
-
-        <div className="flex items-center gap-5 text-sm leading-[17px] xl:gap-[34px]">
-          <Link
-            to="/discover"
-            className="text-[#b4aec7] hover:text-[#e0deeb]"
-          >
-            Discover
-          </Link>
-          <Link
-            to="/"
-            aria-current="page"
-            className="font-semibold text-[#c2ade7]"
-          >
-            Home
-          </Link>
-          <Link
-            to="/my-list"
-            className="whitespace-nowrap text-[#b4aec7] hover:text-[#e0deeb]"
-          >
-            My List
-          </Link>
-        </div>
-
-        <form
-          action="/search"
-          role="search"
-          className="order-last flex h-10 w-full min-w-0 items-center gap-2.5 rounded-lg bg-[#373646] px-[14px] focus-within:ring-2 focus-within:ring-[#c2ade7] xl:order-none xl:w-auto xl:flex-1"
-        >
-          <Search
-            className="size-[18px] shrink-0 text-[#55516c]"
-            strokeWidth={1.7}
-            aria-hidden="true"
-          />
-
-          <Input
-            type="search"
-            name="q"
-            aria-label="Search games"
-            placeholder="Search games..."
-            className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13px] leading-4 text-[#e0deeb] shadow-none placeholder:text-[#b4aec7] focus-visible:border-transparent focus-visible:ring-0 md:text-[13px] dark:bg-transparent"
-          />
-
-          <span
-            aria-hidden="true"
-            className="shrink-0 text-[11px] leading-[13px] text-[#b4aec7]"
-          >
-            ⌘ K
-          </span>
-        </form>
-
-        <Link
-          to="/profile"
-          className="ml-auto text-sm leading-[17px] text-[#b4aec7] hover:text-[#e0deeb] xl:ml-0"
-        >
-          Profile
-        </Link>
-
-        <Link
-          to="/profile"
-          aria-label="Open PlayerOne profile"
-          className="flex shrink-0 items-center gap-2.5"
-        >
-          <Avatar className="size-[34px]">
-            <AvatarFallback className="bg-[#4d3e68] text-xs font-bold text-[#c2ade7]">
-              P1
-            </AvatarFallback>
-          </Avatar>
-
-          <ChevronDown
-            className="size-[14px] text-[#55516c]"
-            strokeWidth={1.7}
-            aria-hidden="true"
-          />
-        </Link>
-      </nav>
-    </header>
-  );
-}
-
 function GameCard({
   game,
   saved,
@@ -194,7 +90,6 @@ function GameCard({
 }) {
   return (
     <Card className="relative flex h-[454px] min-w-0 flex-col gap-0 overflow-hidden rounded-xl border-0 bg-[#373646] py-0 text-[#e0deeb] shadow-none">
-      {/* An inset border preserves the artwork's measured dimensions. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-10 rounded-xl border border-[#55516c]"
@@ -250,6 +145,7 @@ function GameCard({
               aria-hidden="true"
             />
           )}
+
           {saved ? "Added to List" : "Add to My List"}
         </Button>
 
@@ -291,40 +187,14 @@ function SectionHeading({
   );
 }
 
-function Footer() {
-  const links = [
-    ["About", "/about"],
-    ["Contact", "/contact"],
-    ["Help", "/help"],
-    ["Privacy Policy", "/privacy"],
-    ["Terms", "/terms"],
-  ];
-
-  return (
-    <footer className="flex min-h-[79px] flex-wrap items-center justify-between gap-6 bg-[#373646] px-5 py-6 text-xs leading-[15px] text-[#b4aec7] md:px-8 xl:px-16">
-      <Link to="/" className="text-base leading-[19px] text-[#e0deeb]">
-        GameShelf
-      </Link>
-
-      <nav
-        aria-label="Footer navigation"
-        className="flex flex-wrap items-center gap-[26px]"
-      >
-        {links.map(([label, to]) => (
-          <Link key={to} to={to} className="hover:text-[#e0deeb]">
-            {label}
-          </Link>
-        ))}
-      </nav>
-
-      <span>Demo • Sample content</span>
-    </footer>
-  );
-}
-
 export default function Home() {
-  const [saved, setSaved] = useState<Set<string>>(() => new Set());
-  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
+  const [saved, setSaved] = useState<Set<string>>(
+    () => new Set()
+  );
+
+  const [dismissed, setDismissed] = useState<Set<string>>(
+    () => new Set()
+  );
 
   function addGame(slug: string) {
     setSaved((previous) => new Set(previous).add(slug));
@@ -380,10 +250,6 @@ export default function Home() {
             aria-labelledby="hero-title"
             className="relative flex min-h-[390px] items-center overflow-hidden rounded-2xl bg-[#201e2f] px-6 py-12 md:px-11 xl:h-[390px] xl:py-0"
           >
-            {/*
-              The design uses 460px-tall artwork clipped inside a
-              390px hero. Keeping this reproduces its desktop crop.
-            */}
             <img
               src="/images/home-hero.png"
               alt=""
