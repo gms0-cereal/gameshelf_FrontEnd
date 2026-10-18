@@ -159,7 +159,7 @@ export default function Navbar() {
       >
         {/* Brand */}
         <Link
-          to="/"
+          to="/home"
           aria-label="GameShelf home"
           className="flex w-[163px] shrink-0 items-center gap-2.5 text-[#e0deeb]"
         >

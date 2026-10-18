@@ -55,7 +55,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = location.state as { from?: string; username?: string } | null;
-  const redirectTo = routeState?.from ?? "/";
+  const redirectTo = routeState?.from ?? "/home";
 
   const [username, setUsername] = useState(routeState?.username || "");
   const [password, setPassword] = useState("");

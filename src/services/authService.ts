@@ -68,16 +68,16 @@ export interface RegisterBody {
   password: string;
 }
 
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  nickname: string | null;
-  avatar_url: string | null;
-  role: "user" | "moderator" | "admin";
-}
+// export interface User {
+//   id: number;
+//   username: string;
+//   email: string;
+//   nickname: string | null;
+//   avatar_url: string | null;
+//   role: "user" | "moderator" | "admin";
+// }
 
-export type AuthUser = User;
+// export type AuthUser = User;
 
 export interface LoginBody {
   username: string;
@@ -100,6 +100,21 @@ export interface VerifyEmailBody {
 export interface MessageResponse {
   detail: string;
 }
+export interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+  email_verified: boolean;
+  role: string;
+  nickname: string | null;
+  bio: string;
+  avatar_url: string | null;
+  banner_url: string | null;
+  library_visibility: string;
+  friends_visibility: string;
+  created_at: string;
+}
+
 
 // GET /auth/csrf/  (call once when the app starts so the csrftoken cookie exists)
 export async function getCsrf(): Promise<void> {
@@ -124,8 +139,12 @@ export async function logout(): Promise<void> {
 }
 
 // GET /auth/me/
+// export async function getCurrentUser(): Promise<AuthUser> {
+//   const { data } = await api.get<AuthUser>("/auth/me/");
+//   return data;
+// }
 export async function getCurrentUser(): Promise<AuthUser> {
-  const { data } = await api.get<AuthUser>("/auth/me/");
+  const { data } = await api.get<AuthUser>("/users/me/");
   return data;
 }
 
