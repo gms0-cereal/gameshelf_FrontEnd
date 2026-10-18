@@ -86,9 +86,9 @@ const { user, loading } = useAuth();
   </AvatarFallback>
 </Avatar>
     <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#c2ade7]">
+      {/* <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#c2ade7]">
         Player Profile
-      </p>
+      </p> */}
 
       <h2
         id="player-name"

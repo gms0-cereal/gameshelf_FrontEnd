@@ -249,7 +249,7 @@ export default function Navbar() {
                   onClick={() => setOpen((v) => !v)}
                   className="flex shrink-0 items-center gap-2.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c2ade7]"
                 >
-<Avatar className="size-13 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
+<Avatar className="size-11 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
   <AvatarImage
     src={user?.avatar_url || undefined}
     alt={user?.nickname || user?.username || "Player"}
