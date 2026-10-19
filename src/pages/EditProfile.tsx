@@ -106,6 +106,29 @@ export default function EditProfile() {
   setCropTarget(target);
   setCropSource(file);
 }
+const handleImageSelect = (
+  file: File,
+  target: "avatar" | "banner"
+) => {
+  if (file.type === "image/gif") {
+    // GIF: upload original file to preserve animation
+    const preview = URL.createObjectURL(file);
+
+    if (target === "avatar") {
+      setAvatarPreview(preview);
+      setAvatarUpload(file);
+    } else {
+      setBannerPreview(preview);
+      setBannerUpload(file);
+    }
+
+    return; // Don't open the cropper
+  }
+
+  // Other images: keep using your existing cropper
+  setCropTarget(target);
+  setCropSource(file);
+};
 
 function handleCroppedImage(blob: Blob) {
     if (!cropTarget) return;
@@ -328,12 +351,13 @@ function handleCroppedImage(blob: Blob) {
                     <input
                       id="avatar-upload"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       className="sr-only"
-                      onChange={(event) => {
-                        startCrop("avatar", event.target.files?.[0]);
-                        event.currentTarget.value = "";
-                      }}
+                      onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageSelect(file, "avatar");
+                      e.target.value = "";
+                    }}
                     />
 
                     <span className="text-xs text-[#b4aec7]">
@@ -360,12 +384,13 @@ function handleCroppedImage(blob: Blob) {
                   <input
                     id="banner-upload"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="sr-only"
-                    onChange={(event) => {
-                      startCrop("banner", event.target.files?.[0]);
-                      event.currentTarget.value = "";
-                    }}
+                   onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageSelect(file, "banner");
+                      e.target.value = "";
+                  }}
                   />
                 </div>
 
