@@ -20,12 +20,12 @@ import { Input } from "@/components/ui/input";
 const navLinks = [
   { to: "/discover", label: "Discover" },
   { to: "/", label: "Home" },
-  { to: "/mygamelist", label: "My List" },
+  { to: "/my-library", label: "My List" },
 ];
 
 const menuItems = [
   { to: "/profile", label: "Profile" },
-  { to: "/mygamelist", label: "My Game List" },
+  { to: "/my-library", label: "My Game List" },
   { to: "/settings", label: "Settings" },
 ];
 

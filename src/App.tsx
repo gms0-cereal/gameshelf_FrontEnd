@@ -10,6 +10,7 @@ import ForgotPassword from "./pages/ForgetPassword";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
+import MyLibrary from "./pages/MyLibrary";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />
             <Route path="/gamedetails/:appid" element={<GameDetails />} />
+            <Route path="/my-library" element={<MyLibrary />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/profile/edit" element={<EditProfile />} />

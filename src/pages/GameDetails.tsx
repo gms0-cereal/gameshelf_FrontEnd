@@ -13,22 +13,21 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 import {
+  LIST_STATUS_OPTIONS,
+  addToMyList,
+  getListStatus,
   getSteamGameDetails,
   getSteamGameReviews,
+  removeListEntry,
+  type ListStatus,
   type SteamGameDetail,
+  type UserGameEntry,
   type SteamMovie,
   type SteamReview,
   type SteamReviewsResponse,
 } from "@/services/Gameservice";
-
-const LIST_STATUSES = [
-  "Playing",
-  "Plan to Play",
-  "Completed",
-  "On Hold",
-  "Dropped",
-] as const;
 
 const REVIEWS_PER_PAGE = 5;
 const DLC_LIMIT = 3;
@@ -90,10 +89,29 @@ function SectionHeading({ title, note }: { title: string; note?: string }) {
   );
 }
 
-function AddToListMenu() {
+function AddToListMenu({ appId }: { appId: number }) {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [entry, setEntry] = useState<UserGameEntry | null>(null);
+  const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Is this game already in my list?
+  useEffect(() => {
+    let cancelled = false;
+    setEntry(null);
+
+    getListStatus(appId)
+      .then((data) => {
+        if (!cancelled && data.in_list) setEntry(data);
+      })
+      .catch(() => {
+        /* not logged in or network error: just show "Add to My List" */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appId]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -105,17 +123,51 @@ function AddToListMenu() {
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, []);
 
+  async function choose(value: ListStatus, label: string) {
+    setOpen(false);
+    setBusy(true);
+    try {
+      const saved = await addToMyList(appId, value);
+      setEntry(saved);
+      toast.success(`Saved to your list as “${label}”`);
+    } catch {
+      toast.error("Couldn’t update your list. Please make sure you’re logged in.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!entry) return;
+    setOpen(false);
+    setBusy(true);
+    try {
+      await removeListEntry(entry.id);
+      setEntry(null);
+      toast.success("Removed from your list");
+    } catch {
+      toast.error("Couldn’t remove this game. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const currentLabel = LIST_STATUS_OPTIONS.find(
+    (option) => option.value === entry?.status
+  )?.label;
+
   return (
     <div ref={ref} className="relative">
       <Button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        disabled={busy}
         aria-haspopup="listbox"
         aria-expanded={open}
         className="h-10 gap-2 rounded-lg border-0 bg-[#a8484c] px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
       >
         <Plus className="size-4" strokeWidth={1.7} aria-hidden="true" />
-        {selected ?? "Add to My List"}
+        {currentLabel ?? "Add to My List"}
         <ChevronDown className="size-4" strokeWidth={1.7} aria-hidden="true" />
       </Button>
 
@@ -124,23 +176,20 @@ function AddToListMenu() {
           role="listbox"
           className="absolute left-0 top-12 z-30 w-[200px] overflow-hidden rounded-xl border border-[#55516c] bg-[#2a2838] p-1.5 shadow-xl"
         >
-          {LIST_STATUSES.map((status) => {
-            const isSelected = selected === status;
+          {LIST_STATUS_OPTIONS.map(({ value, label }) => {
+            const isSelected = entry?.status === value;
             return (
-              <li key={status} role="option" aria-selected={isSelected}>
+              <li key={value} role="option" aria-selected={isSelected}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelected(status);
-                    setOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs ${
+                  onClick={() => choose(value, label)}
+                  className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs ${
                     isSelected
                       ? "bg-[#4a3d73] text-[#e0deeb]"
                       : "text-[#b4aec7] hover:bg-[#373646]"
                   }`}
                 >
-                  {status}
+                  {label}
                   {isSelected && (
                     <span className="rounded-full bg-[#7c5fc4] px-2 py-0.5 text-[10px] font-semibold">
                       Selected
@@ -150,6 +199,18 @@ function AddToListMenu() {
               </li>
             );
           })}
+
+          {entry && (
+            <li role="presentation" className="mt-1 border-t border-[#55516c] pt-1">
+              <button
+                type="button"
+                onClick={remove}
+                className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-xs text-[#e58d91] hover:bg-[#373646]"
+              >
+                Remove from list
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>
@@ -430,7 +491,7 @@ export default function GameDetail() {
           {/* Breadcrumb */}
           <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-[#b4aec7]">
             <nav aria-label="Breadcrumb" className="flex items-center gap-1.5">
-              <Link to="/home" className="hover:text-[#e0deeb] cursor-pointer">
+              <Link to="/home" className="cursor-pointer hover:text-[#e0deeb]">
                 Home
               </Link>
               <span aria-hidden="true">/</span>
@@ -508,7 +569,7 @@ export default function GameDetail() {
                   </p>
 
                   <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <AddToListMenu />
+                    <AddToListMenu appId={game.steam_appid} />
 
                     <Button
                       asChild

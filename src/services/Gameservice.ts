@@ -157,3 +157,98 @@ export async function getSteamGameReviews(
 
   return data;
 }
+
+// ---------------------------------------------------------------------------
+// My list (requires the user to be logged in)
+// ---------------------------------------------------------------------------
+export type ListStatus =
+  | "playing"
+  | "plan_to_play"
+  | "completed"
+  | "on_hold"
+  | "dropped";
+
+export const LIST_STATUS_OPTIONS: { value: ListStatus; label: string }[] = [
+  { value: "playing", label: "Playing" },
+  { value: "plan_to_play", label: "Plan to Play" },
+  { value: "completed", label: "Completed" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "dropped", label: "Dropped" },
+];
+
+export interface UserGameEntry {
+  id: number;
+  game_id: number;
+  steam_app_id: number | null;
+  title: string;
+  cover_image_url: string | null;
+  genres: string[];
+  status: ListStatus;
+  progress: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  score?: number | null; // not provided by the backend yet
+}
+
+export interface UserGameListResponse {
+  counts: Record<"all" | ListStatus, number>;
+  results: UserGameEntry[];
+}
+
+export type ListStatusCheck =
+  | { in_list: false }
+  | ({ in_list: true } & UserGameEntry);
+
+// GET /games/list/?status=&search=
+export async function getMyGameList(params: {
+  status?: ListStatus | "all";
+  search?: string;
+} = {}): Promise<UserGameListResponse> {
+  const { data } = await api.get<UserGameListResponse>("/list/", {
+    params: {
+      status: params.status && params.status !== "all" ? params.status : undefined,
+      search: params.search || undefined,
+    },
+  });
+  return data;
+}
+
+// POST /games/list/  (adds the game, or changes its status if already added)
+export async function addToMyList(
+  steamAppId: number | string,
+  status: ListStatus = "plan_to_play"
+): Promise<UserGameEntry> {
+  const { data } = await api.post<UserGameEntry>("/list/", {
+    steam_app_id: Number(steamAppId),
+    status,
+  });
+  return data;
+}
+
+// PATCH /games/list/<id>/
+export async function updateListEntry(
+  entryId: number,
+  changes: Partial<Pick<UserGameEntry, "status" | "progress" | "notes">>
+): Promise<UserGameEntry> {
+  const { data } = await api.patch<UserGameEntry>(
+    `/list/${entryId}/`,
+    changes
+  );
+  return data;
+}
+
+// DELETE /games/list/<id>/
+export async function removeListEntry(entryId: number): Promise<void> {
+  await api.delete(`/list/${entryId}/`);
+}
+
+// GET /games/list/steam/<app_id>/
+export async function getListStatus(
+  appId: number | string
+): Promise<ListStatusCheck> {
+  const { data } = await api.get<ListStatusCheck>(
+    `/list/steam/${appId}/`
+  );
+  return data;
+}
