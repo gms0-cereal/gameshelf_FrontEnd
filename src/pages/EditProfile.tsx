@@ -44,7 +44,7 @@ type ProfileForm = {
 };
 
 export default function EditProfile() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ProfileForm>({
@@ -157,9 +157,11 @@ function handleCroppedImage(blob: Blob) {
           payload.append("banner_file", bannerUpload);
         }
 
-        await api.patch("/users/me/", payload);
+       const response = await api.patch("/users/me/", payload);
 
-        navigate("/profile");
+      await api.patch("/users/me/", payload);
+      await refreshUser();
+      navigate("/profile");
       } catch (err: any) {
         const data = err?.response?.data;
 
