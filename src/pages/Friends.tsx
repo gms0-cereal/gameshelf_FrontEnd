@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Ban,
-  Check,
   Gamepad2,
   Loader2,
   Search,
@@ -33,7 +32,6 @@ import {
   removeFriend,
   type SocialUser,
   type Friendship as ServiceFriendship,
-  type SuggestedUser,
 } from "@/services/Socialservice";
 
 type FavoriteGame = {
@@ -112,7 +110,7 @@ export default function Friends() {
         setOutgoing((outgoingResponse.results ?? []) as Friendship[]);
       } else if (activeTab === "friends") {
         const response = await getFriends(search.trim());
-        setFriends(response as Player[]);
+        setFriends((response ?? []) as Player[]);
       }
     } catch (err) {
       setError(
@@ -212,7 +210,7 @@ export default function Friends() {
 
   const visibleRequests = [
     ...incoming.filter((request) => matchesSearch(request.user, search)),
-    ...outgoing.filter((request) => matchesSearch(request.user, search)),
+    ...outgoing.filter((request) => matchesSearch(request.friend || request.user, search)),
   ];
 
   const currentCount =
@@ -393,23 +391,26 @@ export default function Friends() {
                     </h2>
 
                     {outgoing.filter((request) =>
-                      matchesSearch(request.user, search),
+                      matchesSearch(request.friend || request.user, search),
                     ).length ? (
                       outgoing
                         .filter((request) =>
-                          matchesSearch(request.user, search),
+                          matchesSearch(request.friend || request.user, search),
                         )
-                        .map((request) => (
-                          <PlayerCard
-                            key={request.id}
-                            player={request.user}
-                            busy={busyUsername === request.user.username}
-                            onAdd={() => void cancelRequest(request)}
-                            onBlock={() => blockPlayer(request.user)}
-                            addLabel="Cancel request"
-                            addIcon={<X className="size-4" />}
-                          />
-                        ))
+                        .map((request) => {
+                          const targetPlayer = request.friend || request.user;
+                          return (
+                            <PlayerCard
+                              key={request.id}
+                              player={targetPlayer}
+                              busy={busyUsername === targetPlayer.username}
+                              onAdd={() => void cancelRequest(request)}
+                              onBlock={() => blockPlayer(targetPlayer)}
+                              addLabel="Cancel request"
+                              addIcon={<X className="size-4" />}
+                            />
+                          );
+                        })
                     ) : (
                       <p className="text-sm text-[#b4aec7]">
                         You haven't sent any pending requests.
@@ -496,13 +497,13 @@ function PlayerCard({
         <div className="flex min-w-0 items-center gap-4">
           <Avatar className="size-[76px] shrink-0 border-2 border-[#8870b6] bg-[#4d3e68] md:size-[88px]">
             <AvatarImage
-              src={player.avatar_url || undefined}
-              alt={displayName}
+                src={player.avatar_url || undefined}
+                alt={displayName}
             />
             <AvatarFallback className="bg-[#4d3e68]">
-              <Gamepad2 className="size-9 text-[#c2ade7]" />
+                <Gamepad2 className="size-9 text-[#c2ade7]" />
             </AvatarFallback>
-          </Avatar>
+        </Avatar>
 
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-lg font-semibold text-white md:text-xl">

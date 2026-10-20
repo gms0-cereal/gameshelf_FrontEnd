@@ -1,148 +1,153 @@
 import api from "@/lib/api";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
 export interface SocialUser {
-id: number;
-username: string;
-nickname: string | null;
-avatar_url: string | null;
+  id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  bio?: string | null;
+  favorites?: Array<{ id?: number; title: string; image?: string | null }>;
 }
 
 export interface Friendship {
-id: number;
-user: SocialUser;
-friend: SocialUser;
-status: string;
-created_at: string;
+  id: number;
+  user: SocialUser;
+  friend?: SocialUser;
+  status: string;
+  created_at: string;
 }
 
 export interface FriendRequestList {
-count: number;
-results: Friendship[];
+  count: number;
+  results: Friendship[];
 }
 
-export interface SuggestedUser extends SocialUser {
-// Add extra fields here if SuggestedUserSerializer returns them.
-}
-
-export interface Notification {
-id: number;
-// Match these fields to your actual NotificationSerializer.
-[key: string]: unknown;
-}
+export interface SuggestedUser extends SocialUser {}
 
 export interface PaginatedSocialList<T> {
-count: number;
-results: T[];
+  count: number;
+  results: T[];
+}
+
+// Safely extracts data whether the backend returns a paginated object or raw array
+function extractResults<T>(data: unknown): T[] {
+  if (Array.isArray(data)) {
+    return data as T[];
+  }
+  if (
+    data &&
+    typeof data === "object" &&
+    "results" in data &&
+    Array.isArray((data as { results: unknown }).results)
+  ) {
+    return (data as { results: T[] }).results;
+  }
+  return [];
 }
 
 // ─── Suggested Players ───────────────────────────────────────────────────────
-
 export async function getSuggestedPlayers(
-search = "",
+  search = "",
 ): Promise<SuggestedUser[]> {
-const { data } = await api.get<PaginatedSocialList<SuggestedUser>>(
-"/social/suggested-players/",
-{ params: { search, limit: 50 } },
-);
-
-return data.results ?? [];
+  const { data } = await api.get(
+    "/users/suggested-players/",
+    { params: { search, limit: 50 } },
+  );
+  return extractResults<SuggestedUser>(data);
 }
 
 // ─── Friends ─────────────────────────────────────────────────────────────────
-
 export async function getFriends(search = ""): Promise<SocialUser[]> {
-const { data } = await api.get<PaginatedSocialList<SocialUser>>(
-"/social/friends/",
-{ params: { search, limit: 100 } },
-);
-
-return data.results ?? [];
+  const { data } = await api.get(
+    "/users/friends/",
+    { params: { search, limit: 100 } },
+  );
+  return extractResults<SocialUser>(data);
 }
 
 export async function removeFriend(username: string): Promise<void> {
-await api.delete(`/social/friends/${encodeURIComponent(username)}/`);
+  await api.delete(`/users/friends/${encodeURIComponent(username)}/`);
 }
 
 // ─── Friend Requests ─────────────────────────────────────────────────────────
-
 export async function getFriendRequests(
-direction: "incoming" | "outgoing",
+  direction: "incoming" | "outgoing",
 ): Promise<FriendRequestList> {
-const { data } = await api.get<FriendRequestList>(
-"/social/friend-requests/",
-{ params: { direction } },
-);
-
-return data;
+  const { data } = await api.get(
+    "/users/friend-requests/",
+    { params: { direction } },
+  );
+  const results = extractResults<Friendship>(data);
+  const count =
+    data && typeof data === "object" && "count" in data
+      ? Number((data as { count: unknown }).count)
+      : results.length;
+  return { count, results };
 }
 
 export async function sendFriendRequest(
-username: string,
+  username: string,
 ): Promise<Friendship> {
-const { data } = await api.post<Friendship>(
-"/social/friend-requests/",
-{ username },
-);
-
-return data;
+  const { data } = await api.post<Friendship>(
+    "/users/friend-requests/",
+    { username },
+  );
+  return data;
 }
 
 export async function acceptFriendRequest(id: number): Promise<Friendship> {
-const { data } = await api.post<Friendship>(
-`/social/friend-requests/${id}/accept/`,
-);
-
-return data;
+  const { data } = await api.post<Friendship>(
+    `/users/friend-requests/${id}/accept/`,
+  );
+  return data;
 }
 
 export async function declineFriendRequest(id: number): Promise<void> {
-await api.post(`/social/friend-requests/${id}/decline/`);
+  await api.post(`/users/friend-requests/${id}/decline/`);
 }
 
 export async function cancelFriendRequest(id: number): Promise<void> {
-await api.post(`/social/friend-requests/${id}/cancel/`);
+  await api.post(`/users/friend-requests/${id}/cancel/`);
 }
 
 // ─── Blocks ──────────────────────────────────────────────────────────────────
-
 export async function getBlockedUsers(): Promise<SocialUser[]> {
-const { data } = await api.get<PaginatedSocialList<SocialUser>>(
-"/social/blocks/",
-);
-
-return data.results ?? [];
+  const { data } = await api.get("/users/blocks/");
+  return extractResults<SocialUser>(data);
 }
 
 export async function blockUser(username: string): Promise<unknown> {
-const { data } = await api.post("/social/blocks/", { username });
-return data;
+  const { data } = await api.post("/users/blocks/", { username });
+  return data;
 }
 
 export async function unblockUser(username: string): Promise<void> {
-await api.delete(`/social/blocks/${encodeURIComponent(username)}/`);
+  await api.delete(`/users/blocks/${encodeURIComponent(username)}/`);
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────
-
 export async function getNotifications(
-unreadOnly = false,
-): Promise<PaginatedSocialList<Notification>> {
-const { data } = await api.get<PaginatedSocialList<Notification>>(
-"/social/notifications/",
-{ params: unreadOnly ? { unread: 1 } : {} },
-);
-
-return data;
+  unreadOnly = false,
+): Promise<PaginatedSocialList<Record<string, unknown>>> {
+  const { data } = await api.get(
+    "/social/notifications/",
+    { params: unreadOnly ? { unread: 1 } : {} },
+  );
+  const results = extractResults<Record<string, unknown>>(data);
+  const count =
+    data && typeof data === "object" && "count" in data
+      ? Number((data as { count: unknown }).count)
+      : results.length;
+  return { count, results };
 }
 
 export async function markNotificationRead(id: number): Promise<unknown> {
-const { data } = await api.post(`/social/notifications/${id}/read/`);
-return data;
+  const { data } = await api.post(`/social/notifications/${id}/read/`);
+  return data;
 }
 
 export async function markAllNotificationsRead(): Promise<unknown> {
-const { data } = await api.post("/social/notifications/read-all/");
-return data;
+  const { data } = await api.post("/social/notifications/read-all/");
+  return data;
 }
