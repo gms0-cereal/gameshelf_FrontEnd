@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import {
   Ban,
@@ -12,7 +11,6 @@ import {
   X,
 } from "lucide-react";
 
-import api from "@/lib/api";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import {
@@ -33,6 +31,9 @@ import {
   cancelFriendRequest,
   blockUser,
   removeFriend,
+  type SocialUser,
+  type Friendship as ServiceFriendship,
+  type SuggestedUser,
 } from "@/services/Socialservice";
 
 type FavoriteGame = {
@@ -41,30 +42,17 @@ type FavoriteGame = {
   image?: string | null;
 };
 
-type Player = {
-  id: number;
-  username: string;
-  nickname?: string | null;
+type Player = SocialUser & {
   bio?: string | null;
-  avatar_url?: string | null;
   favorites?: FavoriteGame[];
 };
 
-type Friendship = {
-  id: number;
+type Friendship = ServiceFriendship & {
   user: Player;
-  status: string;
-  direction?: "incoming" | "outgoing" | null;
-  created_at?: string;
-  updated_at?: string;
+  friend?: Player;
 };
 
 type Tab = "suggested" | "requests" | "friends";
-
-type ApiList<T> = {
-  count: number;
-  results: T[];
-};
 
 const CARD =
   "rounded-2xl border border-[#514961] bg-[#373646] " +
@@ -99,7 +87,7 @@ export default function Friends() {
   const [suggested, setSuggested] = useState<Player[]>([]);
   const [incoming, setIncoming] = useState<Friendship[]>([]);
   const [outgoing, setOutgoing] = useState<Friendship[]>([]);
-  const [friends, setFriends] = useState<Friendship[]>([]);
+  const [friends, setFriends] = useState<Player[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [busyUsername, setBusyUsername] = useState<string | null>(null);
@@ -111,24 +99,21 @@ export default function Friends() {
     setError("");
 
     try {
-    if (activeTab === "suggested") {
+      if (activeTab === "suggested") {
         const response = await getSuggestedPlayers(search.trim());
-        setSuggested(response.data.results ?? []);
-        }
-    if (activeTab === "requests") {
-    const [incomingResponse, outgoingResponse] = await Promise.all([
-        getFriendRequests("incoming"),
-        getFriendRequests("outgoing"),
-    ]);
+        setSuggested(response as Player[]);
+      } else if (activeTab === "requests") {
+        const [incomingResponse, outgoingResponse] = await Promise.all([
+          getFriendRequests("incoming"),
+          getFriendRequests("outgoing"),
+        ]);
 
-    setIncoming(incomingResponse.data.results ?? []);
-    setOutgoing(outgoingResponse.data.results ?? []);
-    }
-
-    if (activeTab === "friends") {
+        setIncoming((incomingResponse.results ?? []) as Friendship[]);
+        setOutgoing((outgoingResponse.results ?? []) as Friendship[]);
+      } else if (activeTab === "friends") {
         const response = await getFriends(search.trim());
-        setFriends(response.data.results ?? []);
-        }
+        setFriends(response as Player[]);
+      }
     } catch (err) {
       setError(
         getErrorMessage(
@@ -168,10 +153,7 @@ export default function Friends() {
   const sendRequest = (player: Player) =>
     runAction(
       player.username,
-      () =>
-        api.post("/friend-requests/", {
-          username: player.username,
-        }),
+      () => sendFriendRequest(player.username),
       `Friend request sent to ${getDisplayName(player)}.`,
     );
 
@@ -186,7 +168,7 @@ export default function Friends() {
 
     void runAction(
       player.username,
-      () => api.post("/blocks/", { username: player.username }),
+      () => blockUser(player.username),
       `Blocked ${getDisplayName(player)}.`,
     );
   };
@@ -194,27 +176,25 @@ export default function Friends() {
   const acceptRequest = (request: Friendship) =>
     runAction(
       request.user.username,
-      () => api.post(`/friend-requests/${request.id}/accept/`),
+      () => acceptFriendRequest(request.id),
       `You are now friends with ${getDisplayName(request.user)}.`,
     );
 
   const declineRequest = (request: Friendship) =>
     runAction(
       request.user.username,
-      () => api.post(`/friend-requests/${request.id}/decline/`),
+      () => declineFriendRequest(request.id),
       `Declined ${getDisplayName(request.user)}'s request.`,
     );
 
   const cancelRequest = (request: Friendship) =>
     runAction(
       request.user.username,
-      () => api.post(`/friend-requests/${request.id}/cancel/`),
+      () => cancelFriendRequest(request.id),
       `Cancelled your request to ${getDisplayName(request.user)}.`,
     );
 
-  const unfriend = (friendship: Friendship) => {
-    const player = friendship.user;
-
+  const unfriend = (player: Player) => {
     if (
       !window.confirm(
         `Remove ${getDisplayName(player)} from your friends?`,
@@ -225,18 +205,14 @@ export default function Friends() {
 
     void runAction(
       player.username,
-      () => api.delete(`/friends/${encodeURIComponent(player.username)}/`),
+      () => removeFriend(player.username),
       `Removed ${getDisplayName(player)} from your friends.`,
     );
   };
 
   const visibleRequests = [
-    ...incoming.filter((request) =>
-      matchesSearch(request.user, search),
-    ),
-    ...outgoing.filter((request) =>
-      matchesSearch(request.user, search),
-    ),
+    ...incoming.filter((request) => matchesSearch(request.user, search)),
+    ...outgoing.filter((request) => matchesSearch(request.user, search)),
   ];
 
   const currentCount =
@@ -448,13 +424,13 @@ export default function Friends() {
                   <h2 className="text-xl font-semibold">My Friends</h2>
 
                   {friends.length ? (
-                    friends.map((friendship) => (
+                    friends.map((player) => (
                       <PlayerCard
-                        key={friendship.id}
-                        player={friendship.user}
-                        busy={busyUsername === friendship.user.username}
-                        onAdd={() => unfriend(friendship)}
-                        onBlock={() => blockPlayer(friendship.user)}
+                        key={player.id}
+                        player={player}
+                        busy={busyUsername === player.username}
+                        onAdd={() => unfriend(player)}
+                        onBlock={() => blockPlayer(player)}
                         addLabel="Unfriend"
                         addIcon={<UserMinus className="size-4" />}
                       />
