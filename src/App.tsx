@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
 import MyLibrary from "./pages/MyLibrary";
+import GameReviews from "./pages/GameReviews";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/home" element={<Home />} />
             <Route path="/gamedetails/:appid" element={<GameDetails />} />
+            <Route path="/gamedetails/:appid/reviews" element={<GameReviews />} />
             <Route path="/my-library" element={<MyLibrary />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -27,7 +27,10 @@ import {
   type SteamMovie,
   type SteamReview,
   type SteamReviewsResponse,
+  type GameShelfReview,
+  getGameShelfReviews
 } from "@/services/Gameservice";
+import ThirdPartyReviews from "@/components/reviews/ThirdPartyReviews";
 
 const REVIEWS_PER_PAGE = 5;
 const DLC_LIMIT = 3;
@@ -282,37 +285,30 @@ function TrailerTile({
   );
 }
 
-function ReviewCard({ review }: { review: SteamReview }) {
-  const hours = Math.round((review.author.playtime_forever ?? 0) / 60);
-
+function ReviewCard({ review }: { review: GameShelfReview }) {
   return (
     <article className="flex flex-col gap-3 border-t border-[#55516c] pt-4 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-[#b4aec7]">
         <span>
-          Steam player • {hours.toLocaleString()} h on record •{" "}
-          {formatDate(review.timestamp_created)}
+          {review.username}
+          {review.created_at && (
+            <> • {formatDate(new Date(review.created_at).getTime() / 1000)}</>
+          )}
         </span>
 
-        <span
-          className={`inline-flex items-center gap-1.5 font-medium ${
-            review.voted_up ? "text-[#86d9a0]" : "text-[#e58d91]"
-          }`}
-        >
-          {review.voted_up ? (
-            <ThumbsUp className="size-4" aria-hidden="true" />
-          ) : (
-            <ThumbsDown className="size-4" aria-hidden="true" />
-          )}
-          {review.voted_up ? "Recommended" : "Not recommended"}
-        </span>
+        {review.rating !== null && (
+          <span className="inline-flex items-center gap-1.5 font-medium text-[#c2ade7]">
+            ★ {review.rating} / 10
+          </span>
+        )}
       </div>
 
       <p className="line-clamp-6 whitespace-pre-line text-sm leading-6 text-[#e0deeb]">
-        {review.review || "No written review."}
+        {review.content || "No written review."}
       </p>
 
       <p className="text-xs text-[#b4aec7]">
-        Helpful ({review.votes_up.toLocaleString()})
+        Helpful ({review.likes.toLocaleString()})
       </p>
     </article>
   );
@@ -321,7 +317,7 @@ function ReviewCard({ review }: { review: SteamReview }) {
 // ---------------------------------------------------------------------------
 // page
 // ---------------------------------------------------------------------------
-export default function GameDetail() {
+export default function GameDetails() {
   const { appid } = useParams<{ appid: string }>();
 
   const [game, setGame] = useState<SteamGameDetail | null>(null);
@@ -338,6 +334,11 @@ export default function GameDetail() {
   const [reviewsError, setReviewsError] = useState(false);
   const [reviewCursor, setReviewCursor] = useState("*");
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
+  const [reviewTab, setReviewTab] = useState<"steam" | "external">("steam");
+
+    // GameShelf reviews
+  const [reviewsGameShelf, setReviewsGameShelf] = useState<GameShelfReview[]>([]);
+
 
   const [liked, setLiked] = useState(false);
 
@@ -407,32 +408,19 @@ export default function GameDetail() {
     };
   }, [game]);
 
-  // First page of reviews (independent so a failure doesn't break the page)
+  // First page of Steam reviews (independent so a failure doesn't break the page)
+   // GameShelf community reviews
+    // Steam summary only (for the score card). A failure here is harmless.
   useEffect(() => {
     if (!appid || !/^\d+$/.test(appid)) return;
     let cancelled = false;
-
     setReviewData(null);
-    setReviews([]);
-    setReviewsError(false);
-    setReviewsLoading(true);
-    setReviewCursor("*");
-    setHasMoreReviews(false);
 
-    getSteamGameReviews(appid, "*", REVIEWS_PER_PAGE)
+    getSteamGameReviews(appid, "*", 1)
       .then((data) => {
-        if (cancelled) return;
-        setReviewData(data);
-        setReviews(data.reviews);
-        setReviewCursor(data.cursor);
-        setHasMoreReviews(data.reviews.length >= REVIEWS_PER_PAGE);
+        if (!cancelled) setReviewData(data);
       })
-      .catch(() => {
-        if (!cancelled) setReviewsError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setReviewsLoading(false);
-      });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -459,6 +447,31 @@ export default function GameDetail() {
       .finally(() => setReviewsLoading(false));
   }
 
+    // GameShelf community reviews
+  useEffect(() => {
+    if (!appid || !/^\d+$/.test(appid)) return;
+    let cancelled = false;
+
+    setReviewsGameShelf([]);
+    setReviewsError(false);
+    setReviewsLoading(true);
+
+    getGameShelfReviews(appid)
+      .then((data) => {
+        if (!cancelled) setReviewsGameShelf(data);
+      })
+      .catch(() => {
+        if (!cancelled) setReviewsError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setReviewsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appid]);
+
   // Derived values ----------------------------------------------------------
   const genres = game?.genres?.map((g) => g.description) ?? [];
   const platforms = platformLabel(game?.platforms);
@@ -466,6 +479,8 @@ export default function GameDetail() {
     game?.screenshots?.[0]?.path_full ?? game?.background_raw ?? game?.header_image;
   const releaseYear = game?.release_date?.date.match(/\d{4}/)?.[0] ?? "—";
   const storeUrl = `https://store.steampowered.com/app/${appid}`;
+  // Rating and writing happen on the Community reviews page.
+  const reviewsPath = `/gamedetails/${appid}/reviews?write=1`;
 
   const summary = reviewData?.summary;
   const totalReviews = summary?.total_reviews ?? 0;
@@ -575,14 +590,14 @@ export default function GameDetail() {
                       asChild
                       className="h-10 gap-2 rounded-lg border border-[#55516c] bg-[#373646]/80 px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a]"
                     >
-                      <a href="#reviews">
+                      <Link to={reviewsPath}>
                         <PenLine
                           className="size-4"
                           strokeWidth={1.7}
                           aria-hidden="true"
                         />
                         Rate / Write Review
-                      </a>
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -651,7 +666,19 @@ export default function GameDetail() {
                         : "Not enough Steam reviews yet"}
                     </p>
 
-                    <p className="text-sm text-[#b4aec7]">Your score: Not rated</p>
+                    <Button
+                      asChild
+                      className="h-10 w-fit gap-2 rounded-lg border-0 bg-[#a8484c] px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
+                    >
+                      <Link to={reviewsPath}>
+                        <PenLine
+                          className="size-4"
+                          strokeWidth={1.7}
+                          aria-hidden="true"
+                        />
+                        Rate / Write Review
+                      </Link>
+                    </Button>
 
                     <button
                       type="button"
@@ -688,7 +715,7 @@ export default function GameDetail() {
                     {dlc.map((item) => (
                       <Link
                         key={item.steam_appid}
-                        to={`/gamedetail/${item.steam_appid}`}
+                        to={`/gamedetails/${item.steam_appid}`}
                         className="group overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] transition-colors hover:border-[#c2ade7]"
                       >
                         <img
@@ -750,13 +777,49 @@ export default function GameDetail() {
                       <h2 className="text-[22px] font-semibold leading-7">
                         Community reviews
                       </h2>
-                      <p className="text-xs text-[#b4aec7]">
-                        Most helpful reviews from Steam players
-                      </p>
+
+                      <div
+                        role="tablist"
+                        aria-label="Review type"
+                        className="flex gap-1 rounded-lg border border-[#55516c] bg-[#2a2838] p-1"
+                      >
+                        {(
+                          [
+                            { value: "steam", label: "Steam" },
+                            { value: "external", label: "Other sites" },
+                          ] as const
+                        ).map(({ value, label }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            role="tab"
+                            aria-selected={reviewTab === value}
+                            onClick={() => setReviewTab(value)}
+                            className={`h-8 cursor-pointer rounded-md px-4 text-xs font-medium transition-colors ${
+                              reviewTab === value
+                                ? "bg-[#4a3d73] text-[#e0deeb]"
+                                : "text-[#b4aec7] hover:text-[#e0deeb]"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    {reviews.map((review) => (
-                      <ReviewCard key={review.recommendationid} review={review} />
+                    {reviewTab === "external" ? (
+                      <ThirdPartyReviews
+                        appId={game.steam_appid}
+                        gameName={game.name}
+                      />
+                    ) : (
+                      <>
+                    <p className="text-xs text-[#b4aec7]">
+                      Most helpful reviews from Steam players
+                    </p>
+
+                    {reviewsGameShelf.map((review) => (
+                      <ReviewCard key={review.id} review={review} />
                     ))}
 
                     {reviewsLoading && (
@@ -767,11 +830,11 @@ export default function GameDetail() {
 
                     {reviewsError && (
                       <p role="alert" className="text-sm text-[#e58d91]">
-                        Couldn't load reviews right now.
+                        Couldn’t load reviews right now.
                       </p>
                     )}
 
-                    {!reviewsLoading && !reviewsError && reviews.length === 0 && (
+                    {!reviewsLoading && !reviewsError && reviewsGameShelf.length === 0 && (
                       <p className="text-sm text-[#b4aec7]">
                         No written reviews yet.
                       </p>
@@ -785,6 +848,8 @@ export default function GameDetail() {
                       >
                         Load more reviews
                       </Button>
+                    )}
+                      </>
                     )}
                   </CardContent>
                 </Card>
