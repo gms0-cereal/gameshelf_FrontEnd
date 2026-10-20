@@ -11,7 +11,7 @@ import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
 import MyLibrary from "./pages/MyLibrary";
-
+import Friends from "./pages/Friends";
 const queryClient = new QueryClient();
 
 const App = () => (
