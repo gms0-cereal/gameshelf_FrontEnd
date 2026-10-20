@@ -10,7 +10,7 @@ import ForgotPassword from "./pages/ForgetPassword";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
-
+import Friends from "./pages/Friends";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -27,6 +27,7 @@ const App = () => (
             <Route path="/home" element={<Home />} />
             <Route path="/gamedetails/:appid" element={<GameDetails />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/friends" element={<Friends />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/profile/edit" element={<EditProfile />} />
           </Routes>
