@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { Clock, Gamepad2, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gamepad2, Star } from "lucide-react";
 import { getSteamGames, type SteamGame } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,8 +16,10 @@ type Game = {
   genre: string;
   status: GameStatus;
   platform: string;
-  hoursPlayed: number | null;
+  bio?: string | null;
   rating: number | null; // out of 10
+  avgRating?: number;
+  ratingCount?: number;
   lastPlayed: string | null; // ISO date, e.g. "2026-10-16"
 };
 
@@ -33,12 +35,13 @@ const STATUS_STYLES: Record<GameStatus, { label: string; className: string }> = 
   },
 };
 
-// Recommendations you haven't played yet share these defaults.
 const UNPLAYED = {
   status: "plan-to-play" as GameStatus,
   platform: "PC",
-  hoursPlayed: null,
+  bio: "Explore vast atmospheric worlds, uncover deep hidden lore, and battle challenging foes in an unforgettable journey.",
   rating: null,
+  avgRating: 4.8,
+  ratingCount: 1240,
   lastPlayed: null,
 };
 
@@ -118,24 +121,12 @@ function formatLastPlayed(date: string | null) {
 function GameCard({ game }: { game: Game }) {
   const status = STATUS_STYLES[game.status];
 
-  const details = [
-    { icon: Gamepad2, text: game.platform },
-    {
-      icon: Clock,
-      text: game.hoursPlayed ? `${game.hoursPlayed} h played` : "Not played yet",
-    },
-    {
-      icon: Star,
-      text: game.rating ? `Your rating ${game.rating}/10` : "Not rated yet",
-    },
-  ];
-
   return (
     <Card className="group relative flex min-w-0 flex-col gap-0 overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] py-0 text-[#e0deeb] shadow-none transition-colors hover:border-[#c2ade7] focus-within:border-[#c2ade7]">
       <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden bg-[#2a2838]">
         <img
           src={game.image}
-          alt=""
+          alt={game.title}
           loading="lazy"
           className="block h-full w-full object-cover object-center"
         />
@@ -159,21 +150,29 @@ function GameCard({ game }: { game: Game }) {
           </Link>
         </h3>
 
-        <ul className="mt-2.5 flex flex-col gap-1.5">
-          {details.map(({ icon: Icon, text }) => (
-            <li
-              key={text}
-              className="flex items-center gap-2.5 text-[13px] leading-5 text-[#b4aec7]"
-            >
-              <Icon
-                className="size-4 shrink-0 text-[#8b86a3]"
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
-              <span className="min-w-0 truncate">{text}</span>
-            </li>
-          ))}
-        </ul>
+        {/* Bio with Ellipsis & Justified text */}
+        <p className="mt-1.5 line-clamp-2 text-justify text-xs leading-relaxed text-[#b4aec7]">
+          {game.bio || "No description available."}
+        </p>
+
+        {/* Platform & Ratings Section */}
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-[#55516c]/40 pt-2.5">
+          <div className="flex items-center gap-2 text-[13px] text-[#d0ccdc]">
+            <Gamepad2 className="size-4 shrink-0 text-[#8b86a3]" strokeWidth={1.7} />
+            <span className="truncate">{game.platform}</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-[13px] text-[#e0deeb]">
+            <Star className="size-4 shrink-0 text-amber-400 fill-amber-400" />
+            <span className="truncate">
+              Your rating: <strong className="text-white">{game.rating ? `${game.rating}/10` : "Not rated yet"}</strong>
+            </span>
+          </div>
+
+          <div className="text-[11px] text-[#b4aec7] pl-6">
+            ★ {game.avgRating} / 5 ({game.ratingCount} user ratings)
+          </div>
+        </div>
 
         <div className="mt-auto flex flex-col gap-2.5 pt-4">
           <p className="min-w-0 truncate text-xs leading-4 text-[#b4aec7]">
@@ -196,33 +195,56 @@ function SectionHeading({
   id,
   title,
   description,
+  onPrev,
+  onNext,
 }: {
   id: string;
   title: string;
   description: string;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   return (
     <div className="flex min-h-[29px] flex-wrap items-center justify-between gap-3">
-      <h2
-        id={id}
-        className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
-      >
-        {title}
-      </h2>
+      <div className="flex flex-col">
+        <h2
+          id={id}
+          className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+        >
+          {title}
+        </h2>
+        <p className="text-[13px] leading-4 text-[#b4aec7] mt-1">{description}</p>
+      </div>
 
-      <p className="text-[13px] leading-4 text-[#b4aec7]">{description}</p>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onPrev}
+          className="size-8 rounded-lg border-[#55516c] bg-[#373646] text-[#e0deeb] hover:bg-[#454256]"
+          aria-label="Previous items"
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onNext}
+          className="size-8 rounded-lg border-[#55516c] bg-[#373646] text-[#e0deeb] hover:bg-[#454256]"
+          aria-label="Next items"
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 }
 
 export default function Home() {
-  // Steam data: hooks must live inside the component
   const [steamGames, setSteamGames] = useState<SteamGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Steam paginates with a cursor (last_appid), not page numbers.
-  // cursors[i] is the cursor used to fetch page i, so "Previous" just pops.
   const [cursors, setCursors] = useState<number[]>([0]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -269,7 +291,6 @@ export default function Home() {
     return list.map((game) => <GameCard key={game.slug} game={game} />);
   }
 
-  // Games coming from the Steam API
   function renderSteamGames(list: SteamGame[]) {
     return list
       .filter((game) => game.name)
@@ -286,6 +307,11 @@ export default function Home() {
         />
       ));
   }
+
+  // Dynamic Hero Cover from the first available Steam game or fallback
+  const featuredHeroImage = steamGames.length > 0 && steamGames[0].appid
+    ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamGames[0].appid}/library_600x900_2x.jpg`
+    : "/images/home-hero.png";
 
   return (
     <div className="min-h-screen bg-[#201e2f]">
@@ -315,15 +341,16 @@ export default function Home() {
             </Link>
           </div>
 
+          {/* Dynamic Hero Banner with Game Cover Connection */}
           <section
             aria-labelledby="hero-title"
             className="relative flex min-h-[390px] items-center overflow-hidden rounded-2xl bg-[#201e2f] px-6 py-12 md:px-11 xl:h-[390px] xl:py-0"
           >
             <img
-              src="/images/home-hero.png"
+              src={featuredHeroImage}
               alt=""
               fetchPriority="high"
-              className="absolute inset-x-0 top-0 h-[460px] w-full max-w-none object-cover object-center"
+              className="absolute inset-x-0 top-0 h-[460px] w-full max-w-none object-cover object-center filter brightness-90"
             />
 
             <div
