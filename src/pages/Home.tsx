@@ -129,6 +129,10 @@ function GameCard({ game }: { game: Game }) {
           alt={game.title}
           loading="lazy"
           className="block h-full w-full object-cover object-center"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = "/images/home-hero.png";
+          }}
         />
 
         <span
