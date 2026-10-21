@@ -6,8 +6,6 @@ import {
   PenLine,
   Play,
   Plus,
-  ThumbsDown,
-  ThumbsUp,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -25,14 +23,16 @@ import {
   type SteamGameDetail,
   type UserGameEntry,
   type SteamMovie,
-  type SteamReview,
   type SteamReviewsResponse,
-  type GameShelfReview,
-  getGameShelfReviews
 } from "@/services/Gameservice";
+import {
+  getGameshelfReviews,
+  type GameshelfReview,
+} from "@/services/Reviewservice";
 import ThirdPartyReviews from "@/components/reviews/ThirdPartyReviews";
+import GameshelfReviewItem from "@/components/reviews/GameshelfReviewItem";
 
-const REVIEWS_PER_PAGE = 5;
+const REVIEWS_PER_PAGE = 10;
 const DLC_LIMIT = 3;
 const SCREENSHOT_LIMIT = 6;
 
@@ -68,14 +68,6 @@ function movieSource(movie: SteamMovie) {
     movie.webm?.["480"] ??
     null
   );
-}
-
-function formatDate(unixSeconds: number) {
-  return new Date(unixSeconds * 1000).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -285,35 +277,6 @@ function TrailerTile({
   );
 }
 
-function ReviewCard({ review }: { review: GameShelfReview }) {
-  return (
-    <article className="flex flex-col gap-3 border-t border-[#55516c] pt-4 first:border-t-0 first:pt-0">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-[#b4aec7]">
-        <span>
-          {review.username}
-          {review.created_at && (
-            <> • {formatDate(new Date(review.created_at).getTime() / 1000)}</>
-          )}
-        </span>
-
-        {review.rating !== null && (
-          <span className="inline-flex items-center gap-1.5 font-medium text-[#c2ade7]">
-            ★ {review.rating} / 10
-          </span>
-        )}
-      </div>
-
-      <p className="line-clamp-6 whitespace-pre-line text-sm leading-6 text-[#e0deeb]">
-        {review.content || "No written review."}
-      </p>
-
-      <p className="text-xs text-[#b4aec7]">
-        Helpful ({review.likes.toLocaleString()})
-      </p>
-    </article>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // page
 // ---------------------------------------------------------------------------
@@ -326,19 +289,16 @@ export default function GameDetails() {
 
   const [dlc, setDlc] = useState<SteamGameDetail[]>([]);
 
-  const [reviewData, setReviewData] = useState<SteamReviewsResponse | null>(
-    null
-  );
-  const [reviews, setReviews] = useState<SteamReview[]>([]);
+  // Steam summary (only used for the score card)
+  const [reviewData, setReviewData] = useState<SteamReviewsResponse | null>(null);
+
+  // GameShelf reviews
+  const [reviewTab, setReviewTab] = useState<"gameshelf" | "external">("gameshelf");
+  const [gsReviews, setGsReviews] = useState<GameshelfReview[]>([]);
+  const [gsPage, setGsPage] = useState(1);
+  const [gsHasNext, setGsHasNext] = useState(false);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState(false);
-  const [reviewCursor, setReviewCursor] = useState("*");
-  const [hasMoreReviews, setHasMoreReviews] = useState(false);
-  const [reviewTab, setReviewTab] = useState<"steam" | "external">("steam");
-
-    // GameShelf reviews
-  const [reviewsGameShelf, setReviewsGameShelf] = useState<GameShelfReview[]>([]);
-
 
   const [liked, setLiked] = useState(false);
 
@@ -408,9 +368,7 @@ export default function GameDetails() {
     };
   }, [game]);
 
-  // First page of Steam reviews (independent so a failure doesn't break the page)
-   // GameShelf community reviews
-    // Steam summary only (for the score card). A failure here is harmless.
+  // Steam summary only (for the score card). A failure here is harmless.
   useEffect(() => {
     if (!appid || !/^\d+$/.test(appid)) return;
     let cancelled = false;
@@ -427,38 +385,22 @@ export default function GameDetails() {
     };
   }, [appid]);
 
-  function loadMoreReviews() {
-    if (!appid) return;
-    setReviewsLoading(true);
-
-    getSteamGameReviews(appid, reviewCursor, REVIEWS_PER_PAGE)
-      .then((data) => {
-        setReviews((previous) => {
-          const seen = new Set(previous.map((r) => r.recommendationid));
-          return [
-            ...previous,
-            ...data.reviews.filter((r) => !seen.has(r.recommendationid)),
-          ];
-        });
-        setReviewCursor(data.cursor);
-        setHasMoreReviews(data.reviews.length >= REVIEWS_PER_PAGE);
-      })
-      .catch(() => setReviewsError(true))
-      .finally(() => setReviewsLoading(false));
-  }
-
-    // GameShelf community reviews
+  // GameShelf community reviews (first page)
   useEffect(() => {
     if (!appid || !/^\d+$/.test(appid)) return;
     let cancelled = false;
 
-    setReviewsGameShelf([]);
+    setGsReviews([]);
+    setGsPage(1);
+    setGsHasNext(false);
     setReviewsError(false);
     setReviewsLoading(true);
 
-    getGameShelfReviews(appid)
+    getGameshelfReviews(appid, { sort: "helpful", page: 1, pageSize: REVIEWS_PER_PAGE })
       .then((data) => {
-        if (!cancelled) setReviewsGameShelf(data);
+        if (cancelled) return;
+        setGsReviews(data.results);
+        setGsHasNext(data.has_next);
       })
       .catch(() => {
         if (!cancelled) setReviewsError(true);
@@ -471,6 +413,34 @@ export default function GameDetails() {
       cancelled = true;
     };
   }, [appid]);
+
+  function loadMoreGsReviews() {
+    if (!appid) return;
+    const nextPage = gsPage + 1;
+    setReviewsLoading(true);
+
+    getGameshelfReviews(appid, {
+      sort: "helpful",
+      page: nextPage,
+      pageSize: REVIEWS_PER_PAGE,
+    })
+      .then((data) => {
+        setGsReviews((prev) => {
+          const seen = new Set(prev.map((r) => r.id));
+          return [...prev, ...data.results.filter((r) => !seen.has(r.id))];
+        });
+        setGsPage(nextPage);
+        setGsHasNext(data.has_next);
+      })
+      .catch(() => setReviewsError(true))
+      .finally(() => setReviewsLoading(false));
+  }
+
+  const replaceReview = (updated: GameshelfReview) =>
+    setGsReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+
+  const removeReview = (id: number) =>
+    setGsReviews((prev) => prev.filter((r) => r.id !== id));
 
   // Derived values ----------------------------------------------------------
   const genres = game?.genres?.map((g) => g.description) ?? [];
@@ -591,11 +561,7 @@ export default function GameDetails() {
                       className="h-10 gap-2 rounded-lg border border-[#55516c] bg-[#373646]/80 px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a]"
                     >
                       <Link to={reviewsPath}>
-                        <PenLine
-                          className="size-4"
-                          strokeWidth={1.7}
-                          aria-hidden="true"
-                        />
+                        <PenLine className="size-4" strokeWidth={1.7} aria-hidden="true" />
                         Rate / Write Review
                       </Link>
                     </Button>
@@ -671,11 +637,7 @@ export default function GameDetails() {
                       className="h-10 w-fit gap-2 rounded-lg border-0 bg-[#a8484c] px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
                     >
                       <Link to={reviewsPath}>
-                        <PenLine
-                          className="size-4"
-                          strokeWidth={1.7}
-                          aria-hidden="true"
-                        />
+                        <PenLine className="size-4" strokeWidth={1.7} aria-hidden="true" />
                         Rate / Write Review
                       </Link>
                     </Button>
@@ -785,7 +747,7 @@ export default function GameDetails() {
                       >
                         {(
                           [
-                            { value: "steam", label: "Steam" },
+                            { value: "gameshelf", label: "GameShelf" },
                             { value: "external", label: "Other sites" },
                           ] as const
                         ).map(({ value, label }) => (
@@ -814,41 +776,44 @@ export default function GameDetails() {
                       />
                     ) : (
                       <>
-                    <p className="text-xs text-[#b4aec7]">
-                      Most helpful reviews from Steam players
-                    </p>
+                        <p className="text-xs text-[#b4aec7]">
+                          Most helpful reviews from GameShelf members
+                        </p>
 
-                    {reviewsGameShelf.map((review) => (
-                      <ReviewCard key={review.id} review={review} />
-                    ))}
+                        {gsReviews.map((review) => (
+                          <GameshelfReviewItem
+                            key={review.id}
+                            review={review}
+                            onUpdated={replaceReview}
+                            onDeleted={removeReview}
+                          />
+                        ))}
 
-                    {reviewsLoading && (
-                      <p role="status" className="text-sm text-[#b4aec7]">
-                        Loading reviews…
-                      </p>
-                    )}
+                        {reviewsLoading && (
+                          <p role="status" className="text-sm text-[#b4aec7]">
+                            Loading reviews…
+                          </p>
+                        )}
 
-                    {reviewsError && (
-                      <p role="alert" className="text-sm text-[#e58d91]">
-                        Couldn’t load reviews right now.
-                      </p>
-                    )}
+                        {reviewsError && (
+                          <p role="alert" className="text-sm text-[#e58d91]">
+                            Couldn’t load reviews right now.
+                          </p>
+                        )}
 
-                    {!reviewsLoading && !reviewsError && reviewsGameShelf.length === 0 && (
-                      <p className="text-sm text-[#b4aec7]">
-                        No written reviews yet.
-                      </p>
-                    )}
+                        {!reviewsLoading && !reviewsError && gsReviews.length === 0 && (
+                          <p className="text-sm text-[#b4aec7]">No written reviews yet.</p>
+                        )}
 
-                    {hasMoreReviews && !reviewsLoading && (
-                      <Button
-                        type="button"
-                        onClick={loadMoreReviews}
-                        className="h-10 w-fit rounded-lg border border-[#55516c] bg-transparent px-5 text-sm font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a]"
-                      >
-                        Load more reviews
-                      </Button>
-                    )}
+                        {gsHasNext && !reviewsLoading && (
+                          <Button
+                            type="button"
+                            onClick={loadMoreGsReviews}
+                            className="h-10 w-fit rounded-lg border border-[#55516c] bg-transparent px-5 text-sm font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a]"
+                          >
+                            Load more reviews
+                          </Button>
+                        )}
                       </>
                     )}
                   </CardContent>

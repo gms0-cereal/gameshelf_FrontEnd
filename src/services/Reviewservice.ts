@@ -30,6 +30,54 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// reports (reviews + comments)
+// ---------------------------------------------------------------------------
+export type ReportReason =
+  | "spam"
+  | "harassment"
+  | "spoilers"
+  | "hate"
+  | "misinformation"
+  | "other";
+
+export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
+  { value: "spam", label: "Spam" },
+  { value: "harassment", label: "Harassment" },
+  { value: "spoilers", label: "Unmarked spoilers" },
+  { value: "hate", label: "Hate speech" },
+  { value: "misinformation", label: "Misinformation" },
+  { value: "other", label: "Other" },
+];
+
+export interface ReportPayload {
+  reason: ReportReason;
+  details?: string;
+}
+
+export interface ReportResult {
+  reported: boolean;
+  already_reported: boolean;
+}
+
+// POST /moderation/reviews/<id>/report/
+export async function reportReview(reviewId: number, payload: ReportPayload) {
+  const { data } = await api.post<ReportResult>(
+    `/moderation/reviews/${reviewId}/report/`,
+    payload
+  );
+  return data;
+}
+
+// POST /moderation/comments/<id>/report/
+export async function reportComment(commentId: number, payload: ReportPayload) {
+  const { data } = await api.post<ReportResult>(
+    `/moderation/comments/${commentId}/report/`,
+    payload
+  );
+  return data;
+}
+
+// ---------------------------------------------------------------------------
 // ratings (1-10)
 // ---------------------------------------------------------------------------
 export interface RatingStats {
@@ -38,13 +86,13 @@ export interface RatingStats {
   count: number;
 }
 
-// GET /ratings/steam/<app_id>/
+// GET /reviews/ratings/<app_id>/
 export async function getRatingStats(appId: number | string) {
   const { data } = await api.get<RatingStats>(`/reviews/ratings/${appId}/`);
   return data;
 }
 
-// PUT /ratings/steam/<app_id>/
+// PUT /reviews/ratings/<app_id>/
 export async function setRating(appId: number | string, score: number) {
   const { data } = await api.put<RatingStats>(`/reviews/ratings/${appId}/`, {
     score,
@@ -52,7 +100,7 @@ export async function setRating(appId: number | string, score: number) {
   return data;
 }
 
-// DELETE /ratings/steam/<app_id>/
+// DELETE /reviews/ratings/<app_id>/
 export async function clearRating(appId: number | string) {
   const { data } = await api.delete<RatingStats>(`/reviews/ratings/${appId}/`);
   return data;
@@ -75,6 +123,7 @@ export interface GameshelfReview {
   comment_count: number;
   liked_by_me: boolean;
   is_mine: boolean;
+  edited_at: string | null;
 }
 
 export interface GameshelfReviewList {
@@ -108,7 +157,7 @@ export async function getGameshelfReviews(
   } = {}
 ) {
   const { data } = await api.get<GameshelfReviewList>(
-    `/games/steam/${appId}/reviews/`,
+    `/reviews/steam/${appId}/`,
     {
       params: {
         sort: params.sort,
@@ -128,11 +177,12 @@ export async function createReview(
   payload: ReviewPayload
 ) {
   const { data } = await api.post<GameshelfReview>(
-    `/reviews/${appId}/`,
+    `/reviews/steam/${appId}/`,
     payload
   );
   return data;
 }
+
 
 // PATCH /reviews/<id>/
 export async function updateReview(
@@ -184,6 +234,7 @@ export interface ReviewComment {
   liked_by_me: boolean;
   is_mine: boolean;
   attachments: CommentAttachment[];
+  edited_at: string | null;
 }
 
 // GET /reviews/<id>/comments/   (flat; replies have `parent_comment`)
@@ -214,28 +265,33 @@ export async function createComment(
   return data;
 }
 
-// PATCH /comments/<id>/
+// PATCH /reviews/comments/<id>/   (edit)
 export async function updateComment(commentId: number, content: string) {
-  const { data } = await api.patch<ReviewComment>(`/comments/${commentId}/`, {
-    content,
-  });
+  const { data } = await api.patch<ReviewComment>(
+    `/reviews/comments/${commentId}/`,
+    { content }
+  );
   return data;
 }
 
-// DELETE /comments/<id>/
+// DELETE /reviews/comments/<id>/
 export async function deleteComment(commentId: number) {
-  await api.delete(`/comments/${commentId}/`);
+  await api.delete(`/reviews/comments/${commentId}/`);
 }
 
-// POST /comments/<id>/like/
+// POST /reviews/comments/<id>/like/
 export async function likeComment(commentId: number) {
-  const { data } = await api.post<LikeResult>(`/comments/${commentId}/like/`);
+  const { data } = await api.post<LikeResult>(
+    `/reviews/comments/${commentId}/like/`
+  );
   return data;
 }
 
-// DELETE /comments/<id>/like/
+// DELETE /reviews/comments/<id>/like/
 export async function unlikeComment(commentId: number) {
-  const { data } = await api.delete<LikeResult>(`/comments/${commentId}/like/`);
+  const { data } = await api.delete<LikeResult>(
+    `/reviews/comments/${commentId}/like/`
+  );
   return data;
 }
 
@@ -270,7 +326,7 @@ export interface ExternalReviewsResponse {
   next_cursor: string | null;
 }
 
-// GET /external-reviews/steam/<app_id>/?source=reddit&cursor=...
+// GET /reviews/external-reviews/<app_id>/?source=reddit&cursor=...
 export async function getExternalReviews(
   appId: number | string,
   source: ExternalApiSource,
