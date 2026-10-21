@@ -6,7 +6,7 @@ type Props = {
   emptyMessage?: string;
 };
 
-const GRID = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4";
+const GRID = "grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4";
 
 const GameGrid = ({ games, loading = false, emptyMessage = "No games to show yet." }: Props) => {
   if (loading) {
@@ -15,7 +15,7 @@ const GameGrid = ({ games, loading = false, emptyMessage = "No games to show yet
         {Array.from({ length: 4 }, (_, i) => (
           <div
             key={i}
-            className="h-[320px] animate-pulse rounded-xl border border-[#46415c] bg-[#393549]"
+            className="h-[360px] animate-pulse rounded-xl border border-[#55516c] bg-[#373646]"
           />
         ))}
       </div>
@@ -24,7 +24,7 @@ const GameGrid = ({ games, loading = false, emptyMessage = "No games to show yet
 
   if (games.length === 0) {
     return (
-      <p className="rounded-lg border border-[#46415c] bg-[#393549] px-4 py-8 text-center text-sm text-[#a9a6c2]">
+      <p className="rounded-lg border border-[#55516c] bg-[#373646] px-4 py-8 text-center text-sm text-[#b4aec7]">
         {emptyMessage}
       </p>
     );
