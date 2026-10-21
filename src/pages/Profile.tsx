@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Gamepad2, Library, Pencil } from "lucide-react";
+import { Gamepad2, Library, Pencil, Users } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -8,12 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
-
-
-// import "@fontsource/inter/400.css";
-// import "@fontsource/inter/600.css";
-// import "@fontsource/inter/700.css";
-
+import { getFriends, type SocialUser } from "@/services/Socialservice";
 
 const PANEL =
   "gap-6 rounded-2xl border-0 bg-[#373646] p-7 " +
@@ -26,82 +22,77 @@ const OUTLINE_BUTTON =
   "hover:bg-[#454256] hover:text-[#e0deeb] " +
   "[&_svg]:size-[18px]";
 
-{/* <Navbar /> */}
-
 function ProfileBanner() {
-const { user, loading } = useAuth();
+  const { user } = useAuth();
   return (
-   <section
-  aria-labelledby="player-name"
-  className="relative isolate flex min-h-[310px] items-end overflow-hidden rounded-2xl bg-[#29263b] p-6 md:h-[310px] md:p-9"
->
-  <img
-  src={user?.banner_url || "/images/profile-banner.png"}
-  alt=""
-  className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
-  />
-
-  <div
-    aria-hidden="true"
-    className="absolute inset-0 -z-10"
-    style={{
-      background:
-        "linear-gradient(180deg, rgba(32,30,47,0.2) 0%, rgba(32,30,47,0.851) 100%)",
-    }}
-  />
-
-  <div className="flex w-full flex-wrap items-center gap-6 md:flex-nowrap">
-    <Avatar className="size-24 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
-      <AvatarImage
-        src={user?.avatar_url || undefined}
-        alt={user?.nickname || user?.username || "Player"}
-        className="object-cover"
-      />
-      <AvatarFallback className="bg-[#4d3e68]">
-        <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
-      </AvatarFallback>
-    </Avatar>
-    <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-      {/* <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#c2ade7]">
-        Player Profile
-      </p> */}
-
-      <h2
-        id="player-name"
-        className="break-words text-3xl font-bold tracking-tight text-white md:text-4xl"
-      >
-        {user?.nickname || user?.username || "Player"}
-      </h2>
-
-      <p className="max-w-2xl whitespace-pre-wrap break-words text-sm leading-relaxed text-[#d0ccdc] md:text-base">
-        {user?.bio || "No bio yet."}
-      </p>
-    </div>
-
-    <Button
-      asChild
-      variant="outline"
-      className={`${OUTLINE_BUTTON} w-[137px] shrink-0 border-white/20 bg-black/20 text-white hover:bg-white/10 hover:text-white`}
+    <section
+      aria-labelledby="player-name"
+      className="relative isolate flex min-h-[310px] items-end overflow-hidden rounded-2xl bg-[#29263b] p-6 md:h-[310px] md:p-9"
     >
-      <Link to="/profile/edit">
-        <Pencil
-          className="size-4"
-          strokeWidth={1.7}
-          aria-hidden="true"
-        />
-        Edit Profile
-      </Link>
-    </Button>
-  </div>
-</section>
+      <img
+        src={user?.banner_url || "/images/profile-banner.png"}
+        alt=""
+        className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
+      />
+
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(32,30,47,0.2) 0%, rgba(32,30,47,0.851) 100%)",
+        }}
+      />
+
+      <div className="flex w-full flex-wrap items-center gap-6 md:flex-nowrap">
+        <Avatar className="size-24 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
+          <AvatarImage
+            src={user?.avatar_url || undefined}
+            alt={user?.nickname || user?.username || "Player"}
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-[#4d3e68]">
+            <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+          <h2
+            id="player-name"
+            className="break-words text-3xl font-bold tracking-tight text-white md:text-4xl"
+          >
+            {user?.nickname || user?.username || "Player"}
+          </h2>
+
+          <p className="max-w-2xl whitespace-pre-wrap break-words text-sm leading-relaxed text-[#d0ccdc] md:text-base">
+            {user?.bio || "No bio yet."}
+          </p>
+        </div>
+
+        <Button
+          asChild
+          variant="outline"
+          className={`${OUTLINE_BUTTON} w-[137px] shrink-0 border-white/20 bg-black/20 text-white hover:bg-white/10 hover:text-white`}
+        >
+          <Link to="/profile/edit">
+            <Pencil
+              className="size-4"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
+            Edit Profile
+          </Link>
+        </Button>
+      </div>
+    </section>
   );
 }
 
-function PlayerStatistics() {
+function PlayerStatistics({ friendCount }: { friendCount: number }) {
   const stats = [
     { label: "Library", value: 0 },
     { label: "Playlists", value: 0 },
-    { label: "Friends", value: 0 },
+    { label: "Friends", value: friendCount },
     { label: "Reviews", value: 0 },
   ];
 
@@ -125,6 +116,7 @@ function PlayerStatistics() {
     </section>
   );
 }
+
 function FavoriteGames() {
   return (
     <section
@@ -151,7 +143,7 @@ function FavoriteGames() {
   );
 }
 
-function FriendsBar() {
+function FriendsBar({ friends }: { friends: SocialUser[] }) {
   return (
     <section
       aria-labelledby="friends-title"
@@ -174,13 +166,40 @@ function FriendsBar() {
       </div>
 
       <div className="flex min-h-[100px] items-center gap-4 overflow-x-auto rounded-2xl bg-[#373646] p-5 ring-1 ring-inset ring-[#55516c]">
-        <p className="text-sm text-[#b4aec7]">
-          Your friends will appear here.
-        </p>
+        {friends.length > 0 ? (
+          friends.map((friend) => {
+            const displayName = friend.nickname?.trim() || friend.username;
+            return (
+              <div
+                key={friend.id}
+                className="flex flex-col items-center gap-2 shrink-0 text-center"
+              >
+                <Avatar className="size-14 border-2 border-[#8870b6] bg-[#4d3e68]">
+                  <AvatarImage
+                    src={friend.avatar_url || undefined}
+                    alt={displayName}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-[#4d3e68]">
+                    <Users className="size-6 text-[#c2ade7]" />
+                  </AvatarFallback>
+                </Avatar>
+                <span className="max-w-[80px] truncate text-xs text-[#e0deeb]" title={displayName}>
+                  {displayName}
+                </span>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-sm text-[#b4aec7]">
+            Your friends will appear here once you add them.
+          </p>
+        )}
       </div>
     </section>
   );
 }
+
 function ProfileActivity() {
   return (
     <section aria-label="Game list">
@@ -206,27 +225,56 @@ function ProfileActivity() {
     </section>
   );
 }
+
 export default function Profile() {
-const { user, loading } = useAuth();
-   if (loading) {
-    return <div>Loading profile...</div>;
+  const { loading: authLoading } = useAuth();
+  const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchProfileData() {
+      try {
+        const data = await getFriends();
+        if (isMounted) {
+          setFriends(data ?? []);
+        }
+      } catch (err) {
+        console.error("Failed to load profile friends:", err);
+      } finally {
+        if (isMounted) {
+          setLoadingFriends(false);
+        }
+      }
+    }
+    void fetchProfileData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (authLoading || loadingFriends) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#201e2f] text-[#e0deeb]">
+        Loading profile...
+      </div>
+    );
   }
+
   return (
-    
     <div className="min-h-screen bg-[#201e2f]">
       <div
         className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#201e2f] text-[#e0deeb] antialiased"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
-       <Navbar />
+        <Navbar />
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           <ProfileBanner />
-          <PlayerStatistics />
+          <PlayerStatistics friendCount={friends.length} />
           <FavoriteGames />
-          <FriendsBar />
+          <FriendsBar friends={friends} />
           <ProfileActivity />
         </main>
-
         <Footer />
       </div>
     </div>
