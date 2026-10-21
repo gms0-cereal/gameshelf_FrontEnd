@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { Clock, Gamepad2, Star } from "lucide-react";
+import { Clock, Gamepad2, Heart, ListMusic, Star } from "lucide-react";
 import { getSteamGames, type SteamGame } from "@/services/Gameservice";
+import {
+  getPlaylists,
+  type Playlist,
+} from "@/services/playlistService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -215,6 +219,64 @@ function SectionHeading({
   );
 }
 
+function PlaylistCard({ playlist }: { playlist: Playlist }) {
+  const covers = playlist.games.slice(0, 4);
+  const ownerName = playlist.owner.nickname || playlist.owner.username;
+
+  return (
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] transition-colors hover:border-[#c2ade7]">
+      <div className="grid aspect-[2/1] grid-cols-2 gap-px bg-[#55516c]">
+        {[0, 1, 2, 3].map((index) => {
+          const game = covers[index];
+
+          return game?.cover_url ? (
+            <img
+              key={`${game.id}-${index}`}
+              src={game.cover_url}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              key={`empty-${index}`}
+              className="flex items-center justify-center bg-gradient-to-br from-[#3b3560] to-[#1d2b33]"
+              aria-hidden="true"
+            >
+              <ListMusic className="size-6 text-[#8b86a3]" strokeWidth={1.5} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="truncate text-base font-semibold text-[#e0deeb]">
+          {playlist.title}
+        </h3>
+        <p className="mt-1 truncate text-xs text-[#b4aec7]">
+          By {ownerName}
+        </p>
+        {playlist.description && (
+          <p className="mt-3 line-clamp-2 min-h-10 text-[13px] leading-5 text-[#b4aec7]">
+            {playlist.description}
+          </p>
+        )}
+
+        <div className="mt-auto flex items-center justify-between gap-3 pt-4 text-xs text-[#b4aec7]">
+          <span>
+            {playlist.game_count}{" "}
+            {playlist.game_count === 1 ? "game" : "games"}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Heart className="size-3.5" aria-hidden="true" />
+            {playlist.like_count}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function Home() {
   // Steam data: hooks must live inside the component
   const [steamGames, setSteamGames] = useState<SteamGame[]>([]);
@@ -228,6 +290,10 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(false);
   const pageNumber = cursors.length;
   const currentCursor = cursors[cursors.length - 1];
+
+  const [communityPlaylists, setCommunityPlaylists] = useState<Playlist[]>([]);
+  const [playlistsLoading, setPlaylistsLoading] = useState(true);
+  const [playlistsError, setPlaylistsError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -252,6 +318,27 @@ export default function Home() {
       cancelled = true;
     };
   }, [currentCursor]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getPlaylists({ limit: 4, offset: 0 })
+      .then(({ results }) => {
+        if (!cancelled) setCommunityPlaylists(results);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPlaylistsError("Failed to load community playlists. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPlaylistsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function goToNextPage() {
     if (hasMore && nextCursor !== null) {
@@ -431,6 +518,62 @@ export default function Home() {
                 Next
               </Button>
             </nav>
+          </section>
+
+          <section
+            id="community-playlists"
+            aria-labelledby="community-playlists-title"
+            className="flex flex-col gap-8"
+          >
+            <div className="flex min-h-[29px] flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2
+                  id="community-playlists-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                >
+                  Community Playlists
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                  Discover what other players are curating
+                </p>
+              </div>
+
+              <Link
+                to="/playlists/new"
+                className="rounded-lg bg-[#9f4044] px-4 py-2.5 text-[13px] font-medium text-[#e0deeb] transition-colors hover:bg-[#ae494e]"
+              >
+                Create playlist
+              </Link>
+            </div>
+
+            {playlistsLoading && (
+              <p role="status" className="text-sm text-[#b4aec7]">
+                Loading community playlists…
+              </p>
+            )}
+
+            {playlistsError && (
+              <p role="alert" className="text-sm text-[#e58d91]">
+                {playlistsError}
+              </p>
+            )}
+
+            {!playlistsLoading && !playlistsError && communityPlaylists.length === 0 && (
+              <div className="rounded-xl border border-dashed border-[#55516c] px-6 py-10 text-center">
+                <ListMusic className="mx-auto size-8 text-[#8b86a3]" strokeWidth={1.5} />
+                <p className="mt-3 text-sm text-[#b4aec7]">
+                  No public playlists yet. Be the first to share one.
+                </p>
+              </div>
+            )}
+
+            {!playlistsLoading && !playlistsError && communityPlaylists.length > 0 && (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {communityPlaylists.map((playlist) => (
+                  <PlaylistCard key={playlist.id} playlist={playlist} />
+                ))}
+              </div>
+            )}
           </section>
         </main>
 

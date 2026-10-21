@@ -12,6 +12,8 @@ import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
 import MyLibrary from "./pages/MyLibrary";
 import Friends from "./pages/Friends";
+import CreatePlaylist from "./pages/CreatePlaylist";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -28,6 +30,7 @@ const App = () => (
             <Route path="/home" element={<Home />} />
             <Route path="/gamedetails/:appid" element={<GameDetails />} />
             <Route path="/my-library" element={<MyLibrary />} />
+            <Route path="/playlists/new" element={<CreatePlaylist />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/friends" element={<Friends />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
