@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Gamepad2, Star } from "lucide-react";
-import { getSteamGames, type SteamGame } from "@/services/Gameservice";
+import { getSteamGames, getSteamGameDetails, type SteamGame, type SteamGameDetail } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -25,6 +25,10 @@ type Game = {
 
 const STEAM_PAGE_SIZE = 12;
 
+// Specific curated App IDs for recommendations
+const HOLLOW_KNIGHT_IDS = [387290, 774361, 1369630, 332200];
+const RPG_IDS = [1244090, 1229240, 1971650, 368340];
+
 const STATUS_STYLES: Record<GameStatus, { label: string; className: string }> = {
   playing: { label: "Playing", className: "bg-[#e0e7ff] text-[#3730a3]" },
   completed: { label: "Completed", className: "bg-[#dcfce7] text-[#166534]" },
@@ -35,77 +39,14 @@ const STATUS_STYLES: Record<GameStatus, { label: string; className: string }> = 
   },
 };
 
-const UNPLAYED = {
+const UNPLAYED_DEFAULTS = {
   status: "plan-to-play" as GameStatus,
   platform: "PC",
-  bio: "Explore vast atmospheric worlds, uncover deep hidden lore, and battle challenging foes in an unforgettable journey.",
   rating: null,
-  avgRating: 4.8,
-  ratingCount: 1240,
+  avgRating: 4.9,
+  ratingCount: 1420,
   lastPlayed: null,
 };
-
-const HOLLOW_KNIGHT_RECOMMENDATIONS: Game[] = [
-  {
-    slug: "387290",
-    title: "Ori and the Blind Forest",
-    image: "/images/games/ori-and-the-blind-forest.png",
-    genre: "Adventure / Platformer",
-    ...UNPLAYED,
-  },
-  {
-    slug: "774361",
-    title: "Blasphemous",
-    image: "/images/games/blasphemous.png",
-    genre: "Action / Metroidvania",
-    ...UNPLAYED,
-  },
-  {
-    slug: "1369630",
-    title: "Ender Lilies",
-    image: "/images/games/ender-lilies.png",
-    genre: "Action / RPG",
-    ...UNPLAYED,
-  },
-  {
-    slug: "332200",
-    title: "Axiom Verge",
-    image: "/images/games/axiom-verge.png",
-    genre: "Adventure / Metroidvania",
-    ...UNPLAYED,
-  },
-];
-
-const RPG_RECOMMENDATIONS: Game[] = [
-  {
-    slug: "1244090",
-    title: "Sea of Stars",
-    image: "/images/games/sea-of-stars.png",
-    genre: "RPG",
-    ...UNPLAYED,
-  },
-  {
-    slug: "1229240",
-    title: "Chained Echoes",
-    image: "/images/games/chained-echoes.png",
-    genre: "RPG",
-    ...UNPLAYED,
-  },
-  {
-    slug: "1971650",
-    title: "Octopath Traveler II",
-    image: "/images/games/octopath-traveler-ii.png",
-    genre: "RPG",
-    ...UNPLAYED,
-  },
-  {
-    slug: "368340",
-    title: "CrossCode",
-    image: "/images/games/crosscode.png",
-    genre: "Action / RPG",
-    ...UNPLAYED,
-  },
-];
 
 function formatLastPlayed(date: string | null) {
   if (!date) return "Never played";
@@ -156,7 +97,7 @@ function GameCard({ game }: { game: Game }) {
 
         {/* Bio with Ellipsis & Justified text */}
         <p className="mt-1.5 line-clamp-2 text-justify text-xs leading-relaxed text-[#b4aec7]">
-          {game.bio || "No description available."}
+          {game.bio || "Explore vast worlds and unforgettable gameplay."}
         </p>
 
         {/* Platform & Ratings Section */}
@@ -246,6 +187,9 @@ function SectionHeading({
 
 export default function Home() {
   const [steamGames, setSteamGames] = useState<SteamGame[]>([]);
+  const [hollowKnightGames, setHollowKnightGames] = useState<Game[]>([]);
+  const [rpgGames, setRpgGames] = useState<Game[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -255,6 +199,7 @@ export default function Home() {
   const pageNumber = cursors.length;
   const currentCursor = cursors[cursors.length - 1];
 
+  // Fetch Steam Catalog pagination
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -279,6 +224,57 @@ export default function Home() {
     };
   }, [currentCursor]);
 
+  // Fetch real details for curated recommendation lists (Hollow Knight & RPGs)
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchCuratedGames() {
+      try {
+        const hkPromises = HOLLOW_KNIGHT_IDS.map(async (id) => {
+          const detail = await getSteamGameDetails(id);
+          return {
+            slug: String(id),
+            title: detail?.name || `Game ${id}`,
+            image: detail?.header_image || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`,
+            genre: detail?.genres?.[0]?.description || "Adventure / Platformer",
+            bio: detail?.short_description || "An incredible journey awaits.",
+            ...UNPLAYED_DEFAULTS,
+          } as Game;
+        });
+
+        const rpgPromises = RPG_IDS.map(async (id) => {
+          const detail = await getSteamGameDetails(id);
+          return {
+            slug: String(id),
+            title: detail?.name || `Game ${id}`,
+            image: detail?.header_image || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`,
+            genre: detail?.genres?.[0]?.description || "RPG",
+            bio: detail?.short_description || "Embark on an epic roleplaying adventure.",
+            ...UNPLAYED_DEFAULTS,
+          } as Game;
+        });
+
+        const [hkResults, rpgResults] = await Promise.all([
+          Promise.all(hkPromises),
+          Promise.all(rpgPromises),
+        ]);
+
+        if (!cancelled) {
+          setHollowKnightGames(hkResults);
+          setRpgGames(rpgResults);
+        }
+      } catch (err) {
+        console.error("Failed to load curated recommendations", err);
+      }
+    }
+
+    fetchCuratedGames();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function goToNextPage() {
     if (hasMore && nextCursor !== null) {
       setCursors((previous) => [...previous, nextCursor]);
@@ -291,7 +287,7 @@ export default function Home() {
     );
   }
 
-  function renderStaticGames(list: Game[]) {
+  function renderDynamicGames(list: Game[]) {
     return list.map((game) => <GameCard key={game.slug} game={game} />);
   }
 
@@ -306,7 +302,8 @@ export default function Home() {
             title: game.name,
             image: `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${game.appid}/header.jpg`,
             genre: "Steam Game",
-            ...UNPLAYED,
+            bio: "Explore live community catalogs and add this title to your shelf.",
+            ...UNPLAYED_DEFAULTS,
           }}
         />
       ));
@@ -384,6 +381,7 @@ export default function Home() {
             </div>
           </section>
 
+          {/* Because you played Hollow Knight Section */}
           <section
             aria-labelledby="hollow-knight-title"
             className="flex flex-col gap-8"
@@ -395,10 +393,15 @@ export default function Home() {
             />
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {renderStaticGames(HOLLOW_KNIGHT_RECOMMENDATIONS)}
+              {hollowKnightGames.length > 0 ? (
+                renderDynamicGames(hollowKnightGames)
+              ) : (
+                <p className="text-sm text-[#b4aec7]">Loading recommendations…</p>
+              )}
             </div>
           </section>
 
+          {/* More RPGs for you Section */}
           <section aria-labelledby="rpg-title" className="flex flex-col gap-8">
             <SectionHeading
               id="rpg-title"
@@ -407,10 +410,15 @@ export default function Home() {
             />
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {renderStaticGames(RPG_RECOMMENDATIONS)}
+              {rpgGames.length > 0 ? (
+                renderDynamicGames(rpgGames)
+              ) : (
+                <p className="text-sm text-[#b4aec7]">Loading RPGs…</p>
+              )}
             </div>
           </section>
 
+          {/* Discover on Steam Section */}
           <section aria-labelledby="steam-title" className="flex flex-col gap-8">
             <SectionHeading
               id="steam-title"
