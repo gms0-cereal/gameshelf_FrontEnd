@@ -94,6 +94,35 @@ export interface SteamReview {
   timestamp_created: number; // unix seconds
 }
 
+// ---------------------------------------------------------------------------
+// GameShelf community reviews
+// ---------------------------------------------------------------------------
+export interface GameShelfReview {
+  id: number | string;
+  username: string;
+  rating: number | null;
+  content: string;
+  created_at: string | null;
+  likes: number;
+}
+
+// Adjust these field names to match what your backend really returns.
+function normalizeReview(raw: any): GameShelfReview {
+  const author = raw.author;
+
+  return {
+    id: raw.id,
+    username:
+      typeof author === "string"
+        ? author
+        : (author?.username ?? raw.username ?? "GameShelf user"),
+    rating: raw.rating ?? null,
+    content: raw.content ?? "",
+    created_at: raw.created_at ?? null,
+    likes: raw.like_count ?? 0,
+  };
+}
+
 export interface SteamReviewsResponse {
   summary: {
     total_positive?: number;
@@ -104,6 +133,17 @@ export interface SteamReviewsResponse {
   reviews: SteamReview[];
   cursor: string;
   total_matching: number;
+}
+
+
+
+// GET /reviews/<id>
+export async function getGameShelfReviews(
+  gameId: number | string
+): Promise<GameShelfReview[]> {
+  const { data } = await api.get(`/reviews/${gameId}`);
+  const list = Array.isArray(data) ? data : (data?.results ?? []);
+  return list.map(normalizeReview);
 }
 
 // GET /games/?page=1
