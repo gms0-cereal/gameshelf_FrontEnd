@@ -18,8 +18,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 
 const navLinks = [
-  { to: "/discover", label: "Discover" },
   { to: "/", label: "Home" },
+  { to: "/discover", label: "Discover" },
+  { to: "/browse", label: "Browse" },
   { to: "/my-library", label: "My List" },
 ];
 

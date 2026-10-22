@@ -14,6 +14,7 @@ import MyLibrary from "./pages/MyLibrary";
 import GameReviews from "./pages/GameReviews";
 
 import Friends from "./pages/Friends";
+import Browse from "./pages/Browse";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/friends" element={<Friends />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/profile/edit" element={<EditProfile />} />
+            <Route path="/browse" element={<Browse />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
