@@ -2,20 +2,19 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Info, ListMusic } from "lucide-react";
 import {
   getSteamGames,
   getSteamGameDetails,
   getSteamGameReviews,
   getMyGameList,
-  type SteamGame,
-  type ListStatus,
   type UserGameEntry,
 } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import GameGrid from "@/components/games/GameGrid";
 import { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
+import { getPlaylists, type Playlist } from "@/services/playlistService";
 
 const STEAM_PAGE_SIZE = 12;
 
@@ -55,6 +54,52 @@ function formatLibraryActivity(date: string | null) {
   })}`;
 }
 
+function PlaylistCard({ playlist }: { playlist: Playlist }) {
+  const ownerName = playlist.owner.nickname || playlist.owner.username;
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-[#55516c] bg-[#373646]">
+      <div className="grid aspect-[2/1] grid-cols-2 gap-px bg-[#55516c]">
+        {[0, 1, 2, 3].map((index) => {
+          const game = playlist.games[index];
+          return game?.cover_url ? (
+            <img
+              key={`${game.id}-${index}`}
+              src={game.cover_url}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              key={`empty-${index}`}
+              className="flex items-center justify-center bg-gradient-to-br from-[#3b3560] to-[#1d2b33]"
+            >
+              <ListMusic className="size-6 text-[#8b86a3]" aria-hidden="true" />
+            </div>
+          );
+        })}
+      </div>
+      <div className="p-4">
+        <h3 className="truncate font-semibold">{playlist.title}</h3>
+        <p className="mt-1 truncate text-xs text-[#b4aec7]">By {ownerName}</p>
+        {playlist.description && (
+          <p className="mt-3 line-clamp-2 text-[13px] leading-5 text-[#b4aec7]">
+            {playlist.description}
+          </p>
+        )}
+        <div className="mt-4 flex items-center justify-between text-xs text-[#b4aec7]">
+          <span>{playlist.game_count} {playlist.game_count === 1 ? "game" : "games"}</span>
+          <span className="inline-flex items-center gap-1.5">
+            <Heart className="size-3.5" aria-hidden="true" />
+            {playlist.like_count}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function Home() {
   const [steamSummaries, setSteamSummaries] = useState<GameSummary[]>([]);
   const [hollowKnightGames, setHollowKnightGames] = useState<GameSummary[]>([]);
@@ -72,8 +117,30 @@ export default function Home() {
   const pageNumber = cursors.length;
   const currentCursor = cursors[cursors.length - 1];
   const { user } = useAuth();
+  const [communityPlaylists, setCommunityPlaylists] = useState<Playlist[]>([]);
+  const [playlistsLoading, setPlaylistsLoading] = useState(true);
+  const [playlistsError, setPlaylistsError] = useState<string | null>(null);
 
   const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Player";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getPlaylists({ limit: 4, offset: 0 })
+      .then(({ results }) => {
+        if (!cancelled) setCommunityPlaylists(results);
+      })
+      .catch(() => {
+        if (!cancelled) setPlaylistsError("Failed to load community playlists.");
+      })
+      .finally(() => {
+        if (!cancelled) setPlaylistsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Helper to convert Steam data into GameSummary format with batched data
   async function buildGameSummary(appid: number, userEntry?: UserGameEntry): Promise<GameSummary> {
@@ -158,8 +225,6 @@ export default function Home() {
   // Fetch Steam Catalog pagination with batched details loading (Instant Grid Rendering)
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     getSteamGames(STEAM_PAGE_SIZE, currentCursor)
       .then(async (data) => {
@@ -190,12 +255,18 @@ export default function Home() {
 
   function goToNextPage() {
     if (hasMore && nextCursor !== null) {
+      setLoading(true);
+      setError(null);
       setCursors((previous) => [...previous, nextCursor]);
     }
   }
 
   function goToPreviousPage() {
-    setCursors((previous) => (previous.length > 1 ? previous.slice(0, -1) : previous));
+    if (pageNumber > 1) {
+      setLoading(true);
+      setError(null);
+      setCursors((previous) => previous.slice(0, -1));
+    }
   }
 
   const currentHero = heroGames[heroIndex] || null;
@@ -350,6 +421,62 @@ export default function Home() {
                 Next
               </Button>
             </nav>
+          </section>
+
+          <section
+            id="community-playlists"
+            aria-labelledby="community-playlists-title"
+            className="flex flex-col gap-8"
+          >
+            <div className="flex min-h-[29px] flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2
+                  id="community-playlists-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                >
+                  Community Playlists
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                  Discover what other players are curating
+                </p>
+              </div>
+
+              <Link
+                to="/playlists/new"
+                className="rounded-lg bg-[#9f4044] px-4 py-2.5 text-[13px] font-medium text-[#e0deeb] transition-colors hover:bg-[#ae494e]"
+              >
+                Create playlist
+              </Link>
+            </div>
+
+            {playlistsLoading && (
+              <p role="status" className="text-sm text-[#b4aec7]">
+                Loading community playlists…
+              </p>
+            )}
+
+            {playlistsError && (
+              <p role="alert" className="text-sm text-[#e58d91]">
+                {playlistsError}
+              </p>
+            )}
+
+            {!playlistsLoading && !playlistsError && communityPlaylists.length === 0 && (
+              <div className="rounded-xl border border-dashed border-[#55516c] px-6 py-10 text-center">
+                <ListMusic className="mx-auto size-8 text-[#8b86a3]" strokeWidth={1.5} />
+                <p className="mt-3 text-sm text-[#b4aec7]">
+                  No public playlists yet. Be the first to share one.
+                </p>
+              </div>
+            )}
+
+            {!playlistsLoading && !playlistsError && communityPlaylists.length > 0 && (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {communityPlaylists.map((playlist) => (
+                  <PlaylistCard key={playlist.id} playlist={playlist} />
+                ))}
+              </div>
+            )}
           </section>
         </main>
 

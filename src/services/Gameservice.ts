@@ -292,3 +292,56 @@ export async function getListStatus(
   );
   return data;
 }
+
+// ---------------------------------------------------------------------------
+// Browse (search + filter)
+// ---------------------------------------------------------------------------
+export interface BrowseGame {
+  appid: number;
+  name: string;
+  header_image: string;
+  genres: string[];
+  platforms: string[];
+  release_year: number | null;
+  price: string | null;
+  score: number | null; // 0-10 (Metacritic / 10), when Steam has one
+}
+
+export interface BrowseResponse {
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  results: BrowseGame[];
+}
+
+export interface BrowseParams {
+  q?: string;
+  genre?: string;
+  platform?: string;
+  sort?: string;
+  page?: number;
+}
+
+// GET /games/steam/browse/?q=&genre=&platform=&sort=&page=
+export async function browseSteamGames(
+  params: BrowseParams
+): Promise<BrowseResponse> {
+  // Build the query string by hand so spaces are sent as %20, not "+".
+  const query = Object.entries({
+    q: params.q,
+    genre: params.genre,
+    platform: params.platform,
+    sort: params.sort,
+    page: params.page,
+  })
+    .filter(([, value]) => value !== undefined && value !== "")
+    .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+    .join("&");
+
+  const { data } = await api.get<BrowseResponse>(
+    `/games/steam/browse/?${query}`
+  );
+  return data;
+}

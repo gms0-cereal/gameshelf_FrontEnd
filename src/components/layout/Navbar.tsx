@@ -9,17 +9,18 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   Library,
   Search,
-  User as UserIcon,
   ChevronDown,
   Gamepad2,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { searchSteamGames, type PickerGame } from "@/services/playlistService";
 
 const navLinks = [
-  { to: "/discover", label: "Discover" },
   { to: "/", label: "Home" },
+  { to: "/discover", label: "Discover" },
+  { to: "/browse", label: "Browse" },
   { to: "/my-library", label: "My List" },
 ];
 
@@ -40,6 +41,9 @@ export default function Navbar() {
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<PickerGame[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -90,6 +94,37 @@ export default function Navbar() {
     };
   }, []);
 
+  useEffect(() => {
+    const query = searchQuery.trim();
+
+    if (query.length < 2) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+
+      try {
+        const games = await searchSteamGames(query, controller.signal);
+        if (!cancelled) setSearchResults(games.slice(0, 8));
+      } catch {
+        if (!cancelled && !controller.signal.aborted) {
+          setSearchResults([]);
+          setSearchError("Couldn't search games right now. Try again.");
+        }
+      } finally {
+        if (!cancelled) setSearchLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchQuery]);
+
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(
       menuRef.current?.querySelectorAll<HTMLElement>(
@@ -121,12 +156,17 @@ export default function Navbar() {
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const query = searchQuery.trim();
-
-    if (query) {
-      navigate(`/discover?q=${encodeURIComponent(query)}`);
+    const firstResult = searchResults[0];
+    if (firstResult) {
+      navigate(`/gamedetails/${firstResult.appid}`);
       setSearchQuery("");
     }
+  };
+
+  const handleGameSelect = (game: PickerGame) => {
+    navigate(`/gamedetails/${game.appid}`);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   const handleLogout = async () => {
@@ -143,14 +183,6 @@ export default function Navbar() {
       setLoggingOut(false);
     }
   };
-
-  const initial = (
-    user?.nickname ||
-    user?.username ||
-    ""
-  )
-    .charAt(0)
-    .toUpperCase();
 
   return (
     <header className="border-b border-[#55516c] bg-[#201e2f]">
@@ -200,7 +232,7 @@ export default function Navbar() {
         <form
           role="search"
           onSubmit={handleSearch}
-          className="order-last flex h-10 w-full min-w-0 items-center gap-2.5 rounded-lg bg-[#373646] px-[14px] focus-within:ring-2 focus-within:ring-[#c2ade7] xl:order-none xl:w-auto xl:flex-1"
+          className="relative order-last flex h-10 w-full min-w-0 items-center gap-2.5 rounded-lg bg-[#373646] px-[14px] focus-within:ring-2 focus-within:ring-[#c2ade7] xl:order-none xl:w-auto xl:flex-1"
         >
           <Search
             className="size-[18px] shrink-0 text-[#8f8ca9]"
@@ -213,7 +245,13 @@ export default function Navbar() {
             type="search"
             name="q"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearchQuery(value);
+              setSearchResults([]);
+              setSearchLoading(false);
+              setSearchError(null);
+            }}
             aria-label="Search games"
             placeholder="Search games..."
             className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13px] leading-4 text-[#e0deeb] shadow-none placeholder:text-[#b4aec7] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
@@ -222,6 +260,62 @@ export default function Navbar() {
           <kbd className="shrink-0 whitespace-nowrap text-[11px] leading-[13px] text-[#b4aec7]">
             ⌘ K
           </kbd>
+
+          {searchQuery.trim().length >= 2 && (
+            <div
+              role="listbox"
+              aria-label="Game search results"
+              className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-lg border border-[#55516c] bg-[#2c2a40] shadow-xl"
+            >
+              {searchLoading && (
+                <p role="status" className="px-4 py-3 text-xs text-[#b4aec7]">
+                  Searching games…
+                </p>
+              )}
+
+              {searchError && (
+                <p role="alert" className="px-4 py-3 text-xs text-[#f4b6ba]">
+                  {searchError}
+                </p>
+              )}
+
+              {!searchLoading && !searchError && searchResults.length === 0 && (
+                <p className="px-4 py-3 text-xs text-[#b4aec7]">
+                  No games found.
+                </p>
+              )}
+
+              {!searchLoading &&
+                !searchError &&
+                searchResults.map((game) => (
+                  <button
+                    key={game.appid}
+                    type="button"
+                    role="option"
+                    aria-label={`Open ${game.title}`}
+                    onClick={() => handleGameSelect(game)}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#373646] focus:bg-[#373646] focus:outline-none"
+                  >
+                    <img
+                      src={game.cover}
+                      alt=""
+                      className="h-10 w-[72px] shrink-0 rounded object-cover"
+                      loading="lazy"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-medium text-[#e0deeb]">
+                        {game.title}
+                      </span>
+                      {game.subtitle && (
+                        <span className="mt-0.5 block truncate text-[11px] text-[#b4aec7]">
+                          {game.subtitle}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ))}
+            </div>
+          )}
         </form>
 
         {/* Authentication and profile */}
