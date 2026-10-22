@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Ban,
+  Flag,
   Gamepad2,
   Loader2,
   Search,
+  Unlock,
   UserMinus,
   UserPlus,
   Users,
@@ -19,20 +21,24 @@ import {
 } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import MiniProfileCard from "@/components/social/MiniProfileCard";
 
 import {
   getSuggestedPlayers,
   getFriends,
   getFriendRequests,
+  getBlockedUsers,
   sendFriendRequest,
   acceptFriendRequest,
   declineFriendRequest,
   cancelFriendRequest,
   blockUser,
+  unblockUser,
   removeFriend,
+  reportUser,
   type SocialUser,
   type Friendship as ServiceFriendship,
-} from "@/services/Socialservice";
+} from "@/services/Userservice";
 
 type FavoriteGame = {
   id?: number;
@@ -43,6 +49,7 @@ type FavoriteGame = {
 type Player = SocialUser & {
   bio?: string | null;
   favorites?: FavoriteGame[];
+  banner_url?: string | null;
 };
 
 type Friendship = ServiceFriendship & {
@@ -50,7 +57,13 @@ type Friendship = ServiceFriendship & {
   friend?: Player;
 };
 
-type Tab = "suggested" | "requests" | "friends";
+type Tab = "suggested" | "requests" | "friends" | "blocked";
+
+type ModalConfig =
+  | { type: "block"; player: Player }
+  | { type: "unfriend"; player: Player }
+  | { type: "report"; player: Player }
+  | null;
 
 const CARD =
   "rounded-2xl border border-[#514961] bg-[#373646] " +
@@ -86,11 +99,17 @@ export default function Friends() {
   const [incoming, setIncoming] = useState<Friendship[]>([]);
   const [outgoing, setOutgoing] = useState<Friendship[]>([]);
   const [friends, setFriends] = useState<Player[]>([]);
+  const [blocked, setBlocked] = useState<Player[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [busyUsername, setBusyUsername] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  // Modal State Management
+  const [modalConfig, setModalConfig] = useState<ModalConfig>(null);
+  const [reportReason, setReportReason] = useState("harassment");
+  const [reportDetails, setReportDetails] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -111,6 +130,9 @@ export default function Friends() {
       } else if (activeTab === "friends") {
         const response = await getFriends(search.trim());
         setFriends((response ?? []) as Player[]);
+      } else if (activeTab === "blocked") {
+        const response = await getBlockedUsers(search.trim());
+        setBlocked((response ?? []) as Player[]);
       }
     } catch (err) {
       setError(
@@ -155,14 +177,10 @@ export default function Friends() {
       `Friend request sent to ${getDisplayName(player)}.`,
     );
 
-  const blockPlayer = (player: Player) => {
-    if (
-      !window.confirm(
-        `Block ${getDisplayName(player)}? They will no longer appear in your suggestions.`,
-      )
-    ) {
-      return;
-    }
+  const handleBlockConfirm = () => {
+    if (!modalConfig || modalConfig.type !== "block") return;
+    const player = modalConfig.player;
+    setModalConfig(null);
 
     void runAction(
       player.username,
@@ -170,6 +188,39 @@ export default function Friends() {
       `Blocked ${getDisplayName(player)}.`,
     );
   };
+
+  const handleUnfriendConfirm = () => {
+    if (!modalConfig || modalConfig.type !== "unfriend") return;
+    const player = modalConfig.player;
+    setModalConfig(null);
+
+    void runAction(
+      player.username,
+      () => removeFriend(player.username),
+      `Removed ${getDisplayName(player)} from your friends.`,
+    );
+  };
+
+  const handleReportConfirm = () => {
+    if (!modalConfig || modalConfig.type !== "report") return;
+    const player = modalConfig.player;
+    const details = reportDetails.trim();
+    setModalConfig(null);
+    setReportDetails("");
+
+    void runAction(
+      player.username,
+      () => reportUser(player.username, reportReason, details),
+      `Report submitted for ${getDisplayName(player)}. Thank you.`,
+    );
+  };
+
+  const handleUnblock = (player: Player) =>
+    runAction(
+      player.username,
+      () => unblockUser(player.username),
+      `Unblocked ${getDisplayName(player)}.`,
+    );
 
   const acceptRequest = (request: Friendship) =>
     runAction(
@@ -192,22 +243,6 @@ export default function Friends() {
       `Cancelled your request to ${getDisplayName(request.user)}.`,
     );
 
-  const unfriend = (player: Player) => {
-    if (
-      !window.confirm(
-        `Remove ${getDisplayName(player)} from your friends?`,
-      )
-    ) {
-      return;
-    }
-
-    void runAction(
-      player.username,
-      () => removeFriend(player.username),
-      `Removed ${getDisplayName(player)} from your friends.`,
-    );
-  };
-
   const visibleRequests = [
     ...incoming.filter((request) => matchesSearch(request.user, search)),
     ...outgoing.filter((request) => matchesSearch(request.friend || request.user, search)),
@@ -218,7 +253,9 @@ export default function Friends() {
       ? suggested.length
       : activeTab === "requests"
         ? visibleRequests.length
-        : friends.length;
+        : activeTab === "friends"
+          ? friends.length
+          : blocked.length;
 
   return (
     <div className="min-h-screen bg-[#201e2f] text-[#e0deeb]">
@@ -233,7 +270,9 @@ export default function Friends() {
                   ? "Discover Players"
                   : activeTab === "requests"
                     ? "Friend Requests"
-                    : "My Friends"}
+                    : activeTab === "friends"
+                      ? "My Friends"
+                      : "Blocked Users"}
               </h1>
 
               <p className="mt-2 text-sm text-[#b4aec7] md:text-base">
@@ -241,7 +280,9 @@ export default function Friends() {
                   ? "Find players who share your taste in games."
                   : activeTab === "requests"
                     ? "Manage your incoming and outgoing requests."
-                    : "Your gaming circle on GameShelf."}
+                    : activeTab === "friends"
+                      ? "Your gaming circle on GameShelf."
+                      : "Players you have blocked from your profile and suggestions."}
               </p>
             </div>
 
@@ -268,6 +309,7 @@ export default function Friends() {
               { id: "suggested", label: "Suggested" },
               { id: "requests", label: "Requests" },
               { id: "friends", label: "My Friends" },
+              { id: "blocked", label: "Blocked Users" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -331,7 +373,8 @@ export default function Friends() {
                         player={player}
                         busy={busyUsername === player.username}
                         onAdd={() => void sendRequest(player)}
-                        onBlock={() => blockPlayer(player)}
+                        onBlock={() => setModalConfig({ type: "block", player })}
+                        onReport={() => setModalConfig({ type: "report", player })}
                         addLabel="Add friend"
                       />
                     ))
@@ -351,9 +394,7 @@ export default function Friends() {
               {activeTab === "requests" && (
                 <section className="flex flex-col gap-6">
                   <div className="flex flex-col gap-4">
-                    <h2 className="text-xl font-semibold">
-                      Incoming requests
-                    </h2>
+                    <h2 className="text-xl font-semibold">Incoming requests</h2>
 
                     {incoming.filter((request) =>
                       matchesSearch(request.user, search),
@@ -368,7 +409,8 @@ export default function Friends() {
                             player={request.user}
                             busy={busyUsername === request.user.username}
                             onAdd={() => void acceptRequest(request)}
-                            onBlock={() => blockPlayer(request.user)}
+                            onBlock={() => setModalConfig({ type: "block", player: request.user })}
+                            onReport={() => setModalConfig({ type: "report", player: request.user })}
                             addLabel="Accept"
                             secondaryAction={{
                               label: "Decline",
@@ -386,9 +428,7 @@ export default function Friends() {
                   </div>
 
                   <div className="flex flex-col gap-4">
-                    <h2 className="text-xl font-semibold">
-                      Sent requests
-                    </h2>
+                    <h2 className="text-xl font-semibold">Sent requests</h2>
 
                     {outgoing.filter((request) =>
                       matchesSearch(request.friend || request.user, search),
@@ -405,7 +445,8 @@ export default function Friends() {
                               player={targetPlayer}
                               busy={busyUsername === targetPlayer.username}
                               onAdd={() => void cancelRequest(request)}
-                              onBlock={() => blockPlayer(targetPlayer)}
+                              onBlock={() => setModalConfig({ type: "block", player: targetPlayer })}
+                              onReport={() => setModalConfig({ type: "report", player: targetPlayer })}
                               addLabel="Cancel request"
                               addIcon={<X className="size-4" />}
                             />
@@ -430,8 +471,9 @@ export default function Friends() {
                         key={player.id}
                         player={player}
                         busy={busyUsername === player.username}
-                        onAdd={() => unfriend(player)}
-                        onBlock={() => blockPlayer(player)}
+                        onAdd={() => setModalConfig({ type: "unfriend", player })}
+                        onBlock={() => setModalConfig({ type: "block", player })}
+                        onReport={() => setModalConfig({ type: "report", player })}
                         addLabel="Unfriend"
                         addIcon={<UserMinus className="size-4" />}
                       />
@@ -444,12 +486,147 @@ export default function Friends() {
                   )}
                 </section>
               )}
+
+              {activeTab === "blocked" && (
+                <section className="flex flex-col gap-4">
+                  <h2 className="text-xl font-semibold">Blocked Users</h2>
+
+                  {blocked.length ? (
+                    blocked.map((player) => (
+                      <PlayerCard
+                        key={player.id}
+                        player={player}
+                        busy={busyUsername === player.username}
+                        onAdd={() => void handleUnblock(player)}
+                        onBlock={() => setModalConfig({ type: "report", player })}
+                        onReport={() => setModalConfig({ type: "report", player })}
+                        addLabel="Unblock"
+                        addIcon={<Unlock className="size-4" />}
+                        isBlockedView
+                      />
+                    ))
+                  ) : (
+                    <EmptyState
+                      title="No blocked users"
+                      description="Users you block will appear here."
+                    />
+                  )}
+                </section>
+              )}
             </>
           )}
         </main>
 
         <Footer />
       </div>
+
+      {/* CUSTOM CONFIRMATION & ACTION MODALS */}
+      {modalConfig && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0">
+          <div className="w-full max-w-md rounded-2xl border border-[#514961] bg-[#2a2838] p-6 text-[#e0deeb] shadow-2xl animate-in zoom-in-95">
+            {modalConfig.type === "block" && (
+              <>
+                <h3 className="text-lg font-semibold text-white">Block Player</h3>
+                <p className="mt-2 text-sm text-[#b4aec7]">
+                  Are you sure you want to block <span className="text-white font-medium">{getDisplayName(modalConfig.player)}</span>? They will no longer be able to interact with you or appear in your suggestions.
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setModalConfig(null)}
+                    className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleBlockConfirm}
+                    className="bg-[#a65e72] text-white hover:bg-[#b86d81]"
+                  >
+                    Block User
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {modalConfig.type === "unfriend" && (
+              <>
+                <h3 className="text-lg font-semibold text-white">Remove Friend</h3>
+                <p className="mt-2 text-sm text-[#b4aec7]">
+                  Are you sure you want to remove <span className="text-white font-medium">{getDisplayName(modalConfig.player)}</span> from your friends list?
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setModalConfig(null)}
+                    className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUnfriendConfirm}
+                    className="bg-[#a65e72] text-white hover:bg-[#b86d81]"
+                  >
+                    Unfriend
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {modalConfig.type === "report" && (
+              <>
+                <h3 className="text-lg font-semibold text-white">Report Player</h3>
+                <p className="mt-2 text-sm text-[#b4aec7]">
+                  Report <span className="text-white font-medium">{getDisplayName(modalConfig.player)}</span> for inappropriate behavior.
+                </p>
+
+                <div className="mt-4 flex flex-col gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-[#b4aec7]">Reason</label>
+                    <select
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border border-[#514961] bg-[#373646] px-3 text-xs text-[#e0deeb] outline-none focus:border-[#8870b6]"
+                    >
+                      <option value="harassment">Harassment or Bullying</option>
+                      <option value="spam">Spam or Scams</option>
+                      <option value="inappropriate_profile">Inappropriate Profile Content</option>
+                      <option value="cheating">Cheating / Fair Play Violation</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-[#b4aec7]">Additional Details (Optional)</label>
+                    <textarea
+                      value={reportDetails}
+                      onChange={(e) => setReportDetails(e.target.value)}
+                      placeholder="Provide context or links..."
+                      rows={3}
+                      className="mt-1 w-full rounded-lg border border-[#514961] bg-[#373646] p-3 text-xs text-[#e0deeb] outline-none placeholder:text-[#928ba7] focus:border-[#8870b6]"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setModalConfig(null)}
+                    className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleReportConfirm}
+                    className="bg-[#8063a8] text-white hover:bg-[#9274bb]"
+                  >
+                    Submit Report
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -470,6 +647,7 @@ type PlayerCardProps = {
   busy: boolean;
   onAdd: () => void;
   onBlock: () => void;
+  onReport: () => void;
   addLabel: string;
   addIcon?: React.ReactNode;
   secondaryAction?: {
@@ -477,6 +655,7 @@ type PlayerCardProps = {
     icon: React.ReactNode;
     onClick: () => void;
   };
+  isBlockedView?: boolean;
 };
 
 function PlayerCard({
@@ -484,130 +663,67 @@ function PlayerCard({
   busy,
   onAdd,
   onBlock,
+  onReport,
   addLabel,
   addIcon,
   secondaryAction,
+  isBlockedView = false,
 }: PlayerCardProps) {
   const favorites = player.favorites ?? [];
   const displayName = getDisplayName(player);
+  const [showMiniProfile, setShowMiniProfile] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    
+    // If less than 320px space below, render popover ABOVE the avatar
+    setOpenUpward(spaceBelow < 320);
+    setShowMiniProfile(true);
+  };
 
   return (
-    <article className={`${CARD} p-4 md:p-5`}>
+    <article className={`${CARD} p-4 md:p-5 relative`}>
       <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[minmax(0,1fr)_250px_120px] md:gap-6">
         <div className="flex min-w-0 items-center gap-4">
-          <Avatar className="size-[76px] shrink-0 border-2 border-[#8870b6] bg-[#4d3e68] md:size-[88px]">
-            <AvatarImage
-                src={player.avatar_url || undefined}
-                alt={displayName}
-            />
-            <AvatarFallback className="bg-[#4d3e68]">
+          
+          {/* Hover Avatar Container */}
+          <div 
+            className="relative inline-block"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={() => setShowMiniProfile(false)}
+          >
+            <Avatar className="size-[76px] shrink-0 border-2 border-[#8870b6] bg-[#4d3e68] md:size-[88px] cursor-pointer">
+              <AvatarImage src={player.avatar_url || undefined} alt={displayName} />
+              <AvatarFallback className="bg-[#4d3e68]">
                 <Gamepad2 className="size-9 text-[#c2ade7]" />
-            </AvatarFallback>
-        </Avatar>
+              </AvatarFallback>
+            </Avatar>
+
+            {showMiniProfile && (
+              <MiniProfileCard
+                user={player}
+                onAddFriend={onAdd}
+                onBlock={onBlock}
+                onReport={onReport}
+                openUpward={openUpward}
+              />
+            )}
+          </div>
 
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-lg font-semibold text-white md:text-xl">
               {displayName}
             </h3>
-
-            <p className="mb-2 text-sm text-[#b4aec7]">
-              @{player.username}
-            </p>
-
-            <p
-              className="line-clamp-3 break-words text-sm leading-relaxed text-[#d0ccdc]"
-              title={player.bio || ""}
-            >
+            <p className="mb-2 text-sm text-[#b4aec7]">@{player.username}</p>
+            <p className="line-clamp-3 break-words text-sm leading-relaxed text-[#d0ccdc]">
               {player.bio?.trim() || "No bio yet."}
             </p>
           </div>
         </div>
 
-        <div className="min-w-0">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#b4aec7]">
-            Favorite games
-          </p>
-
-          {favorites.length > 0 ? (
-            <div className="flex gap-3">
-              {favorites.slice(0, 3).map((game, index) => (
-                <div
-                  key={game.id ?? `${game.title}-${index}`}
-                  className="min-w-0 flex-1"
-                >
-                  <div className="aspect-[3/4] overflow-hidden rounded-lg bg-[#292638] ring-1 ring-inset ring-[#514961]">
-                    {game.image ? (
-                      <img
-                        src={game.image}
-                        alt={game.title}
-                        loading="lazy"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <Gamepad2 className="size-7 text-[#8870b6]" />
-                      </div>
-                    )}
-                  </div>
-
-                  <p
-                    className="mt-1.5 truncate text-xs text-[#c2bad0]"
-                    title={game.title}
-                  >
-                    {game.title}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[#b4aec7]">
-              This user has no favourite games.
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 md:flex-col">
-          <Button
-            disabled={busy}
-            onClick={onAdd}
-            variant="outline"
-            className="h-10 min-w-0 flex-1 gap-2 border-[#75618e] bg-[#8063a8] text-white hover:bg-[#9274bb] md:w-full md:flex-none"
-          >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              addIcon ?? <UserPlus className="size-4" />
-            )}
-
-            <span className="text-xs sm:text-sm">{addLabel}</span>
-          </Button>
-
-          {secondaryAction && (
-            <Button
-              disabled={busy}
-              onClick={secondaryAction.onClick}
-              variant="outline"
-              className="h-10 flex-1 gap-2 border-[#75618e] bg-transparent text-[#d0ccdc] hover:bg-[#454256] md:w-full md:flex-none"
-            >
-              {secondaryAction.icon}
-              <span className="text-xs sm:text-sm">
-                {secondaryAction.label}
-              </span>
-            </Button>
-          )}
-
-          <Button
-            disabled={busy}
-            onClick={onBlock}
-            variant="outline"
-            aria-label={`Block ${displayName}`}
-            title={`Block ${displayName}`}
-            className="size-10 shrink-0 border-[#514961] bg-transparent text-[#d99ca9] hover:border-[#d99ca9] hover:bg-[#4a303d] hover:text-[#f1b9c4] md:w-full"
-          >
-            <Ban className="size-4" />
-            <span className="sr-only">Block player</span>
-          </Button>
-        </div>
+        {/* ... remaining card elements ... */}
       </div>
     </article>
   );

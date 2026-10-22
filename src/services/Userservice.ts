@@ -1,9 +1,8 @@
-import api from "../lib/api";
+import api from "@/lib/api";
 
 export type Visibility = "public" | "friends" | "private";
 export type LibraryStatus = "playing" | "completed" | "on_hold" | "dropped" | "plan_to_play";
 
-// The logged-in user (GET /users/me/ and the login response)
 export interface User {
   id: number;
   username: string;
@@ -19,7 +18,6 @@ export interface User {
   created_at: string;
 }
 
-// What other people see (GET /users/<username>/). null means "hidden by their privacy settings".
 export interface UserProfile {
   id: number;
   username: string;
@@ -41,20 +39,113 @@ export type UpdateMeBody = Partial<
   >
 >;
 
-// GET /users/me/  (a 403 means nobody is logged in)
+export interface SocialUser {
+  id: number;
+  username: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  banner_url?: string | null; 
+  bio?: string | null;
+  favorites?: Array<{ id?: number; title: string; image?: string | null }>;
+}
+
+export interface Friendship {
+  id: number;
+  user: SocialUser;
+  friend?: SocialUser;
+  status: string;
+  created_at: string;
+}
+
+export interface FriendRequestList {
+  count: number;
+  results: Friendship[];
+}
+
+function extractResults<T>(data: unknown): T[] {
+  if (Array.isArray(data)) {
+    return data as T[];
+  }
+  if (
+    data &&
+    typeof data === "object" &&
+    "results" in data &&
+    Array.isArray((data as { results: unknown }).results)
+  ) {
+    return (data as { results: T[] }).results;
+  }
+  return [];
+}
+
 export async function getMe(): Promise<User> {
   const { data } = await api.get<User>("/users/me/");
   return data;
 }
 
-// PATCH /users/me/
 export async function updateMe(body: UpdateMeBody): Promise<User> {
   const { data } = await api.patch<User>("/users/me/", body);
   return data;
 }
 
-// GET /users/<username>/
 export async function getUserProfile(username: string): Promise<UserProfile> {
   const { data } = await api.get<UserProfile>(`/users/${encodeURIComponent(username)}/`);
+  return data;
+}
+
+export async function getSuggestedPlayers(search = ""): Promise<SocialUser[]> {
+  const { data } = await api.get("/users/suggested-players/", { params: { search, limit: 50 } });
+  return extractResults<SocialUser>(data);
+}
+
+export async function getFriends(search = ""): Promise<SocialUser[]> {
+  const { data } = await api.get("/users/friends/", { params: { search, limit: 100 } });
+  return extractResults<SocialUser>(data);
+}
+
+export async function removeFriend(username: string): Promise<void> {
+  await api.delete(`/users/friends/${encodeURIComponent(username)}/`);
+}
+
+export async function getFriendRequests(direction: "incoming" | "outgoing"): Promise<FriendRequestList> {
+  const { data } = await api.get("/users/friend-requests/", { params: { direction } });
+  const results = extractResults<Friendship>(data);
+  const count = data && typeof data === "object" && "count" in data ? Number((data as { count: unknown }).count) : results.length;
+  return { count, results };
+}
+
+export async function sendFriendRequest(username: string): Promise<Friendship> {
+  const { data } = await api.post<Friendship>("/users/friend-requests/", { username });
+  return data;
+}
+
+export async function acceptFriendRequest(id: number): Promise<Friendship> {
+  const { data } = await api.post<Friendship>(`/users/friend-requests/${id}/accept/`);
+  return data;
+}
+
+export async function declineFriendRequest(id: number): Promise<void> {
+  await api.post(`/users/friend-requests/${id}/decline/`);
+}
+
+export async function cancelFriendRequest(id: number): Promise<void> {
+  await api.post(`/users/friend-requests/${id}/cancel/`);
+}
+
+export async function getBlockedUsers(search = ""): Promise<SocialUser[]> {
+  const { data } = await api.get("/users/blocks/", { params: { search } });
+  return extractResults<SocialUser>(data);
+}
+
+export async function blockUser(username: string): Promise<unknown> {
+  const { data } = await api.post("/users/blocks/", { username });
+  return data;
+}
+
+export async function unblockUser(username: string): Promise<void> {
+  await api.delete(`/users/blocks/${encodeURIComponent(username)}/`);
+}
+
+export async function reportUser(username: string, reason: string, details?: string): Promise<unknown> {
+  const { data } = await api.post("/users/reports/", { username, reason, details });
   return data;
 }
