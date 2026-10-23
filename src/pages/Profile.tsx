@@ -231,9 +231,9 @@ function ProfileActivity() {
     <section aria-label="Game list">
       <Card className={`${PANEL} items-start`}>
         <div>
-          <h2 className="text-xl font-semibold">Your game lists</h2>
+          <h2 className="text-xl font-semibold">Your Library</h2>
           <p className="mt-2 text-sm text-[#b4aec7]">
-            Your game lists will appear here when the feature is available.
+            Your game library will appear here when the feature is available.
           </p>
         </div>
 
@@ -242,14 +242,14 @@ function ProfileActivity() {
           variant="outline"
           className={OUTLINE_BUTTON}
         >
-          <Link to="/my-list">
+          <Link to="/my-library">
             <Library strokeWidth={1.7} aria-hidden="true" />
-            View Game List
+            View Game Library
           </Link>
         </Button>
       </Card>
     </section>
-  );
+  )
 }
 
 export default function Profile() {
