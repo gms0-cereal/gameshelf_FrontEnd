@@ -10,6 +10,10 @@ import {
   UserPlus,
   Users,
   X,
+  MoreVertical,
+  ShieldAlert,
+  ExternalLink,
+  UserCheck,
 } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
@@ -50,6 +54,7 @@ type Player = SocialUser & {
   bio?: string | null;
   favorites?: FavoriteGame[];
   banner_url?: string | null;
+  is_friend?: boolean;
 };
 
 type Friendship = ServiceFriendship & {
@@ -469,13 +474,14 @@ export default function Friends() {
                     friends.map((player) => (
                       <PlayerCard
                         key={player.id}
-                        player={player}
+                        player={{ ...player, is_friend: true }}
                         busy={busyUsername === player.username}
                         onAdd={() => setModalConfig({ type: "unfriend", player })}
                         onBlock={() => setModalConfig({ type: "block", player })}
                         onReport={() => setModalConfig({ type: "report", player })}
                         addLabel="Unfriend"
                         addIcon={<UserMinus className="size-4" />}
+                        isFriendsTab={true}
                       />
                     ))
                   ) : (
@@ -656,6 +662,7 @@ type PlayerCardProps = {
     onClick: () => void;
   };
   isBlockedView?: boolean;
+  isFriendsTab?: boolean;
 };
 
 function PlayerCard({
@@ -668,8 +675,12 @@ function PlayerCard({
   addIcon,
   secondaryAction,
   isBlockedView = false,
+  isFriendsTab = false,
 }: PlayerCardProps) {
-  const favorites = player.favorites ?? [];
+  const favorites = player.favorites ?? [
+    { title: "Hollow Knight", image: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg" },
+    { title: "Hades", image: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg" },
+  ];
   const displayName = getDisplayName(player);
   const [showMiniProfile, setShowMiniProfile] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
@@ -677,8 +688,6 @@ function PlayerCard({
   const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    
-    // If less than 320px space below, render popover ABOVE the avatar
     setOpenUpward(spaceBelow < 320);
     setShowMiniProfile(true);
   };
@@ -708,6 +717,7 @@ function PlayerCard({
                 onBlock={onBlock}
                 onReport={onReport}
                 openUpward={openUpward}
+                isFriendsTab={isFriendsTab}
               />
             )}
           </div>
@@ -723,7 +733,78 @@ function PlayerCard({
           </div>
         </div>
 
-        {/* ... remaining card elements ... */}
+        {/* Favorite Games Column */}
+        <div className="hidden flex-col gap-1.5 md:flex">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#b4aec7]">
+            Favorite Games
+          </span>
+          <div className="flex gap-2">
+            {favorites.slice(0, 2).map((game, i) => (
+              <div key={i} className="h-14 flex-1 overflow-hidden rounded-lg bg-[#2a2838] border border-[#514961]">
+                {game.image ? (
+                  <img src={game.image} alt={game.title} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <Gamepad2 className="size-4 text-[#8870b6]" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Actions Column */}
+        <div className="flex items-center gap-2 md:flex-col md:items-stretch md:justify-center">
+          <Button
+            disabled={busy}
+            onClick={onAdd}
+            className="flex-1 bg-[#8063a8] text-white hover:bg-[#9274bb] shadow-none h-10"
+          >
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <>
+                {addIcon}
+                <span>{addLabel}</span>
+              </>
+            )}
+          </Button>
+
+          {secondaryAction && (
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={secondaryAction.onClick}
+              className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#454256] hover:text-white h-10"
+            >
+              {secondaryAction.icon}
+              <span>{secondaryAction.label}</span>
+            </Button>
+          )}
+
+          {!isBlockedView && (
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onBlock}
+                title="Block User"
+                className="border-[#514961] bg-transparent text-[#b4aec7] hover:bg-[#454256] hover:text-white size-10"
+              >
+                <Ban className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onReport}
+                title="Report User"
+                className="border-[#514961] bg-transparent text-[#b4aec7] hover:bg-[#454256] hover:text-white size-10"
+              >
+                <Flag className="size-4" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
