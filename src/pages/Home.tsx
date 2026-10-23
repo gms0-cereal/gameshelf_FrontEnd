@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Heart, Info, ListMusic } from "lucide-react";
 import {
-  getSteamGames,
-  getSteamGameDetails,
-  getSteamGameReviews,
+  getSteamGamesExpanded,
+  getSteamGameSummaries,
   getMyGameList,
+  type SteamGameCard,
   type UserGameEntry,
 } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,12 @@ const TOP_10_HERO_IDS = [
 const HOLLOW_KNIGHT_IDS = [367520, 774361, 1369630, 504230];
 const RPG_IDS = [1245620, 1809540, 1244090, 1971650];
 
+// The hero and both recommendation sections share several games,
+// so every unique id is fetched only once, in a single request.
+const CURATED_IDS = Array.from(
+  new Set([...TOP_10_HERO_IDS, ...HOLLOW_KNIGHT_IDS, ...RPG_IDS])
+);
+
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   playing: { label: "Playing", className: "bg-[#e0e7ff] text-[#3730a3]" },
   completed: { label: "Completed", className: "bg-[#dcfce7] text-[#166534]" },
@@ -52,6 +58,60 @@ function formatLibraryActivity(date: string | null) {
     day: "numeric",
     year: "numeric",
   })}`;
+}
+
+// Pure conversion, no network: backend card + the user's list entry -> GameSummary.
+function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSummary {
+  const latestDate = userEntry?.completed_at || userEntry?.started_at || null;
+  const statusKey = userEntry ? userEntry.status : "unplayed";
+  const statusStyle = STATUS_STYLES[statusKey] || STATUS_STYLES.unplayed;
+ 
+  // Your own rating, if you gave one.
+  const myScore = userEntry?.score ?? card.my_score;
+ 
+  // Third-party (Steam, or Metacritic as a fallback) + GameShelf community.
+  const ratingParts: string[] = [];
+  if (card.steam_rating) {
+    const { score, label, total_reviews } = card.steam_rating;
+    ratingParts.push(
+      `Steam ★ ${score}/10${label ? ` · ${label}` : ""} (${total_reviews.toLocaleString()})`
+    );
+  } else if (card.metacritic_score) {
+    ratingParts.push(`Metacritic ${card.metacritic_score}/100`);
+  }
+  if (card.community_rating !== null) {
+    ratingParts.push(
+      `GameShelf ★ ${card.community_rating}/10 (${card.rating_count.toLocaleString()})`
+    );
+  }
+ 
+  return {
+    id: card.appid,
+    title: card.name || `Game ${card.appid}`,
+    slug: String(card.appid),
+    cover: card.header_image,
+    genres: card.genres.length > 0 ? card.genres : ["Steam Game"],
+    statusLabel: statusStyle.label,
+    statusClassName: statusStyle.className,
+    ratingText: myScore ? `${myScore}/10` : undefined,
+    communityRatingText: ratingParts.length > 0 ? ratingParts.join("  ·  ") : undefined,
+    lastPlayedText: formatLibraryActivity(latestDate),
+    bio:
+      card.short_description ||
+      "Explore live community catalogs and add this title to your shelf.",
+    platform: "PC",
+  };
+}
+
+function pickSummaries(
+  ids: number[],
+  cards: Map<number, SteamGameCard>,
+  userListMap: Map<string, UserGameEntry>
+): GameSummary[] {
+  return ids
+    .map((id) => cards.get(id))
+    .filter((card): card is SteamGameCard => Boolean(card))
+    .map((card) => toGameSummary(card, userListMap.get(String(card.appid))));
 }
 
 function PlaylistCard({ playlist }: { playlist: Playlist }) {
@@ -101,10 +161,10 @@ function PlaylistCard({ playlist }: { playlist: Playlist }) {
 }
 
 export default function Home() {
-  const [steamSummaries, setSteamSummaries] = useState<GameSummary[]>([]);
-  const [hollowKnightGames, setHollowKnightGames] = useState<GameSummary[]>([]);
-  const [rpgGames, setRpgGames] = useState<GameSummary[]>([]);
-  const [heroGames, setHeroGames] = useState<GameSummary[]>([]);
+  // Raw cards from the backend. The user's list status is applied separately
+  // (see useMemo below), so loading the list never triggers another fetch.
+  const [curatedCards, setCuratedCards] = useState<Map<number, SteamGameCard>>(new Map());
+  const [catalogCards, setCatalogCards] = useState<SteamGameCard[]>([]);
   const [heroIndex, setHeroIndex] = useState(0);
   const [userListMap, setUserListMap] = useState<Map<string, UserGameEntry>>(new Map());
 
@@ -142,37 +202,6 @@ export default function Home() {
     };
   }, []);
 
-  // Helper to convert Steam data into GameSummary format with batched data
-  async function buildGameSummary(appid: number, userEntry?: UserGameEntry): Promise<GameSummary> {
-    const [detail, reviews] = await Promise.all([
-      getSteamGameDetails(appid).catch(() => null),
-      getSteamGameReviews(appid, "*", 1).catch(() => null),
-    ]);
-
-    const totalReviews = reviews?.summary?.total_reviews || 0;
-    const positiveReviews = reviews?.summary?.total_positive || 0;
-    const calcAvgScore = totalReviews > 0 ? Number(((positiveReviews / totalReviews) * 10).toFixed(1)) : null;
-
-    const latestDate = userEntry?.completed_at || userEntry?.started_at || null;
-    const statusKey = userEntry ? userEntry.status : "unplayed";
-    const statusStyle = STATUS_STYLES[statusKey] || STATUS_STYLES.unplayed;
-
-    return {
-      id: appid,
-      title: detail?.name || `Game ${appid}`,
-      slug: String(appid),
-      cover: detail?.header_image || detail?.background_raw || `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`,
-      genres: detail?.genres?.map((g) => g.description) ?? ["Steam Game"],
-      statusLabel: statusStyle.label,
-      statusClassName: statusStyle.className,
-      ratingText: userEntry?.score ? `${userEntry.score}/10` : undefined,
-      communityRatingText: calcAvgScore ? `★ ${calcAvgScore} / 10 (${totalReviews.toLocaleString()} user ratings)` : undefined,
-      lastPlayedText: formatLibraryActivity(latestDate),
-      bio: detail?.short_description || "Explore live community catalogs and add this title to your shelf.",
-      platform: "PC",
-    };
-  }
-
   // Fetch User's List
   useEffect(() => {
     getMyGameList()
@@ -188,58 +217,31 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Fetch Hero Carousel Games in Parallel
+  // Hero + Hollow Knight + RPG sections: ONE request for all unique games.
   useEffect(() => {
     let cancelled = false;
-    Promise.all(TOP_10_HERO_IDS.map((id) => buildGameSummary(id, userListMap.get(String(id)))))
-      .then((res) => {
-        if (!cancelled) setHeroGames(res);
+
+    getSteamGameSummaries(CURATED_IDS)
+      .then((cards) => {
+        if (!cancelled) setCuratedCards(new Map(cards.map((card) => [card.appid, card])));
       })
       .catch(() => {});
 
     return () => {
       cancelled = true;
     };
-  }, [userListMap]);
+  }, []);
 
-  // Fetch Curated Recommendation Lists in Parallel
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      Promise.all(HOLLOW_KNIGHT_IDS.map((id) => buildGameSummary(id, userListMap.get(String(id))))),
-      Promise.all(RPG_IDS.map((id) => buildGameSummary(id, userListMap.get(String(id))))),
-    ])
-      .then(([hk, rpg]) => {
-        if (!cancelled) {
-          setHollowKnightGames(hk);
-          setRpgGames(rpg);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userListMap]);
-
-  // Fetch Steam Catalog pagination with batched details loading (Instant Grid Rendering)
+  // Steam catalog: ONE request per page. Depends only on the cursor.
   useEffect(() => {
     let cancelled = false;
 
-    getSteamGames(STEAM_PAGE_SIZE, currentCursor)
-      .then(async (data) => {
+    getSteamGamesExpanded(STEAM_PAGE_SIZE, currentCursor)
+      .then((data) => {
         if (cancelled) return;
         setNextCursor(data.last_appid);
         setHasMore(Boolean(data.have_more_results && data.last_appid));
-
-        const validGames = data.games.filter((g) => g.name);
-        const summaries = await Promise.all(
-          validGames.map((g) => buildGameSummary(g.appid, userListMap.get(String(g.appid))))
-        );
-
-        if (!cancelled) {
-          setSteamSummaries(summaries);
-        }
+        setCatalogCards(data.games.filter((game) => game.name));
       })
       .catch(() => {
         if (!cancelled) setError("Failed to load games. Please try again.");
@@ -251,7 +253,25 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [currentCursor, userListMap]);
+  }, [currentCursor]);
+
+  // Derived data: recomputed locally (no network) when cards or the user's list change.
+  const heroGames = useMemo(
+    () => pickSummaries(TOP_10_HERO_IDS, curatedCards, userListMap),
+    [curatedCards, userListMap]
+  );
+  const hollowKnightGames = useMemo(
+    () => pickSummaries(HOLLOW_KNIGHT_IDS, curatedCards, userListMap),
+    [curatedCards, userListMap]
+  );
+  const rpgGames = useMemo(
+    () => pickSummaries(RPG_IDS, curatedCards, userListMap),
+    [curatedCards, userListMap]
+  );
+  const steamSummaries = useMemo(
+    () => catalogCards.map((card) => toGameSummary(card, userListMap.get(String(card.appid)))),
+    [catalogCards, userListMap]
+  );
 
   function goToNextPage() {
     if (hasMore && nextCursor !== null) {
