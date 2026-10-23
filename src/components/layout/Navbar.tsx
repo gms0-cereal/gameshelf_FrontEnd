@@ -21,12 +21,12 @@ const navLinks = [
   { to: "/", label: "Home" },
   { to: "/discover", label: "Discover" },
   { to: "/browse", label: "Browse" },
-  { to: "/my-library", label: "My List" },
+  { to: "/my-library", label: "My Library" },
 ];
 
 const menuItems = [
   { to: "/profile", label: "Profile" },
-  { to: "/my-library", label: "My Game List" },
+  { to: "/my-library", label: "My Game Library" },
   { to: "/settings", label: "Settings" },
 ];
 

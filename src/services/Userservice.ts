@@ -29,6 +29,7 @@ export interface UserProfile {
   friend_count: number | null;
   library: Record<LibraryStatus, number> | null;
   ratings_count: number;
+  favorites?: UserFavoriteGameEntry[];
   reviews_count: number;
 }
 
@@ -46,7 +47,7 @@ export interface SocialUser {
   avatar_url: string | null;
   banner_url?: string | null; 
   bio?: string | null;
-  favorites?: Array<{ id?: number; title: string; image?: string | null }>;
+  favorites?: UserFavoriteGameEntry[];
 }
 
 export interface Friendship {
@@ -61,6 +62,19 @@ export interface FriendRequestList {
   count: number;
   results: Friendship[];
 }
+
+export interface UserFavoriteGameEntry {
+  id: number;
+  game_id: number;
+  steam_app_id?: number | null;
+  title: string;
+  cover_image_url?: string | null;
+  genres: string[];
+  is_favorite: boolean;
+  position: number;
+}
+
+
 
 function extractResults<T>(data: unknown): T[] {
   if (Array.isArray(data)) {
@@ -148,4 +162,18 @@ export async function unblockUser(username: string): Promise<void> {
 export async function reportUser(username: string, reason: string, details?: string): Promise<unknown> {
   const { data } = await api.post("/users/reports/", { username, reason, details });
   return data;
+}
+
+export async function getFavoriteGames(): Promise<UserFavoriteGameEntry[]> {
+  const response = await api.get("/users/favorites/");
+  return response.data;
+}
+
+export async function addFavoriteGame(steamAppId: number): Promise<UserFavoriteGameEntry> {
+  const response = await api.post("/users/favorites/", { steam_app_id: steamAppId });
+  return response.data;
+}
+
+export async function removeFavoriteGame(steamAppId: number): Promise<void> {
+  await api.delete("/users/favorites/", { data: { steam_app_id: steamAppId } });
 }

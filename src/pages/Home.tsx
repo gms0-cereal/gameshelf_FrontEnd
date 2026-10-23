@@ -61,50 +61,27 @@ function formatLibraryActivity(date: string | null) {
   })}`;
 }
 
-
-// Pure conversion, no network: backend card + the user's list entry -> GameSummary.
 function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSummary {
   const latestDate = userEntry?.completed_at || userEntry?.started_at || null;
   const statusKey = userEntry ? userEntry.status : "unplayed";
   const statusStyle = STATUS_STYLES[statusKey] || STATUS_STYLES.unplayed;
- 
-  // Your own rating, if you gave one.
-  const myScore = userEntry?.score ?? card.my_score;
- 
-  // Third-party (Steam, or Metacritic as a fallback) + GameShelf community.
-  const ratingParts: string[] = [];
-  if (card.steam_rating) {
-    const { score, label, total_reviews } = card.steam_rating;
-    ratingParts.push(
-      `Steam ★ ${score}/10${label ? ` · ${label}` : ""} (${total_reviews.toLocaleString()})`
-    );
-  } else if (card.metacritic_score) {
-    ratingParts.push(`Metacritic ${card.metacritic_score}/100`);
-  }
-  if (card.community_rating !== null) {
-    ratingParts.push(
-      `GameShelf ★ ${card.community_rating}/10 (${card.rating_count.toLocaleString()})`
-    );
-  }
- 
+
   return {
     id: card.appid,
     title: card.name || `Game ${card.appid}`,
     slug: String(card.appid),
     cover: card.header_image,
     genres: card.genres.length > 0 ? card.genres : ["Steam Game"],
+    platforms: card.platforms || ["PC"],
+    release_year: card.release_year ?? null,
+    score: card.score ?? (card.community_rating !== null ? card.community_rating : null),
+    price: card.price ?? null,
     statusLabel: statusStyle.label,
     statusClassName: statusStyle.className,
-    ratingText: myScore ? `${myScore}/10` : undefined,
-    communityRatingText: ratingParts.length > 0 ? ratingParts.join("  ·  ") : undefined,
-    lastPlayedText: formatLibraryActivity(latestDate),
-    bio:
-      card.short_description ||
-      "Explore live community catalogs and add this title to your shelf.",
-    platform: "PC",
+    bio: card.short_description || "Explore live community catalogs and add this title to your shelf.",
   };
 }
-
+   
 function pickSummaries(
   ids: number[],
   cards: Map<number, SteamGameCard>,
@@ -268,7 +245,7 @@ export default function Home() {
           <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
             <div className="flex flex-col gap-2">
               <p className="text-[13px] leading-4 text-[#b4aec7] uppercase tracking-wider">
-                WELCOME BACK, {user?.username || username}
+                WELCOME BACK, {user?.nickname|| user?.username}
               </p>
               <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px]">Home</h1>
             </div>

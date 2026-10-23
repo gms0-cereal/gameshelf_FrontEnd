@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Gamepad2, Library, Pencil, Users } from "lucide-react";
+import { Gamepad2, Library, Pencil, Users, X, ExternalLink, UserCheck } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -13,10 +13,13 @@ import {
   getFriends,
   getUserProfile,
   getMe,
+  getFavoriteGames,
   type SocialUser,
   type UserProfile,
+  type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 import { getMyGameList } from "@/services/Gameservice";
+import MiniProfileCard from "@/components/social/MiniProfileCard";
 
 const PANEL =
   "gap-6 rounded-2xl border-0 bg-[#373646] p-7 " +
@@ -139,7 +142,7 @@ function PlayerStatistics({
   );
 }
 
-function FavoriteGames() {
+function FavoriteGames({ favorites }: { favorites: UserFavoriteGameEntry[] }) {
   return (
     <section
       aria-labelledby="favorite-games-title"
@@ -152,37 +155,69 @@ function FavoriteGames() {
         Favorite games
       </h2>
 
-      <div className="rounded-2xl bg-[#373646] p-8 text-center ring-1 ring-inset ring-[#55516c]">
-        <Gamepad2 className="mx-auto mb-3 size-8 text-[#8870b6]" />
-
-        <p className="font-medium">No favorite games yet</p>
-
-        <p className="mt-1 text-sm text-[#b4aec7]">
-          Favorite games will appear here once you add them to your profile.
-        </p>
-      </div>
+      {favorites.length > 0 ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {favorites.map((game) => (
+            <Link
+              key={game.id}
+              to={game.steam_app_id ? `/gamedetails/${game.steam_app_id}` : "#"}
+              className="group flex flex-col overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] transition-colors hover:border-[#c2ade7]"
+            >
+              <div className="aspect-[3/2] w-full bg-[#2a2838] overflow-hidden">
+                {game.cover_image_url ? (
+                  <img
+                    src={game.cover_image_url}
+                    alt={game.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <Gamepad2 className="size-8 text-[#8870b6]" />
+                  </div>
+                )}
+              </div>
+              <div className="p-3">
+                <p className="truncate text-sm font-medium group-hover:text-[#c2ade7]">
+                  {game.title}
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-[#b4aec7]">
+                  {game.genres.join(" / ") || "Favorite"}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-[#373646] p-8 text-center ring-1 ring-inset ring-[#55516c]">
+          <Gamepad2 className="mx-auto mb-3 size-8 text-[#8870b6]" />
+          <p className="font-medium">No favorite games yet</p>
+          <p className="mt-1 text-sm text-[#b4aec7]">
+            Favorite games will appear here once you click the heart icon on games in your library.
+          </p>
+        </div>
+      )}
     </section>
   );
 }
 
-function FriendsBar({ friends }: { friends: SocialUser[] }) {
+
+function FriendsBar({
+  friends,
+  onSelectFriend,
+}: {
+  friends: SocialUser[];
+  onSelectFriend: (friend: SocialUser, event: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
   return (
     <section
       aria-labelledby="friends-title"
       className="flex flex-col gap-5"
     >
       <div className="flex items-center justify-between">
-        <h2
-          id="friends-title"
-          className="text-2xl font-semibold tracking-tight"
-        >
+        <h2 id="friends-title" className="text-2xl font-semibold tracking-tight">
           Friends
         </h2>
-
-        <Link
-          to="/friends"
-          className="text-sm font-medium text-[#c2ade7] hover:text-white"
-        >
+        <Link to="/friends" className="text-sm font-medium text-[#c2ade7] hover:text-white">
           View all
         </Link>
       </div>
@@ -192,10 +227,11 @@ function FriendsBar({ friends }: { friends: SocialUser[] }) {
           friends.map((friend) => {
             const displayName = friend.nickname?.trim() || friend.username;
             return (
-              <Link
+              <button
                 key={friend.id}
-                to={`/profile/${encodeURIComponent(friend.username)}`}
-                className="flex flex-col items-center gap-2 shrink-0 text-center group"
+                type="button"
+                onClick={(e) => onSelectFriend(friend, e)}
+                className="flex flex-col items-center gap-2 shrink-0 text-center group cursor-pointer bg-transparent border-0"
               >
                 <Avatar className="size-14 border-2 border-[#8870b6] bg-[#4d3e68] group-hover:border-[#c2ade7] transition-colors">
                   <AvatarImage
@@ -213,7 +249,7 @@ function FriendsBar({ friends }: { friends: SocialUser[] }) {
                 >
                   {displayName}
                 </span>
-              </Link>
+              </button>
             );
           })
         ) : (
@@ -226,6 +262,7 @@ function FriendsBar({ friends }: { friends: SocialUser[] }) {
   );
 }
 
+
 function ProfileActivity() {
   return (
     <section aria-label="Game list">
@@ -233,7 +270,7 @@ function ProfileActivity() {
         <div>
           <h2 className="text-xl font-semibold">Your Library</h2>
           <p className="mt-2 text-sm text-[#b4aec7]">
-            Your game library will appear here when the feature is available.
+            Explore your game collection and track your progress across your library.
           </p>
         </div>
 
@@ -249,7 +286,7 @@ function ProfileActivity() {
         </Button>
       </Card>
     </section>
-  )
+  );
 }
 
 export default function Profile() {
@@ -258,11 +295,16 @@ export default function Profile() {
 
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [favorites, setFavorites] = useState<UserFavoriteGameEntry[]>([]);
   const [libraryTotal, setLibraryTotal] = useState<number>(0);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
+  
   const isOwnProfile = !username || Boolean(authUser && authUser.username === username);
+  const [selectedFriend, setSelectedFriend] = useState<SocialUser | null>(null);
+  const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | undefined>(undefined);
+  const [openUpward, setOpenUpward] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -272,10 +314,11 @@ export default function Profile() {
     async function fetchProfileData() {
       try {
         if (isOwnProfile) {
-          const [meData, friendsData, listData] = await Promise.all([
+          const [meData, friendsData, listData, favsData] = await Promise.all([
             getMe(),
             getFriends(),
             getMyGameList(),
+            getFavoriteGames(),
           ]);
 
           if (isMounted) {
@@ -298,6 +341,7 @@ export default function Profile() {
               reviews_count: 0,
             });
             setFriends(friendsData ?? []);
+            setFavorites(favsData ?? []);
             setLibraryTotal(total);
           }
         } else {
@@ -305,6 +349,7 @@ export default function Profile() {
           if (isMounted) {
             setProfileUser(profileData);
             setFriends([]);
+            setFavorites(profileData.favorites ?? []); 
             
             if (profileData.library) {
               const total = Object.values(profileData.library).reduce(
@@ -351,7 +396,7 @@ export default function Profile() {
     );
   }
 
-  return (
+ return (
     <div className="min-h-screen bg-[#201e2f]">
       <div
         className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#201e2f] text-[#e0deeb] antialiased"
@@ -365,11 +410,47 @@ export default function Profile() {
             friendCount={profileUser.friend_count ?? friends.length}
             reviewsCount={profileUser.reviews_count ?? 0}
           />
-          <FavoriteGames />
-          {isOwnProfile && <FriendsBar friends={friends} />}
+          <FavoriteGames favorites={favorites} />
+          {isOwnProfile && (
+            <FriendsBar 
+              friends={friends} 
+              onSelectFriend={(friend, event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                // Mirror the exact upward logic from your Friends page
+                const isUpward = spaceBelow < 320;
+                setOpenUpward(isUpward);
+
+                // Calculate fixed coordinates matching the trigger element
+                setModalPosition({
+                  top: isUpward ? rect.top - 340 : rect.bottom + 8,
+                  left: Math.min(rect.left, window.innerWidth - 330), // Prevent overflowing right edge
+                });
+                setSelectedFriend(friend);
+              }} 
+            />
+          )}
           <ProfileActivity />
         </main>
         <Footer />
+
+        {/* Reusing MiniProfileCard with exact coordinate placement */}
+        {selectedFriend && (
+          <div 
+            className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm animate-in fade-in-0"
+            onClick={() => setSelectedFriend(null)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <MiniProfileCard
+                user={selectedFriend}
+                position={modalPosition}
+                openUpward={openUpward}
+                isFriendsTab
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

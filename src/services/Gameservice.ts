@@ -286,6 +286,7 @@ export interface UserGameEntry {
   genres: string[];
   status: ListStatus;
   progress: number | null;
+  is_favorite?: boolean;
   started_at: string | null;
   completed_at: string | null;
   notes: string | null;

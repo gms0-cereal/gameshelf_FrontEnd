@@ -22,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniProfileCard from "@/components/social/MiniProfileCard";
-
 import {
   getSuggestedPlayers,
   getFriends,
@@ -38,17 +37,20 @@ import {
   reportUser,
   type SocialUser,
   type Friendship as ServiceFriendship,
+  type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 
-type FavoriteGame = {
-  id?: number;
-  title: string;
-  image?: string | null;
-};
+
+
+// type FavoriteGame = {
+//   id?: number;
+//   title: string;
+//   image?: string | null;
+// };
 
 type Player = SocialUser & {
   bio?: string | null;
-  favorites?: FavoriteGame[];
+  favorites?: UserFavoriteGameEntry[];
   banner_url?: string | null;
 };
 
@@ -658,6 +660,22 @@ type PlayerCardProps = {
   isBlockedView?: boolean;
 };
 
+// type PlayerCardProps = {
+//   player: Player;
+//   busy: boolean;
+//   onAdd: () => void;
+//   onBlock: () => void;
+//   onReport: () => void;
+//   addLabel: string;
+//   addIcon?: React.ReactNode;
+//   secondaryAction?: {
+//     label: string;
+//     icon: React.ReactNode;
+//     onClick: () => void;
+//   };
+//   isBlockedView?: boolean;
+// };
+
 function PlayerCard({
   player,
   busy,
@@ -723,7 +741,77 @@ function PlayerCard({
           </div>
         </div>
 
-        {/* ... remaining card elements ... */}
+        {/* Middle Column: Favorite Games Preview */}
+        <div className="hidden md:flex flex-col gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#b4aec7]">
+            Favorites
+          </span>
+          {favorites.length > 0 ? (
+            <div className="flex items-center gap-2">
+              {favorites.slice(0, 3).map((fav, index) => (
+                <div
+                  key={fav.id || index}
+                  className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#514961] bg-[#2a2838]"
+                  title={fav.title}
+                >
+                  {fav.cover_image_url ? (
+                    <img src={fav.cover_image_url} alt={fav.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Gamepad2 className="size-5 text-[#8870b6]" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[#b4aec7]">No favorite games listed.</p>
+          )}
+        </div>
+
+        {/* Right Column: Actions */}
+        <div className="flex flex-col gap-2 md:items-end">
+          <Button
+            onClick={onAdd}
+            disabled={busy}
+            className="w-full bg-[#8063a8] text-white hover:bg-[#9274bb] md:w-auto text-xs font-semibold h-9"
+          >
+            {addIcon}
+            <span className={addIcon ? "ml-1.5" : ""}>{addLabel}</span>
+          </Button>
+
+          {secondaryAction && (
+            <Button
+              variant="outline"
+              onClick={secondaryAction.onClick}
+              disabled={busy}
+              className="w-full border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#454256] hover:text-white md:w-auto text-xs h-9"
+            >
+              {secondaryAction.icon}
+              <span className="ml-1.5">{secondaryAction.label}</span>
+            </Button>
+          )}
+
+          {!isBlockedView && (
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                type="button"
+                onClick={onBlock}
+                className="text-[11px] text-[#b4aec7] hover:text-[#f1b9c4] transition-colors"
+              >
+                Block
+              </button>
+              <span className="text-[#514961]">•</span>
+              <button
+                type="button"
+                onClick={onReport}
+                className="text-[11px] text-[#b4aec7] hover:text-[#f1b9c4] transition-colors"
+              >
+                Report
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
