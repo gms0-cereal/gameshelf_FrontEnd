@@ -19,6 +19,7 @@ import {
   type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 import { getMyGameList } from "@/services/Gameservice";
+import MiniProfileCard from "@/components/social/MiniProfileCard";
 
 const PANEL =
   "gap-6 rounded-2xl border-0 bg-[#373646] p-7 " +
@@ -199,12 +200,13 @@ function FavoriteGames({ favorites }: { favorites: UserFavoriteGameEntry[] }) {
   );
 }
 
+
 function FriendsBar({
   friends,
   onSelectFriend,
 }: {
   friends: SocialUser[];
-  onSelectFriend: (friend: SocialUser) => void;
+  onSelectFriend: (friend: SocialUser, event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <section
@@ -212,17 +214,10 @@ function FriendsBar({
       className="flex flex-col gap-5"
     >
       <div className="flex items-center justify-between">
-        <h2
-          id="friends-title"
-          className="text-2xl font-semibold tracking-tight"
-        >
+        <h2 id="friends-title" className="text-2xl font-semibold tracking-tight">
           Friends
         </h2>
-
-        <Link
-          to="/friends"
-          className="text-sm font-medium text-[#c2ade7] hover:text-white"
-        >
+        <Link to="/friends" className="text-sm font-medium text-[#c2ade7] hover:text-white">
           View all
         </Link>
       </div>
@@ -235,7 +230,7 @@ function FriendsBar({
               <button
                 key={friend.id}
                 type="button"
-                onClick={() => onSelectFriend(friend)}
+                onClick={(e) => onSelectFriend(friend, e)}
                 className="flex flex-col items-center gap-2 shrink-0 text-center group cursor-pointer bg-transparent border-0"
               >
                 <Avatar className="size-14 border-2 border-[#8870b6] bg-[#4d3e68] group-hover:border-[#c2ade7] transition-colors">
@@ -267,77 +262,6 @@ function FriendsBar({
   );
 }
 
-function MiniProfileModal({
-  friend,
-  onClose,
-}: {
-  friend: SocialUser | null;
-  onClose: () => void;
-}) {
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
-
-  if (!friend) return null;
-
-  const displayName = friend.nickname?.trim() || friend.username;
-
-  return (
-    <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0">
-      <div
-        ref={modalRef}
-        className="relative w-full max-w-sm rounded-2xl border border-[#55516c] bg-[#312e45] p-6 text-[#e0deeb] shadow-2xl animate-in zoom-in-95 z-[9999]"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded p-1 text-[#b4aec7] hover:text-white"
-          aria-label="Close"
-        >
-          <X className="size-4" />
-        </button>
-
-        <div className="flex flex-col items-center text-center">
-          <Avatar className="size-20 border-2 border-[#8870b6] bg-[#4d3e68]">
-            <AvatarImage src={friend.avatar_url || undefined} alt={displayName} className="object-cover" />
-            <AvatarFallback className="bg-[#4d3e68]">
-              <Users className="size-8 text-[#c2ade7]" />
-            </AvatarFallback>
-          </Avatar>
-
-          <h3 className="mt-4 text-xl font-bold text-white">{displayName}</h3>
-          <p className="text-xs text-[#b4aec7]">@{friend.username}</p>
-
-          <p className="mt-3 text-xs leading-relaxed text-[#d0ccdc]">
-            {friend.bio?.trim() || "No bio provided."}
-          </p>
-
-          <div className="mt-6 flex w-full items-center gap-3">
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#55516c] bg-[#2a2838] px-3 text-xs text-[#c2ade7]">
-              <UserCheck className="size-3.5" /> Friend
-            </span>
-            <Button
-              asChild
-              className="flex-h-9 flex-1 bg-[#8063a8] text-white hover:bg-[#9274bb] text-xs font-semibold h-9"
-            >
-              <Link to={`/profile/${encodeURIComponent(friend.username)}`} onClick={onClose}>
-                View Full Profile <ExternalLink className="size-3.5 ml-1.5" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ProfileActivity() {
   return (
@@ -376,9 +300,11 @@ export default function Profile() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [selectedFriend, setSelectedFriend] = useState<SocialUser | null>(null);
-
+  
   const isOwnProfile = !username || Boolean(authUser && authUser.username === username);
+  const [selectedFriend, setSelectedFriend] = useState<SocialUser | null>(null);
+  const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | undefined>(undefined);
+  const [openUpward, setOpenUpward] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -470,7 +396,7 @@ export default function Profile() {
     );
   }
 
-  return (
+ return (
     <div className="min-h-screen bg-[#201e2f]">
       <div
         className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#201e2f] text-[#e0deeb] antialiased"
@@ -485,11 +411,46 @@ export default function Profile() {
             reviewsCount={profileUser.reviews_count ?? 0}
           />
           <FavoriteGames favorites={favorites} />
-          {isOwnProfile && <FriendsBar friends={friends} onSelectFriend={setSelectedFriend} />}
+          {isOwnProfile && (
+            <FriendsBar 
+              friends={friends} 
+              onSelectFriend={(friend, event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                // Mirror the exact upward logic from your Friends page
+                const isUpward = spaceBelow < 320;
+                setOpenUpward(isUpward);
+
+                // Calculate fixed coordinates matching the trigger element
+                setModalPosition({
+                  top: isUpward ? rect.top - 340 : rect.bottom + 8,
+                  left: Math.min(rect.left, window.innerWidth - 330), // Prevent overflowing right edge
+                });
+                setSelectedFriend(friend);
+              }} 
+            />
+          )}
           <ProfileActivity />
         </main>
         <Footer />
-        <MiniProfileModal friend={selectedFriend} onClose={() => setSelectedFriend(null)} />
+
+        {/* Reusing MiniProfileCard with exact coordinate placement */}
+        {selectedFriend && (
+          <div 
+            className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm animate-in fade-in-0"
+            onClick={() => setSelectedFriend(null)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <MiniProfileCard
+                user={selectedFriend}
+                position={modalPosition}
+                openUpward={openUpward}
+                isFriendsTab
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
