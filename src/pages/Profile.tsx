@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Gamepad2, Library, Pencil, Users } from "lucide-react";
+import { Gamepad2, Library, Pencil, Users, X, ExternalLink, UserCheck } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -13,8 +13,10 @@ import {
   getFriends,
   getUserProfile,
   getMe,
+  getFavoriteGames,
   type SocialUser,
   type UserProfile,
+  type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 import { getMyGameList } from "@/services/Gameservice";
 
@@ -139,7 +141,7 @@ function PlayerStatistics({
   );
 }
 
-function FavoriteGames() {
+function FavoriteGames({ favorites }: { favorites: UserFavoriteGameEntry[] }) {
   return (
     <section
       aria-labelledby="favorite-games-title"
@@ -152,20 +154,58 @@ function FavoriteGames() {
         Favorite games
       </h2>
 
-      <div className="rounded-2xl bg-[#373646] p-8 text-center ring-1 ring-inset ring-[#55516c]">
-        <Gamepad2 className="mx-auto mb-3 size-8 text-[#8870b6]" />
-
-        <p className="font-medium">No favorite games yet</p>
-
-        <p className="mt-1 text-sm text-[#b4aec7]">
-          Favorite games will appear here once you add them to your profile.
-        </p>
-      </div>
+      {favorites.length > 0 ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {favorites.map((game) => (
+            <Link
+              key={game.id}
+              to={game.steam_app_id ? `/gamedetails/${game.steam_app_id}` : "#"}
+              className="group flex flex-col overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] transition-colors hover:border-[#c2ade7]"
+            >
+              <div className="aspect-[3/2] w-full bg-[#2a2838] overflow-hidden">
+                {game.cover_image_url ? (
+                  <img
+                    src={game.cover_image_url}
+                    alt={game.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <Gamepad2 className="size-8 text-[#8870b6]" />
+                  </div>
+                )}
+              </div>
+              <div className="p-3">
+                <p className="truncate text-sm font-medium group-hover:text-[#c2ade7]">
+                  {game.title}
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-[#b4aec7]">
+                  {game.genres.join(" / ") || "Favorite"}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-[#373646] p-8 text-center ring-1 ring-inset ring-[#55516c]">
+          <Gamepad2 className="mx-auto mb-3 size-8 text-[#8870b6]" />
+          <p className="font-medium">No favorite games yet</p>
+          <p className="mt-1 text-sm text-[#b4aec7]">
+            Favorite games will appear here once you click the heart icon on games in your library.
+          </p>
+        </div>
+      )}
     </section>
   );
 }
 
-function FriendsBar({ friends }: { friends: SocialUser[] }) {
+function FriendsBar({
+  friends,
+  onSelectFriend,
+}: {
+  friends: SocialUser[];
+  onSelectFriend: (friend: SocialUser) => void;
+}) {
   return (
     <section
       aria-labelledby="friends-title"
@@ -192,10 +232,11 @@ function FriendsBar({ friends }: { friends: SocialUser[] }) {
           friends.map((friend) => {
             const displayName = friend.nickname?.trim() || friend.username;
             return (
-              <Link
+              <button
                 key={friend.id}
-                to={`/profile/${encodeURIComponent(friend.username)}`}
-                className="flex flex-col items-center gap-2 shrink-0 text-center group"
+                type="button"
+                onClick={() => onSelectFriend(friend)}
+                className="flex flex-col items-center gap-2 shrink-0 text-center group cursor-pointer bg-transparent border-0"
               >
                 <Avatar className="size-14 border-2 border-[#8870b6] bg-[#4d3e68] group-hover:border-[#c2ade7] transition-colors">
                   <AvatarImage
@@ -213,7 +254,7 @@ function FriendsBar({ friends }: { friends: SocialUser[] }) {
                 >
                   {displayName}
                 </span>
-              </Link>
+              </button>
             );
           })
         ) : (
@@ -226,6 +267,78 @@ function FriendsBar({ friends }: { friends: SocialUser[] }) {
   );
 }
 
+function MiniProfileModal({
+  friend,
+  onClose,
+}: {
+  friend: SocialUser | null;
+  onClose: () => void;
+}) {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  if (!friend) return null;
+
+  const displayName = friend.nickname?.trim() || friend.username;
+
+  return (
+    <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0">
+      <div
+        ref={modalRef}
+        className="relative w-full max-w-sm rounded-2xl border border-[#55516c] bg-[#312e45] p-6 text-[#e0deeb] shadow-2xl animate-in zoom-in-95 z-[9999]"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded p-1 text-[#b4aec7] hover:text-white"
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </button>
+
+        <div className="flex flex-col items-center text-center">
+          <Avatar className="size-20 border-2 border-[#8870b6] bg-[#4d3e68]">
+            <AvatarImage src={friend.avatar_url || undefined} alt={displayName} className="object-cover" />
+            <AvatarFallback className="bg-[#4d3e68]">
+              <Users className="size-8 text-[#c2ade7]" />
+            </AvatarFallback>
+          </Avatar>
+
+          <h3 className="mt-4 text-xl font-bold text-white">{displayName}</h3>
+          <p className="text-xs text-[#b4aec7]">@{friend.username}</p>
+
+          <p className="mt-3 text-xs leading-relaxed text-[#d0ccdc]">
+            {friend.bio?.trim() || "No bio provided."}
+          </p>
+
+          <div className="mt-6 flex w-full items-center gap-3">
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#55516c] bg-[#2a2838] px-3 text-xs text-[#c2ade7]">
+              <UserCheck className="size-3.5" /> Friend
+            </span>
+            <Button
+              asChild
+              className="flex-h-9 flex-1 bg-[#8063a8] text-white hover:bg-[#9274bb] text-xs font-semibold h-9"
+            >
+              <Link to={`/profile/${encodeURIComponent(friend.username)}`} onClick={onClose}>
+                View Full Profile <ExternalLink className="size-3.5 ml-1.5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileActivity() {
   return (
     <section aria-label="Game list">
@@ -233,7 +346,7 @@ function ProfileActivity() {
         <div>
           <h2 className="text-xl font-semibold">Your Library</h2>
           <p className="mt-2 text-sm text-[#b4aec7]">
-            Your game library will appear here when the feature is available.
+            Explore your game collection and track your progress across your library.
           </p>
         </div>
 
@@ -249,7 +362,7 @@ function ProfileActivity() {
         </Button>
       </Card>
     </section>
-  )
+  );
 }
 
 export default function Profile() {
@@ -258,9 +371,12 @@ export default function Profile() {
 
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [favorites, setFavorites] = useState<UserFavoriteGameEntry[]>([]);
   const [libraryTotal, setLibraryTotal] = useState<number>(0);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [selectedFriend, setSelectedFriend] = useState<SocialUser | null>(null);
 
   const isOwnProfile = !username || Boolean(authUser && authUser.username === username);
 
@@ -272,10 +388,11 @@ export default function Profile() {
     async function fetchProfileData() {
       try {
         if (isOwnProfile) {
-          const [meData, friendsData, listData] = await Promise.all([
+          const [meData, friendsData, listData, favsData] = await Promise.all([
             getMe(),
             getFriends(),
             getMyGameList(),
+            getFavoriteGames(),
           ]);
 
           if (isMounted) {
@@ -298,6 +415,7 @@ export default function Profile() {
               reviews_count: 0,
             });
             setFriends(friendsData ?? []);
+            setFavorites(favsData ?? []);
             setLibraryTotal(total);
           }
         } else {
@@ -305,6 +423,7 @@ export default function Profile() {
           if (isMounted) {
             setProfileUser(profileData);
             setFriends([]);
+            setFavorites(profileData.favorites ?? []); 
             
             if (profileData.library) {
               const total = Object.values(profileData.library).reduce(
@@ -365,11 +484,12 @@ export default function Profile() {
             friendCount={profileUser.friend_count ?? friends.length}
             reviewsCount={profileUser.reviews_count ?? 0}
           />
-          <FavoriteGames />
-          {isOwnProfile && <FriendsBar friends={friends} />}
+          <FavoriteGames favorites={favorites} />
+          {isOwnProfile && <FriendsBar friends={friends} onSelectFriend={setSelectedFriend} />}
           <ProfileActivity />
         </main>
         <Footer />
+        <MiniProfileModal friend={selectedFriend} onClose={() => setSelectedFriend(null)} />
       </div>
     </div>
   );

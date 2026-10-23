@@ -10,10 +10,6 @@ import {
   UserPlus,
   Users,
   X,
-  MoreVertical,
-  ShieldAlert,
-  ExternalLink,
-  UserCheck,
 } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
@@ -26,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MiniProfileCard from "@/components/social/MiniProfileCard";
-
 import {
   getSuggestedPlayers,
   getFriends,
@@ -42,19 +37,21 @@ import {
   reportUser,
   type SocialUser,
   type Friendship as ServiceFriendship,
+  type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 
-type FavoriteGame = {
-  id?: number;
-  title: string;
-  image?: string | null;
-};
+
+
+// type FavoriteGame = {
+//   id?: number;
+//   title: string;
+//   image?: string | null;
+// };
 
 type Player = SocialUser & {
   bio?: string | null;
-  favorites?: FavoriteGame[];
+  favorites?: UserFavoriteGameEntry[];
   banner_url?: string | null;
-  is_friend?: boolean;
 };
 
 type Friendship = ServiceFriendship & {
@@ -474,14 +471,13 @@ export default function Friends() {
                     friends.map((player) => (
                       <PlayerCard
                         key={player.id}
-                        player={{ ...player, is_friend: true }}
+                        player={player}
                         busy={busyUsername === player.username}
                         onAdd={() => setModalConfig({ type: "unfriend", player })}
                         onBlock={() => setModalConfig({ type: "block", player })}
                         onReport={() => setModalConfig({ type: "report", player })}
                         addLabel="Unfriend"
                         addIcon={<UserMinus className="size-4" />}
-                        isFriendsTab={true}
                       />
                     ))
                   ) : (
@@ -662,8 +658,23 @@ type PlayerCardProps = {
     onClick: () => void;
   };
   isBlockedView?: boolean;
-  isFriendsTab?: boolean;
 };
+
+// type PlayerCardProps = {
+//   player: Player;
+//   busy: boolean;
+//   onAdd: () => void;
+//   onBlock: () => void;
+//   onReport: () => void;
+//   addLabel: string;
+//   addIcon?: React.ReactNode;
+//   secondaryAction?: {
+//     label: string;
+//     icon: React.ReactNode;
+//     onClick: () => void;
+//   };
+//   isBlockedView?: boolean;
+// };
 
 function PlayerCard({
   player,
@@ -675,12 +686,8 @@ function PlayerCard({
   addIcon,
   secondaryAction,
   isBlockedView = false,
-  isFriendsTab = false,
 }: PlayerCardProps) {
-  const favorites = player.favorites ?? [
-    { title: "Hollow Knight", image: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg" },
-    { title: "Hades", image: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg" },
-  ];
+  const favorites = player.favorites ?? [];
   const displayName = getDisplayName(player);
   const [showMiniProfile, setShowMiniProfile] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
@@ -688,6 +695,8 @@ function PlayerCard({
   const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
+    
+    // If less than 320px space below, render popover ABOVE the avatar
     setOpenUpward(spaceBelow < 320);
     setShowMiniProfile(true);
   };
@@ -717,7 +726,6 @@ function PlayerCard({
                 onBlock={onBlock}
                 onReport={onReport}
                 openUpward={openUpward}
-                isFriendsTab={isFriendsTab}
               />
             )}
           </div>
@@ -733,75 +741,74 @@ function PlayerCard({
           </div>
         </div>
 
-        {/* Favorite Games Column */}
-        <div className="hidden flex-col gap-1.5 md:flex">
+        {/* Middle Column: Favorite Games Preview */}
+        <div className="hidden md:flex flex-col gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-[#b4aec7]">
-            Favorite Games
+            Favorites
           </span>
-          <div className="flex gap-2">
-            {favorites.slice(0, 2).map((game, i) => (
-              <div key={i} className="h-14 flex-1 overflow-hidden rounded-lg bg-[#2a2838] border border-[#514961]">
-                {game.image ? (
-                  <img src={game.image} alt={game.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <Gamepad2 className="size-4 text-[#8870b6]" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          {favorites.length > 0 ? (
+            <div className="flex items-center gap-2">
+              {favorites.slice(0, 3).map((fav, index) => (
+                <div
+                  key={fav.id || index}
+                  className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#514961] bg-[#2a2838]"
+                  title={fav.title}
+                >
+                  {fav.cover_image_url ? (
+                    <img src={fav.cover_image_url} alt={fav.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Gamepad2 className="size-5 text-[#8870b6]" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[#b4aec7]">No favorite games listed.</p>
+          )}
         </div>
 
-        {/* Actions Column */}
-        <div className="flex items-center gap-2 md:flex-col md:items-stretch md:justify-center">
+        {/* Right Column: Actions */}
+        <div className="flex flex-col gap-2 md:items-end">
           <Button
-            disabled={busy}
             onClick={onAdd}
-            className="flex-1 bg-[#8063a8] text-white hover:bg-[#9274bb] shadow-none h-10"
+            disabled={busy}
+            className="w-full bg-[#8063a8] text-white hover:bg-[#9274bb] md:w-auto text-xs font-semibold h-9"
           >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <>
-                {addIcon}
-                <span>{addLabel}</span>
-              </>
-            )}
+            {addIcon}
+            <span className={addIcon ? "ml-1.5" : ""}>{addLabel}</span>
           </Button>
 
           {secondaryAction && (
             <Button
               variant="outline"
-              disabled={busy}
               onClick={secondaryAction.onClick}
-              className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#454256] hover:text-white h-10"
+              disabled={busy}
+              className="w-full border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#454256] hover:text-white md:w-auto text-xs h-9"
             >
               {secondaryAction.icon}
-              <span>{secondaryAction.label}</span>
+              <span className="ml-1.5">{secondaryAction.label}</span>
             </Button>
           )}
 
           {!isBlockedView && (
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="icon"
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                type="button"
                 onClick={onBlock}
-                title="Block User"
-                className="border-[#514961] bg-transparent text-[#b4aec7] hover:bg-[#454256] hover:text-white size-10"
+                className="text-[11px] text-[#b4aec7] hover:text-[#f1b9c4] transition-colors"
               >
-                <Ban className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
+                Block
+              </button>
+              <span className="text-[#514961]">•</span>
+              <button
+                type="button"
                 onClick={onReport}
-                title="Report User"
-                className="border-[#514961] bg-transparent text-[#b4aec7] hover:bg-[#454256] hover:text-white size-10"
+                className="text-[11px] text-[#b4aec7] hover:text-[#f1b9c4] transition-colors"
               >
-                <Flag className="size-4" />
-              </Button>
+                Report
+              </button>
             </div>
           )}
         </div>

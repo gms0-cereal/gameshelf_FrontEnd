@@ -11,13 +11,13 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { getFriends, type SocialUser } from "@/services/Userservice";
+import { getFriends, type SocialUser, type UserFavoriteGameEntry } from "@/services/Userservice";
 
 type MiniProfileProps = {
   user: SocialUser & {
     banner_url?: string | null;
     is_friend?: boolean;
-    favorites?: Array<{ title: string; image?: string }>;
+    favorites?: UserFavoriteGameEntry[];
   };
   position?: { top: number; left: number };
   onAddFriend?: () => void;
@@ -45,19 +45,7 @@ export default function MiniProfileCard({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const displayName = user.nickname?.trim() || user.username;
-
-  const favorites = user.favorites ?? [
-    {
-      title: "Hollow Knight",
-      image:
-        "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg",
-    },
-    {
-      title: "Hades",
-      image:
-        "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg",
-    },
-  ];
+  const favorites = user.favorites ?? [];
 
   // Dynamically check friends list via getFriends()
   useEffect(() => {
@@ -117,9 +105,8 @@ export default function MiniProfileCard({
       style={containerStyle}
       className={containerClassName}
     >
-      {/* Banner Container - Notice NO overflow-hidden on outer container */}
+      {/* Banner Container */}
       <div className="relative h-24 w-full">
-        {/* Rounded Banner Image */}
         <div className="absolute inset-0 rounded-t-2xl overflow-hidden bg-[#373646]">
           {user.banner_url ? (
             <img
@@ -133,13 +120,11 @@ export default function MiniProfileCard({
           ) : (
             <div className="h-full w-full bg-gradient-to-r from-[#4d3e68] via-[#373646] to-[#2a2838]" />
           )}
-          {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#2a2838] via-transparent to-black/30" />
         </div>
 
         {/* Top-Right Side-by-Side Action Buttons */}
         <div className="absolute right-3 top-3 z-30 flex items-center gap-2">
-          {/* Friend Status Badge / Add Button */}
           {isFriend ? (
             <div
               title="Already Friends"
@@ -159,7 +144,6 @@ export default function MiniProfileCard({
             )
           )}
 
-          {/* Three-Dots Menu Toggle */}
           <div ref={menuRef} className="relative">
             <button
               type="button"
@@ -169,7 +153,6 @@ export default function MiniProfileCard({
               <MoreVertical className="size-4" />
             </button>
 
-            {/* Dropdown Popup with high z-index and no parent clipping */}
             {menuOpen && (
               <div className="absolute right-0 top-8 z-[9999] w-36 rounded-xl border border-[#55516c] bg-[#373646] p-1 shadow-2xl">
                 <button
@@ -230,24 +213,28 @@ export default function MiniProfileCard({
             Favorite games
           </p>
           <div className="flex gap-2">
-            {favorites.slice(0, 3).map((game, i) => (
-              <div
-                key={i}
-                className="h-12 flex-1 overflow-hidden rounded-lg bg-[#373646]"
-              >
-                {game.image ? (
-                  <img
-                    src={game.image}
-                    alt={game.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <Gamepad2 className="size-4 text-[#8870b6]" />
-                  </div>
-                )}
-              </div>
-            ))}
+            {favorites.length > 0 ? (
+              favorites.slice(0, 3).map((game, i) => (
+                <div
+                  key={game.id || i}
+                  className="h-12 flex-1 overflow-hidden rounded-lg bg-[#373646]"
+                >
+                  {game.cover_image_url ? (
+                    <img
+                      src={game.cover_image_url}
+                      alt={game.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Gamepad2 className="size-4 text-[#8870b6]" />
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-[11px] text-[#b4aec7]">No favorite games listed.</p>
+            )}
           </div>
         </div>
 
