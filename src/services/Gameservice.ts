@@ -1,0 +1,254 @@
+import api from "../lib/api";
+
+export interface GameListItem {
+  id: number;
+  title: string;
+  slug: string | null;
+  cover_image_url: string | null;
+  release_date: string | null;
+  game_type: "base" | "dlc" | "expansion";
+  genres?: string[];
+}
+
+export interface GameDetail extends GameListItem {
+  description: string | null;
+  banner_image_url: string | null;
+  parent_game: number | null;
+  genres: string[];
+  tags: string[];
+  developers: string[];
+  publishers: string[];
+}
+
+export interface Paginated<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+// ---------------------------------------------------------------------------
+// Steam list
+// ---------------------------------------------------------------------------
+export interface SteamGame {
+  appid: number;
+  name: string;
+}
+
+export interface SteamGameListResponse {
+  games: SteamGame[];
+  last_appid: number | null;
+  have_more_results: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Steam details (store.steampowered.com/api/appdetails -> `data`)
+// ---------------------------------------------------------------------------
+export interface SteamScreenshot {
+  id: number;
+  path_thumbnail: string;
+  path_full: string;
+}
+
+export interface SteamMovie {
+  id: number;
+  name: string;
+  thumbnail: string;
+  webm?: Record<string, string>;
+  mp4?: Record<string, string>;
+}
+
+export interface SteamGameDetail {
+  steam_appid: number;
+  name: string;
+  type: string;
+  is_free: boolean;
+  short_description: string;
+  about_the_game: string;
+  header_image: string;
+  background_raw?: string;
+  developers?: string[];
+  publishers?: string[];
+  genres?: { id: string; description: string }[];
+  platforms?: { windows: boolean; mac: boolean; linux: boolean };
+  release_date?: { coming_soon: boolean; date: string };
+  price_overview?: { final_formatted: string; discount_percent: number };
+  metacritic?: { score: number; url: string };
+  screenshots?: SteamScreenshot[];
+  movies?: SteamMovie[];
+  dlc?: number[];
+}
+
+// ---------------------------------------------------------------------------
+// Steam reviews
+// ---------------------------------------------------------------------------
+export interface SteamReview {
+  recommendationid: string;
+  author: {
+    steamid: string;
+    playtime_forever?: number; // minutes
+  };
+  review: string;
+  voted_up: boolean;
+  votes_up: number;
+  timestamp_created: number; // unix seconds
+}
+
+export interface SteamReviewsResponse {
+  summary: {
+    total_positive?: number;
+    total_negative?: number;
+    total_reviews?: number;
+    review_score_desc?: string;
+  };
+  reviews: SteamReview[];
+  cursor: string;
+  total_matching: number;
+}
+
+// GET /games/?page=1
+export async function getGames(page = 1): Promise<Paginated<GameListItem>> {
+  const { data } = await api.get<Paginated<GameListItem>>("/games/", {
+    params: { page },
+  });
+
+  return data;
+}
+
+// GET /games/<id>/
+export async function getGame(id: number): Promise<GameDetail> {
+  const { data } = await api.get<GameDetail>(`/games/${id}/`);
+  return data;
+}
+
+// GET /games/steam/
+export async function getSteamGames(
+  limit = 12,
+  lastAppId = 0
+): Promise<SteamGameListResponse> {
+  const { data } = await api.get<SteamGameListResponse>("/games/steam/", {
+    params: {
+      limit,
+      last_appid: lastAppId,
+    },
+  });
+
+  return data;
+}
+
+// GET /games/steam/<app_id>/
+export async function getSteamGameDetails(
+  appId: number | string
+): Promise<SteamGameDetail> {
+  const { data } = await api.get<SteamGameDetail>(`/games/steam/${appId}/`);
+  return data;
+}
+
+// GET /games/steam/<app_id>/reviews/
+export async function getSteamGameReviews(
+  appId: number | string,
+  cursor = "*",
+  numPerPage = 5
+): Promise<SteamReviewsResponse> {
+  const { data } = await api.get<SteamReviewsResponse>(
+    `/games/steam/${appId}/reviews/`,
+    { params: { cursor, num_per_page: numPerPage } }
+  );
+
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// My list (requires the user to be logged in)
+// ---------------------------------------------------------------------------
+export type ListStatus =
+  | "playing"
+  | "plan_to_play"
+  | "completed"
+  | "on_hold"
+  | "dropped";
+
+export const LIST_STATUS_OPTIONS: { value: ListStatus; label: string }[] = [
+  { value: "playing", label: "Playing" },
+  { value: "plan_to_play", label: "Plan to Play" },
+  { value: "completed", label: "Completed" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "dropped", label: "Dropped" },
+];
+
+export interface UserGameEntry {
+  id: number;
+  game_id: number;
+  steam_app_id: number | null;
+  title: string;
+  cover_image_url: string | null;
+  genres: string[];
+  status: ListStatus;
+  progress: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  score?: number | null; // not provided by the backend yet
+}
+
+export interface UserGameListResponse {
+  counts: Record<"all" | ListStatus, number>;
+  results: UserGameEntry[];
+}
+
+export type ListStatusCheck =
+  | { in_list: false }
+  | ({ in_list: true } & UserGameEntry);
+
+// GET /games/list/?status=&search=
+export async function getMyGameList(params: {
+  status?: ListStatus | "all";
+  search?: string;
+} = {}): Promise<UserGameListResponse> {
+  const { data } = await api.get<UserGameListResponse>("/list/", {
+    params: {
+      status: params.status && params.status !== "all" ? params.status : undefined,
+      search: params.search || undefined,
+    },
+  });
+  return data;
+}
+
+// POST /games/list/  (adds the game, or changes its status if already added)
+export async function addToMyList(
+  steamAppId: number | string,
+  status: ListStatus = "plan_to_play"
+): Promise<UserGameEntry> {
+  const { data } = await api.post<UserGameEntry>("/list/", {
+    steam_app_id: Number(steamAppId),
+    status,
+  });
+  return data;
+}
+
+// PATCH /games/list/<id>/
+export async function updateListEntry(
+  entryId: number,
+  changes: Partial<Pick<UserGameEntry, "status" | "progress" | "notes">>
+): Promise<UserGameEntry> {
+  const { data } = await api.patch<UserGameEntry>(
+    `/list/${entryId}/`,
+    changes
+  );
+  return data;
+}
+
+// DELETE /games/list/<id>/
+export async function removeListEntry(entryId: number): Promise<void> {
+  await api.delete(`/list/${entryId}/`);
+}
+
+// GET /games/list/steam/<app_id>/
+export async function getListStatus(
+  appId: number | string
+): Promise<ListStatusCheck> {
+  const { data } = await api.get<ListStatusCheck>(
+    `/list/steam/${appId}/`
+  );
+  return data;
+}
