@@ -42,6 +42,37 @@ export interface SteamGameListResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Steam game cards (details + GameShelf rating, assembled by the backend)
+// Returned by /games/steam/summaries/ and /games/steam/?expand=1
+// ---------------------------------------------------------------------------
+export interface SteamGameCard {
+  appid: number;
+  name: string;
+  header_image: string;
+  genres: string[];
+  platforms: string[];
+  release_year: number | null;
+  price: string | null;
+  score: number | null;
+  short_description: string;
+  metacritic_score: number | null;
+  // third-party rating (Steam), 0-10
+  steam_rating: { score: number; label: string; total_reviews: number } | null;
+  // GameShelf community
+  community_rating: number | null;
+  rating_count: number;
+  // the logged-in user's own rating, null if not rated
+  my_score: number | null;
+}
+
+
+export interface SteamGameCardListResponse {
+  games: SteamGameCard[];
+  last_appid: number | null;
+  have_more_results: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Steam details (store.steampowered.com/api/appdetails -> `data`)
 // ---------------------------------------------------------------------------
 export interface SteamScreenshot {
@@ -135,8 +166,6 @@ export interface SteamReviewsResponse {
   total_matching: number;
 }
 
-
-
 // GET /reviews/<id>
 export async function getGameShelfReviews(
   gameId: number | string
@@ -174,6 +203,38 @@ export async function getSteamGames(
   });
 
   return data;
+}
+
+// GET /games/steam/?expand=1
+// Same catalog page, but each game already has its details and rating, so the
+// page needs no extra per-game requests.
+export async function getSteamGamesExpanded(
+  limit = 12,
+  lastAppId = 0
+): Promise<SteamGameCardListResponse> {
+  const { data } = await api.get<SteamGameCardListResponse>("/games/steam/", {
+    params: {
+      limit,
+      last_appid: lastAppId,
+      expand: 1,
+    },
+  });
+
+  return data;
+}
+
+// GET /games/steam/summaries/?appids=1,2,3  (backend allows up to 30 ids)
+export async function getSteamGameSummaries(
+  appIds: number[]
+): Promise<SteamGameCard[]> {
+  if (appIds.length === 0) return [];
+
+  const { data } = await api.get<{ results: SteamGameCard[] }>(
+    "/games/steam/summaries/",
+    { params: { appids: appIds.join(",") } }
+  );
+
+  return data.results;
 }
 
 // GET /games/steam/<app_id>/
