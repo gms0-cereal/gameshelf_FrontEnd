@@ -36,6 +36,7 @@ const App = () => (
             <Route path="/my-library" element={<MyLibrary />} />
             <Route path="/playlists/new" element={<CreatePlaylist />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:username" element={<Profile />} />
             <Route path="/friends" element={<Friends />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/profile/edit" element={<EditProfile />} />
