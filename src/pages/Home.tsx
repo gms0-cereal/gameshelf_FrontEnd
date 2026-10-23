@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { ChevronLeft, ChevronRight, Heart, Info, ListMusic } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
 import {
   getSteamGamesExpanded,
   getSteamGameSummaries,
@@ -15,6 +15,7 @@ import GameGrid from "@/components/games/GameGrid";
 import { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
+import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 
 const STEAM_PAGE_SIZE = 12;
 
@@ -59,6 +60,7 @@ function formatLibraryActivity(date: string | null) {
     year: "numeric",
   })}`;
 }
+
 
 // Pure conversion, no network: backend card + the user's list entry -> GameSummary.
 function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSummary {
@@ -114,51 +116,7 @@ function pickSummaries(
     .map((card) => toGameSummary(card, userListMap.get(String(card.appid))));
 }
 
-function PlaylistCard({ playlist }: { playlist: Playlist }) {
-  const ownerName = playlist.owner.nickname || playlist.owner.username;
 
-  return (
-    <article className="overflow-hidden rounded-xl border border-[#55516c] bg-[#373646]">
-      <div className="grid aspect-[2/1] grid-cols-2 gap-px bg-[#55516c]">
-        {[0, 1, 2, 3].map((index) => {
-          const game = playlist.games[index];
-          return game?.cover_url ? (
-            <img
-              key={`${game.id}-${index}`}
-              src={game.cover_url}
-              alt=""
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div
-              key={`empty-${index}`}
-              className="flex items-center justify-center bg-gradient-to-br from-[#3b3560] to-[#1d2b33]"
-            >
-              <ListMusic className="size-6 text-[#8b86a3]" aria-hidden="true" />
-            </div>
-          );
-        })}
-      </div>
-      <div className="p-4">
-        <h3 className="truncate font-semibold">{playlist.title}</h3>
-        <p className="mt-1 truncate text-xs text-[#b4aec7]">By {ownerName}</p>
-        {playlist.description && (
-          <p className="mt-3 line-clamp-2 text-[13px] leading-5 text-[#b4aec7]">
-            {playlist.description}
-          </p>
-        )}
-        <div className="mt-4 flex items-center justify-between text-xs text-[#b4aec7]">
-          <span>{playlist.game_count} {playlist.game_count === 1 ? "game" : "games"}</span>
-          <span className="inline-flex items-center gap-1.5">
-            <Heart className="size-3.5" aria-hidden="true" />
-            {playlist.like_count}
-          </span>
-        </div>
-      </div>
-    </article>
-  );
-}
 
 export default function Home() {
   // Raw cards from the backend. The user's list status is applied separately
@@ -180,6 +138,13 @@ export default function Home() {
   const [communityPlaylists, setCommunityPlaylists] = useState<Playlist[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(true);
   const [playlistsError, setPlaylistsError] = useState<string | null>(null);
+    //playlist carousel
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarousel = (dir: 1 | -1) =>
+    carouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
+
+  // in the effect:
+  getPlaylists({ limit: 10, offset: 0 })
 
   const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Player";
 
@@ -443,57 +408,53 @@ export default function Home() {
             </nav>
           </section>
 
-          <section
-            id="community-playlists"
-            aria-labelledby="community-playlists-title"
-            className="flex flex-col gap-8"
-          >
-            <div className="flex min-h-[29px] flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2
-                  id="community-playlists-title"
-                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
-                >
-                  Community Playlists
-                </h2>
-                <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
-                  Discover what other players are curating
-                </p>
-              </div>
+          {/* Community Playlists Section */}
+          <section id="community-playlists" aria-labelledby="community-playlists-title" className="flex flex-col gap-5">
+            <div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 id="community-playlists-title" className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">
+                    Community Playlists
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">Discover what other players are curating</p>
+                  <Link to="/playlists" className="text-[13px] text-[#b4aec7] hover:text-[#e0deeb]">
+                    View more →
+                  </Link>
+                </div>
 
-              <Link
-                to="/playlists/new"
-                className="rounded-lg bg-[#9f4044] px-4 py-2.5 text-[13px] font-medium text-[#e0deeb] transition-colors hover:bg-[#ae494e]"
-              >
-                Create playlist
-              </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/playlists/new"
+                    className="mr-2 rounded-lg bg-[#9f4044] px-4 py-2.5 text-[13px] font-medium hover:bg-[#ae494e]"
+                  >
+                    Create playlist
+                  </Link>
+                  <Button variant="outline" size="icon" onClick={() => scrollCarousel(-1)} aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]">
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={() => scrollCarousel(1)} aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]">
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {playlistsLoading && (
-              <p role="status" className="text-sm text-[#b4aec7]">
-                Loading community playlists…
-              </p>
-            )}
-
-            {playlistsError && (
-              <p role="alert" className="text-sm text-[#e58d91]">
-                {playlistsError}
-              </p>
-            )}
+            {playlistsLoading && <p role="status" className="text-sm text-[#b4aec7]">Loading community playlists…</p>}
+            {playlistsError && <p role="alert" className="text-sm text-[#e58d91]">{playlistsError}</p>}
 
             {!playlistsLoading && !playlistsError && communityPlaylists.length === 0 && (
               <div className="rounded-xl border border-dashed border-[#55516c] px-6 py-10 text-center">
                 <ListMusic className="mx-auto size-8 text-[#8b86a3]" strokeWidth={1.5} />
-                <p className="mt-3 text-sm text-[#b4aec7]">
-                  No public playlists yet. Be the first to share one.
-                </p>
+                <p className="mt-3 text-sm text-[#b4aec7]">No public playlists yet. Be the first to share one.</p>
               </div>
             )}
 
             {!playlistsLoading && !playlistsError && communityPlaylists.length > 0 && (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <div ref={carouselRef} className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {communityPlaylists.map((playlist) => (
-                  <PlaylistCard key={playlist.id} playlist={playlist} />
+                  <PlaylistCarouselCard key={playlist.id} playlist={playlist} />
                 ))}
               </div>
             )}
