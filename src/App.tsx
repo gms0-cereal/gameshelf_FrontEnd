@@ -12,10 +12,13 @@ import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
 import MyLibrary from "./pages/MyLibrary";
 import GameReviews from "./pages/GameReviews";
-
+import ChooseInterest from "./pages/ChooseInterest";
+import PlaylistDetails from "./pages/PlaylistDetails";
 import Friends from "./pages/Friends";
 import Browse from "./pages/Browse";
 import CreatePlaylist from "./pages/CreatePlaylist";
+import CommunityPlaylists from "./pages/CommunityPlaylists";
+
 
 const queryClient = new QueryClient();
 
@@ -35,13 +38,15 @@ const App = () => (
             <Route path="/gamedetails/:appid/reviews" element={<GameReviews />} />
             <Route path="/my-library" element={<MyLibrary />} />
             <Route path="/playlists/new" element={<CreatePlaylist />} />
+            <Route path="/playlists/:id" element={<PlaylistDetails />} />
+            <Route path="/playlists" element={<CommunityPlaylists />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:username" element={<Profile />} />
             <Route path="/friends" element={<Friends />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/browse" element={<Browse />} />
-            
+            <Route path="/interests" element={<ChooseInterest />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

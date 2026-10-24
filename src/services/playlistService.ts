@@ -108,6 +108,11 @@ function normalizePickerGame(value: unknown): PickerGame | null {
 }
 
 // ─── Create (library app: POST /list/playlists/) ──────────────────────────────
+export interface GameSearchFilters {
+  genre?: string;
+  platform?: string;
+}
+
 export async function createPlaylist(input: CreatePlaylistInput) {
   const { data } = await api.post<{ id: number; title: string }>("/list/playlists/", {
     title: input.title,
@@ -119,12 +124,19 @@ export async function createPlaylist(input: CreatePlaylistInput) {
 }
 
 // ─── Steam search for the "Find games" box (social app) ───────────────────────
-export async function searchSteamGames(q: string, signal?: AbortSignal): Promise<PickerGame[]> {
+export async function searchSteamGames(
+  q: string,
+  filters: GameSearchFilters = {},
+  signal?: AbortSignal
+): Promise<PickerGame[]> {
   const query = q.trim();
-  if (!query) return [];
 
   const { data } = await api.get("/list/playlists/games/", {
-    params: { search: query },
+    params: {
+      search: query || undefined,
+      genre: filters.genre || undefined,
+      platform: filters.platform || undefined,
+    },
     signal,
   });
   const seen = new Set<number>();
@@ -142,6 +154,9 @@ export async function searchSteamGames(q: string, signal?: AbortSignal): Promise
 export async function getPlaylists(params?: {
   search?: string;
   user?: string;
+  sort?: "newest" | "oldest" | "updated" | "title";
+  genre?: string;
+  platform?: string;
   limit?: number;
   offset?: number;
 }): Promise<PaginatedPlaylists> {

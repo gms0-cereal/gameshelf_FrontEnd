@@ -31,7 +31,7 @@ import {
 } from "@/services/Reviewservice";
 import ThirdPartyReviews from "@/components/reviews/ThirdPartyReviews";
 import GameshelfReviewItem from "@/components/reviews/GameshelfReviewItem";
-
+import SimilarGames from "@/components/games/SimilarGames";
 const REVIEWS_PER_PAGE = 10;
 const DLC_LIMIT = 3;
 const SCREENSHOT_LIMIT = 6;
@@ -730,6 +730,9 @@ export default function GameDetails() {
                   </div>
                 </section>
               )}
+
+              {/* Similar games */}
+              <SimilarGames appId={game.steam_appid} />
 
               {/* Reviews */}
               <section id="reviews" className="scroll-mt-6">
