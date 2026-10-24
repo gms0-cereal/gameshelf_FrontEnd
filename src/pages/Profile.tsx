@@ -92,7 +92,7 @@ function ProfileBanner({
             variant="outline"
             className={`${OUTLINE_BUTTON} w-[137px] shrink-0 border-white/20 bg-black/20 text-white hover:bg-white/10 hover:text-white`}
           >
-            <Link to="/settings">
+            <Link to="/profile/edit">
               <Pencil
                 className="size-4"
                 strokeWidth={1.7}
