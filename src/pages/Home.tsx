@@ -128,6 +128,8 @@ import GameGrid from "@/components/games/GameGrid";
 import { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
+import { getTasteRecommendations, type TasteRecommendation } from "../services/tasteService";
+
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 
 const STEAM_PAGE_SIZE = 12;
@@ -319,6 +321,14 @@ function pickSummaries(
 
 
 
+function recommendationBio(reason?: TasteRecommendation["reason"]) {
+  if (reason?.similar_to) return `Because you like ${reason.similar_to}.`;
+  const matched = [...(reason?.matched_genres ?? []), ...(reason?.matched_tags ?? [])];
+  return matched.length > 0
+    ? `Matches your interests: ${matched.slice(0, 4).join(", ")}.`
+    : "Recommended based on your interests.";
+}
+
 export default function Home() {
   // Raw cards from the backend. The user's list status is applied separately
   // (see useMemo below), so loading the list never triggers another fetch.
@@ -363,6 +373,49 @@ export default function Home() {
   getPlaylists({ limit: 10, offset: 0 })
 
   const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Player";
+
+  const [recommendedGames, setRecommendedGames] = useState<GameSummary[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(true);
+  const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getTasteRecommendations()
+      .then((data) => {
+        if (cancelled) return;
+
+        const games = data.results ?? [];
+
+        const summaries: GameSummary[] = (data.results ?? []).map(({ game, reason }) => ({
+          id: game.appid,
+          title: game.title,
+          slug: String(game.appid),
+          cover: game.header_image ?? "",
+          genres: game.genres?.length ? game.genres : ["Steam Game"],
+          statusLabel: "Unplayed",
+          statusClassName: STATUS_STYLES.unplayed.className,
+          bio: recommendationBio(reason),
+          platform: "PC",
+        }));
+
+        setRecommendedGames(summaries);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRecommendationsError("Failed to load your recommendations.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRecommendationsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -533,13 +586,6 @@ export default function Home() {
               <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px]">Home</h1>
 >>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
             </div>
-
-            <Link
-              to="/interests"
-              className="text-[13px] leading-4 text-[#c2ade7] hover:text-[#e0deeb]"
-            >
-              Tune your suggestions: edit genres and liked games →
-            </Link>
           </div>
 
 <<<<<<< HEAD
@@ -725,6 +771,52 @@ export default function Home() {
               <p className="text-[13px] leading-4 text-[#b4aec7] mt-1">Inspired by your favorite genre</p>
             </div>
             <GameGrid games={rpgGames} loading={rpgGames.length === 0} />
+          </section>
+
+          <section
+            aria-labelledby="taste-recommendations-title"
+            className="flex flex-col gap-8"
+          >
+            <div className="flex flex-col">
+              <div className="flex min-h-[29px] flex-wrap items-center justify-between gap-3">
+                <h2
+                  id="taste-recommendations-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                >
+                  Recommended for You
+                </h2>
+
+                <Link
+                  to="/interests"
+                  className="text-[13px] leading-4 text-[#c2ade7] hover:text-[#e0deeb]"
+                >
+                  Tune your suggestions: edit genres and liked games →
+                </Link>
+              </div>
+
+              <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                Games selected based on your genres, platforms, and liked games.
+              </p>
+            </div>
+
+            {recommendationsError && (
+              <p role="alert" className="text-sm text-[#e58d91]">
+                {recommendationsError}
+              </p>
+            )}
+
+            <GameGrid
+              games={recommendedGames}
+              loading={recommendationsLoading}
+            />
+
+            {!recommendationsLoading &&
+              !recommendationsError &&
+              recommendedGames.length === 0 && (
+                <p className="text-sm text-[#b4aec7]">
+                  No recommendations yet. Update your interests to get personalized suggestions.
+                </p>
+              )}
           </section>
 
           {/* Discover on Steam Section */}

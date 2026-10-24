@@ -12,6 +12,7 @@ import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
 import MyLibrary from "./pages/MyLibrary";
 import GameReviews from "./pages/GameReviews";
+import ChooseInterest from "./pages/ChooseInterest";
 import PlaylistDetails from "./pages/PlaylistDetails";
 import Friends from "./pages/Friends";
 import Browse from "./pages/Browse";
@@ -49,12 +50,6 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/browse" element={<Browse />} />
-
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminOverview />} />
-            <Route path="/admin/games" element={<AdminGames />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
