@@ -42,6 +42,40 @@ export interface SteamGameListResponse {
 }
 
 // ---------------------------------------------------------------------------
+<<<<<<< HEAD
+=======
+// Steam game cards (details + GameShelf rating, assembled by the backend)
+// Returned by /games/steam/summaries/ and /games/steam/?expand=1
+// ---------------------------------------------------------------------------
+export interface SteamGameCard {
+  appid: number;
+  name: string;
+  header_image: string;
+  genres: string[];
+  platforms: string[];
+  release_year: number | null;
+  price: string | null;
+  score: number | null;
+  short_description: string;
+  metacritic_score: number | null;
+  // third-party rating (Steam), 0-10
+  steam_rating: { score: number; label: string; total_reviews: number } | null;
+  // GameShelf community
+  community_rating: number | null;
+  rating_count: number;
+  // the logged-in user's own rating, null if not rated
+  my_score: number | null;
+}
+
+
+export interface SteamGameCardListResponse {
+  games: SteamGameCard[];
+  last_appid: number | null;
+  have_more_results: boolean;
+}
+
+// ---------------------------------------------------------------------------
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 // Steam details (store.steampowered.com/api/appdetails -> `data`)
 // ---------------------------------------------------------------------------
 export interface SteamScreenshot {
@@ -94,6 +128,38 @@ export interface SteamReview {
   timestamp_created: number; // unix seconds
 }
 
+<<<<<<< HEAD
+=======
+// ---------------------------------------------------------------------------
+// GameShelf community reviews
+// ---------------------------------------------------------------------------
+export interface GameShelfReview {
+  id: number | string;
+  username: string;
+  rating: number | null;
+  content: string;
+  created_at: string | null;
+  likes: number;
+}
+
+// Adjust these field names to match what your backend really returns.
+function normalizeReview(raw: any): GameShelfReview {
+  const author = raw.author;
+
+  return {
+    id: raw.id,
+    username:
+      typeof author === "string"
+        ? author
+        : (author?.username ?? raw.username ?? "GameShelf user"),
+    rating: raw.rating ?? null,
+    content: raw.content ?? "",
+    created_at: raw.created_at ?? null,
+    likes: raw.like_count ?? 0,
+  };
+}
+
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 export interface SteamReviewsResponse {
   summary: {
     total_positive?: number;
@@ -106,6 +172,18 @@ export interface SteamReviewsResponse {
   total_matching: number;
 }
 
+<<<<<<< HEAD
+=======
+// GET /reviews/<id>
+export async function getGameShelfReviews(
+  gameId: number | string
+): Promise<GameShelfReview[]> {
+  const { data } = await api.get(`/reviews/${gameId}`);
+  const list = Array.isArray(data) ? data : (data?.results ?? []);
+  return list.map(normalizeReview);
+}
+
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 // GET /games/?page=1
 export async function getGames(page = 1): Promise<Paginated<GameListItem>> {
   const { data } = await api.get<Paginated<GameListItem>>("/games/", {
@@ -136,6 +214,41 @@ export async function getSteamGames(
   return data;
 }
 
+<<<<<<< HEAD
+=======
+// GET /games/steam/?expand=1
+// Same catalog page, but each game already has its details and rating, so the
+// page needs no extra per-game requests.
+export async function getSteamGamesExpanded(
+  limit = 12,
+  lastAppId = 0
+): Promise<SteamGameCardListResponse> {
+  const { data } = await api.get<SteamGameCardListResponse>("/games/steam/", {
+    params: {
+      limit,
+      last_appid: lastAppId,
+      expand: 1,
+    },
+  });
+
+  return data;
+}
+
+// GET /games/steam/summaries/?appids=1,2,3  (backend allows up to 30 ids)
+export async function getSteamGameSummaries(
+  appIds: number[]
+): Promise<SteamGameCard[]> {
+  if (appIds.length === 0) return [];
+
+  const { data } = await api.get<{ results: SteamGameCard[] }>(
+    "/games/steam/summaries/",
+    { params: { appids: appIds.join(",") } }
+  );
+
+  return data.results;
+}
+
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 // GET /games/steam/<app_id>/
 export async function getSteamGameDetails(
   appId: number | string
@@ -185,6 +298,10 @@ export interface UserGameEntry {
   genres: string[];
   status: ListStatus;
   progress: number | null;
+<<<<<<< HEAD
+=======
+  is_favorite?: boolean;
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   started_at: string | null;
   completed_at: string | null;
   notes: string | null;
@@ -251,4 +368,60 @@ export async function getListStatus(
     `/list/steam/${appId}/`
   );
   return data;
+<<<<<<< HEAD
+=======
+}
+
+// ---------------------------------------------------------------------------
+// Browse (search + filter)
+// ---------------------------------------------------------------------------
+export interface BrowseGame {
+  appid: number;
+  name: string;
+  header_image: string;
+  genres: string[];
+  platforms: string[];
+  release_year: number | null;
+  price: string | null;
+  score: number | null; // 0-10 (Metacritic / 10), when Steam has one
+}
+
+export interface BrowseResponse {
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  results: BrowseGame[];
+}
+
+export interface BrowseParams {
+  q?: string;
+  genre?: string;
+  platform?: string;
+  sort?: string;
+  page?: number;
+}
+
+// GET /games/steam/browse/?q=&genre=&platform=&sort=&page=
+export async function browseSteamGames(
+  params: BrowseParams
+): Promise<BrowseResponse> {
+  // Build the query string by hand so spaces are sent as %20, not "+".
+  const query = Object.entries({
+    q: params.q,
+    genre: params.genre,
+    platform: params.platform,
+    sort: params.sort,
+    page: params.page,
+  })
+    .filter(([, value]) => value !== undefined && value !== "")
+    .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+    .join("&");
+
+  const { data } = await api.get<BrowseResponse>(
+    `/games/steam/browse/?${query}`
+  );
+  return data;
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 }

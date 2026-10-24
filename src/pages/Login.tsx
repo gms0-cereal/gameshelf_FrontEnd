@@ -2,7 +2,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Eye, EyeOff, Loader2, LogIn, User } from "lucide-react";
+<<<<<<< HEAD
 import Navbar from '../components/layout/Navbar';
+=======
+import Navbar from "../components/layout/Navbar";
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 import Footer from "../components/layout/Footer";
 import { useAuth } from "../context/AuthContext";
 import { login } from "../services/authService";

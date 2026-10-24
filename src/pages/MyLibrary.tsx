@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+<<<<<<< HEAD
 import { Check, LayoutGrid, List, Pencil, Search, X } from "lucide-react";
+=======
+import { Check, LayoutGrid, List, Search, X } from "lucide-react";
+import { IoPencilSharp } from "react-icons/io5";
+import { FaTrashAlt, FaHeart } from "react-icons/fa";
+import { CiHeart } from "react-icons/ci";
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 import { toast } from "sonner";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -15,6 +22,11 @@ import {
   type UserGameEntry,
   type UserGameListResponse,
 } from "@/services/Gameservice";
+<<<<<<< HEAD
+=======
+import { getPlaylists, type Playlist } from "@/services/playlistService";
+import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/UserService";
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 
 type Filter = "all" | ListStatus;
 type View = "rows" | "grid";
@@ -36,9 +48,12 @@ const FILTERS: { value: Filter; label: string }[] = [
 const labelFor = (status: ListStatus) =>
   LIST_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
 
+<<<<<<< HEAD
 // ---------------------------------------------------------------------------
 // small pieces
 // ---------------------------------------------------------------------------
+=======
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 function Chip({
   active,
   onClick,
@@ -80,6 +95,7 @@ function Cover({ entry, className }: { entry: UserGameEntry; className: string }
   );
 }
 
+<<<<<<< HEAD
 function EditButton({ onClick, title }: { onClick: () => void; title: string }) {
   return (
     <button
@@ -97,6 +113,8 @@ function EditButton({ onClick, title }: { onClick: () => void; title: string }) 
 // ---------------------------------------------------------------------------
 // page
 // ---------------------------------------------------------------------------
+=======
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 export default function MyLibrary() {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -114,23 +132,58 @@ export default function MyLibrary() {
   const [saving, setSaving] = useState(false);
   const editRef = useRef<HTMLElement>(null);
 
+<<<<<<< HEAD
   // Debounce the search box
+=======
+  const [deleteTarget, setDeleteTarget] = useState<UserGameEntry | null>(null);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistsLoading, setPlaylistsLoading] = useState(true);
+
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
+<<<<<<< HEAD
   // Load the list
+=======
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
 
+<<<<<<< HEAD
     getMyGameList({ status: filter, search: debouncedSearch })
       .then((data) => {
         if (cancelled) return;
         setEntries(data.results);
         setCounts(data.counts);
+=======
+    Promise.all([
+      getMyGameList({ status: filter, search: debouncedSearch }),
+      getPlaylists(),
+      getFavoriteGames(),
+    ])
+      .then(([listData, playlistData, favoriteData]) => {
+        if (cancelled) return;
+
+        // Map favorite Steam app IDs into a Set for quick O(1) lookup
+        const favoriteAppIds = new Set(
+          favoriteData.map((fav) => fav.steam_app_id).filter(Boolean)
+        );
+
+        // Attach is_favorite to each list entry
+        const enrichedEntries = listData.results.map((entry) => ({
+          ...entry,
+          is_favorite: entry.steam_app_id ? favoriteAppIds.has(entry.steam_app_id) : false,
+        }));
+
+        setEntries(enrichedEntries);
+        setCounts(listData.counts);
+        setPlaylists(playlistData.results || []);
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
       })
       .catch((err) => {
         if (cancelled) return;
@@ -141,7 +194,14 @@ export default function MyLibrary() {
         );
       })
       .finally(() => {
+<<<<<<< HEAD
         if (!cancelled) setLoading(false);
+=======
+        if (!cancelled) {
+          setLoading(false);
+          setPlaylistsLoading(false);
+        }
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
       });
 
     return () => {
@@ -149,7 +209,10 @@ export default function MyLibrary() {
     };
   }, [filter, debouncedSearch, reloadKey]);
 
+<<<<<<< HEAD
   // Bring the edit panel into view when it opens
+=======
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   useEffect(() => {
     if (editing) {
       editRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -161,6 +224,35 @@ export default function MyLibrary() {
     setDraftStatus(entry.status);
   }
 
+<<<<<<< HEAD
+=======
+  async function toggleFavorite(entry: UserGameEntry) {
+    if (!entry.steam_app_id) {
+      toast.error("This game cannot be favorited.");
+      return;
+    }
+
+    const newFavState = !entry.is_favorite;
+    try {
+      if (newFavState) {
+        await addFavoriteGame(entry.steam_app_id);
+        toast.success(`Added ${entry.title} to your favorite games!`);
+      } else {
+        await removeFavoriteGame(entry.steam_app_id);
+        toast.success(`Removed ${entry.title} from your favorites.`);
+      }
+
+      setEntries((prev) =>
+        prev.map((item) =>
+          item.id === entry.id ? { ...item, is_favorite: newFavState } : item
+        )
+      );
+    } catch {
+      toast.error("Couldn't update favorite state. Please try again.");
+    }
+  }
+
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   async function saveStatus() {
     if (!editing) return;
     setSaving(true);
@@ -176,6 +268,7 @@ export default function MyLibrary() {
     }
   }
 
+<<<<<<< HEAD
   async function removeEntry() {
     if (!editing) return;
     if (!window.confirm(`Remove “${editing.title}” from your list?`)) return;
@@ -185,6 +278,15 @@ export default function MyLibrary() {
       await removeListEntry(editing.id);
       toast.success(`Removed ${editing.title} from your list`);
       setEditing(null);
+=======
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      await removeListEntry(deleteTarget.id);
+      toast.success(`Removed ${deleteTarget.title} from your list`);
+      setDeleteTarget(null);
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
       setReloadKey((key) => key + 1);
     } catch {
       toast.error("Couldn’t remove this game. Please try again.");
@@ -200,14 +302,24 @@ export default function MyLibrary() {
     entry.score ? `${entry.score} / 10` : "—";
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-[#201e2f]">
       <div
         className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#201e2f] text-[#e0deeb] antialiased"
+=======
+    <div className="min-h-screen w-full bg-[#201e2f]">
+      <div
+        className="flex min-h-screen w-full flex-col bg-[#201e2f] text-[#e0deeb] antialiased"
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
         <Navbar />
 
+<<<<<<< HEAD
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-8 md:px-8 xl:px-16">
+=======
+        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-5 pb-16 pt-8 md:px-8 xl:px-16">
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
           <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px]">
             My List
           </h1>
@@ -312,7 +424,11 @@ export default function MyLibrary() {
                     <span>Game</span>
                     <span>Status</span>
                     <span>Your score</span>
+<<<<<<< HEAD
                     <span className="w-[88px]">Action</span>
+=======
+                    <span className="w-[124px] text-center">Actions</span>
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
                   </div>
 
                   <ul>
@@ -358,8 +474,45 @@ export default function MyLibrary() {
 
                           <p className="text-xs">{scoreText(entry)}</p>
 
+<<<<<<< HEAD
                           <div className="md:w-[88px]">
                             <EditButton onClick={() => openEdit(entry)} title={entry.title} />
+=======
+                          <div className="flex items-center gap-2 md:w-[124px]">
+                            {/* Heart (Favorite) */}
+                            <button
+                              type="button"
+                              onClick={() => toggleFavorite(entry)}
+                              aria-label={`Favorite ${entry.title}`}
+                              className="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#46445a] transition-colors"
+                            >
+                              {entry.is_favorite ? (
+                                <FaHeart className="size-4 text-[#e58d91]" />
+                              ) : (
+                                <CiHeart className="size-5 text-[#b4aec7]" />
+                              )}
+                            </button>
+
+                            {/* Pencil (Edit) */}
+                            <button
+                              type="button"
+                              onClick={() => openEdit(entry)}
+                              aria-label={`Edit ${entry.title}`}
+                              className="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#46445a] transition-colors"
+                            >
+                              <IoPencilSharp className="size-4 text-[#c2ade7]" />
+                            </button>
+
+                            {/* Trash (Delete) */}
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(entry)}
+                              aria-label={`Remove ${entry.title}`}
+                              className="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#4a303d] transition-colors"
+                            >
+                              <FaTrashAlt className="size-4 text-[#e58d91]" />
+                            </button>
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
                           </div>
                         </li>
                       );
@@ -389,7 +542,40 @@ export default function MyLibrary() {
                           <span className="rounded-lg border border-[#55516c] bg-[#201e2f] px-3 py-1 text-xs text-[#b4aec7]">
                             {labelFor(entry.status)}
                           </span>
+<<<<<<< HEAD
                           <EditButton onClick={() => openEdit(entry)} title={entry.title} />
+=======
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => toggleFavorite(entry)}
+                              aria-label={`Favorite ${entry.title}`}
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#46445a] transition-colors"
+                            >
+                              {entry.is_favorite ? (
+                                <FaHeart className="size-3.5 text-[#e58d91]" />
+                              ) : (
+                                <CiHeart className="size-4 text-[#b4aec7]" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openEdit(entry)}
+                              aria-label={`Edit ${entry.title}`}
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#46445a] transition-colors"
+                            >
+                              <IoPencilSharp className="size-3.5 text-[#c2ade7]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(entry)}
+                              aria-label={`Remove ${entry.title}`}
+                              className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#4a303d] transition-colors"
+                            >
+                              <FaTrashAlt className="size-3.5 text-[#e58d91]" />
+                            </button>
+                          </div>
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
                         </div>
                       </div>
                     </li>
@@ -450,6 +636,7 @@ export default function MyLibrary() {
                   {saving ? "Saving…" : "Save status"}
                 </Button>
 
+<<<<<<< HEAD
                 <p className="text-[11px] text-[#b4aec7]">
                   You’ll be asked to confirm before removing a game.{" "}
                   <button
@@ -464,10 +651,105 @@ export default function MyLibrary() {
               </div>
             </section>
           )}
+=======
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(null);
+                    setDeleteTarget(editing);
+                  }}
+                  disabled={saving}
+                  className="cursor-pointer text-xs text-[#e58d91] hover:underline"
+                >
+                  Remove from list
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* My Playlists Bottom Section */}
+          <section className="mt-8 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">My Playlists</h2>
+                <p className="mt-1 text-xs text-[#b4aec7]">
+                  Manage your personal collections and custom playlists.
+                </p>
+              </div>
+              <Button
+                asChild
+                className="bg-[#8063a8] text-white hover:bg-[#9274bb] h-9 px-4 text-xs font-semibold"
+              >
+                <Link to="/playlists/new">+ Create Playlist</Link>
+              </Button>
+            </div>
+
+            {playlistsLoading ? (
+              <p className="text-xs text-[#b4aec7]">Loading your playlists...</p>
+            ) : playlists.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {playlists.map((playlist) => (
+                  <div
+                    key={playlist.id}
+                    className="overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] p-4 flex flex-col justify-between"
+                  >
+                    <div>
+                      <h3 className="truncate font-semibold text-white">{playlist.title}</h3>
+                      <p className="mt-1 text-xs text-[#b4aec7] line-clamp-2">
+                        {playlist.description || "No description provided."}
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between text-xs text-[#8b86a3]">
+                      <span>{playlist.game_count} {playlist.game_count === 1 ? "game" : "games"}</span>
+                      <span className="capitalize px-2 py-0.5 rounded bg-[#2a2838] text-[#c2ade7] text-[10px] border border-[#55516c]">
+                        {playlist.visibility}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-[#55516c] bg-[#373646] p-8 text-center">
+                <p className="text-xs text-[#b4aec7]">You haven't created any playlists yet.</p>
+              </div>
+            )}
+          </section>
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
         </main>
 
         <Footer />
       </div>
+<<<<<<< HEAD
+=======
+
+      {/* Delete Confirmation Modal Popup */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0">
+          <div className="w-full max-w-md rounded-2xl border border-[#514961] bg-[#2a2838] p-6 text-[#e0deeb] shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-lg font-semibold text-white">Remove Game</h3>
+            <p className="mt-2 text-sm text-[#b4aec7]">
+              Are you sure you want to remove <span className="text-white font-medium">{deleteTarget.title}</span> from your library?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteTarget(null)}
+                className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                disabled={saving}
+                className="bg-[#a8484c] text-white hover:bg-[#ae494e]"
+              >
+                {saving ? "Removing…" : "Remove"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
     </div>
   );
 }

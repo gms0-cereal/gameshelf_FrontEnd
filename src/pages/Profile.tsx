@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 import { Link } from "react-router-dom";
 import { Gamepad2, Library, Pencil } from "lucide-react";
+=======
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { Gamepad2, Library, Pencil, Users, X, ExternalLink, UserCheck } from "lucide-react";
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -8,12 +14,26 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
+<<<<<<< HEAD
 
 
 // import "@fontsource/inter/400.css";
 // import "@fontsource/inter/600.css";
 // import "@fontsource/inter/700.css";
 
+=======
+import {
+  getFriends,
+  getUserProfile,
+  getMe,
+  getFavoriteGames,
+  type SocialUser,
+  type UserProfile,
+  type UserFavoriteGameEntry,
+} from "@/services/Userservice";
+import { getMyGameList } from "@/services/Gameservice";
+import MiniProfileCard from "@/components/social/MiniProfileCard";
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 
 const PANEL =
   "gap-6 rounded-2xl border-0 bg-[#373646] p-7 " +
@@ -26,6 +46,7 @@ const OUTLINE_BUTTON =
   "hover:bg-[#454256] hover:text-[#e0deeb] " +
   "[&_svg]:size-[18px]";
 
+<<<<<<< HEAD
 {/* <Navbar /> */}
 
 function ProfileBanner() {
@@ -103,6 +124,97 @@ function PlayerStatistics() {
     { label: "Playlists", value: 0 },
     { label: "Friends", value: 0 },
     { label: "Reviews", value: 0 },
+=======
+function ProfileBanner({
+  profileUser,
+  isOwnProfile,
+}: {
+  profileUser: UserProfile | null;
+  isOwnProfile: boolean;
+}) {
+  const displayName = profileUser?.nickname?.trim() || profileUser?.username || "Player";
+
+  return (
+    <section
+      aria-labelledby="player-name"
+      className="relative isolate flex min-h-[310px] items-end overflow-hidden rounded-2xl bg-[#29263b] p-6 md:h-[310px] md:p-9"
+    >
+      <img
+        src={profileUser?.banner_url || "/images/profile-banner.png"}
+        alt=""
+        className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
+      />
+
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(32,30,47,0.2) 0%, rgba(32,30,47,0.851) 100%)",
+        }}
+      />
+
+      <div className="flex w-full flex-wrap items-center gap-6 md:flex-nowrap">
+        <Avatar className="size-24 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
+          <AvatarImage
+            src={profileUser?.avatar_url || undefined}
+            alt={displayName}
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-[#4d3e68]">
+            <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+          <h2
+            id="player-name"
+            className="break-words text-3xl font-bold tracking-tight text-white md:text-4xl"
+          >
+            {displayName}
+          </h2>
+
+          <p className="max-w-2xl whitespace-pre-wrap break-words text-sm leading-relaxed text-[#d0ccdc] md:text-base">
+            {profileUser?.bio?.trim() || "No bio yet."}
+          </p>
+        </div>
+
+        {isOwnProfile && (
+          <Button
+            asChild
+            variant="outline"
+            className={`${OUTLINE_BUTTON} w-[137px] shrink-0 border-white/20 bg-black/20 text-white hover:bg-white/10 hover:text-white`}
+          >
+            <Link to="/settings">
+              <Pencil
+                className="size-4"
+                strokeWidth={1.7}
+                aria-hidden="true"
+              />
+              Edit Profile
+            </Link>
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PlayerStatistics({
+  libraryCount,
+  friendCount,
+  reviewsCount,
+}: {
+  libraryCount: number;
+  friendCount: number;
+  reviewsCount: number;
+}) {
+  const stats = [
+    { label: "Library", value: libraryCount },
+    { label: "Playlists", value: 0 },
+    { label: "Friends", value: friendCount },
+    { label: "Reviews", value: reviewsCount },
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   ];
 
   return (
@@ -116,16 +228,25 @@ function PlayerStatistics() {
             <dd className="text-[32px] font-semibold text-[#c2ade7]">
               {stat.value}
             </dd>
+<<<<<<< HEAD
             <dt className="text-[13px] text-[#b4aec7]">
               {stat.label}
             </dt>
+=======
+            <dt className="text-[13px] text-[#b4aec7]">{stat.label}</dt>
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
           </div>
         ))}
       </dl>
     </section>
   );
 }
+<<<<<<< HEAD
 function FavoriteGames() {
+=======
+
+function FavoriteGames({ favorites }: { favorites: UserFavoriteGameEntry[] }) {
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   return (
     <section
       aria-labelledby="favorite-games-title"
@@ -138,6 +259,7 @@ function FavoriteGames() {
         Favorite games
       </h2>
 
+<<<<<<< HEAD
       <div className="rounded-2xl bg-[#373646] p-8 text-center ring-1 ring-inset ring-[#55516c]">
         <Gamepad2 className="mx-auto mb-3 size-8 text-[#8870b6]" />
 
@@ -147,17 +269,72 @@ function FavoriteGames() {
           Favorite games will appear here once you add them to your profile.
         </p>
       </div>
+=======
+      {favorites.length > 0 ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {favorites.map((game) => (
+            <Link
+              key={game.id}
+              to={game.steam_app_id ? `/gamedetails/${game.steam_app_id}` : "#"}
+              className="group flex flex-col overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] transition-colors hover:border-[#c2ade7]"
+            >
+              <div className="aspect-[3/2] w-full bg-[#2a2838] overflow-hidden">
+                {game.cover_image_url ? (
+                  <img
+                    src={game.cover_image_url}
+                    alt={game.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <Gamepad2 className="size-8 text-[#8870b6]" />
+                  </div>
+                )}
+              </div>
+              <div className="p-3">
+                <p className="truncate text-sm font-medium group-hover:text-[#c2ade7]">
+                  {game.title}
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-[#b4aec7]">
+                  {game.genres.join(" / ") || "Favorite"}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-[#373646] p-8 text-center ring-1 ring-inset ring-[#55516c]">
+          <Gamepad2 className="mx-auto mb-3 size-8 text-[#8870b6]" />
+          <p className="font-medium">No favorite games yet</p>
+          <p className="mt-1 text-sm text-[#b4aec7]">
+            Favorite games will appear here once you click the heart icon on games in your library.
+          </p>
+        </div>
+      )}
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
     </section>
   );
 }
 
+<<<<<<< HEAD
 function FriendsBar() {
+=======
+
+function FriendsBar({
+  friends,
+  onSelectFriend,
+}: {
+  friends: SocialUser[];
+  onSelectFriend: (friend: SocialUser, event: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
   return (
     <section
       aria-labelledby="friends-title"
       className="flex flex-col gap-5"
     >
       <div className="flex items-center justify-between">
+<<<<<<< HEAD
         <h2
           id="friends-title"
           className="text-2xl font-semibold tracking-tight"
@@ -169,26 +346,80 @@ function FriendsBar() {
           to="/friends"
           className="text-sm font-medium text-[#c2ade7] hover:text-white"
         >
+=======
+        <h2 id="friends-title" className="text-2xl font-semibold tracking-tight">
+          Friends
+        </h2>
+        <Link to="/friends" className="text-sm font-medium text-[#c2ade7] hover:text-white">
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
           View all
         </Link>
       </div>
 
       <div className="flex min-h-[100px] items-center gap-4 overflow-x-auto rounded-2xl bg-[#373646] p-5 ring-1 ring-inset ring-[#55516c]">
+<<<<<<< HEAD
         <p className="text-sm text-[#b4aec7]">
           Your friends will appear here.
         </p>
+=======
+        {friends.length > 0 ? (
+          friends.map((friend) => {
+            const displayName = friend.nickname?.trim() || friend.username;
+            return (
+              <button
+                key={friend.id}
+                type="button"
+                onClick={(e) => onSelectFriend(friend, e)}
+                className="flex flex-col items-center gap-2 shrink-0 text-center group cursor-pointer bg-transparent border-0"
+              >
+                <Avatar className="size-14 border-2 border-[#8870b6] bg-[#4d3e68] group-hover:border-[#c2ade7] transition-colors">
+                  <AvatarImage
+                    src={friend.avatar_url || undefined}
+                    alt={displayName}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-[#4d3e68]">
+                    <Users className="size-6 text-[#c2ade7]" />
+                  </AvatarFallback>
+                </Avatar>
+                <span
+                  className="max-w-[80px] truncate text-xs text-[#e0deeb] group-hover:text-white"
+                  title={displayName}
+                >
+                  {displayName}
+                </span>
+              </button>
+            );
+          })
+        ) : (
+          <p className="text-sm text-[#b4aec7]">
+            Your friends will appear here once you add them.
+          </p>
+        )}
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
       </div>
     </section>
   );
 }
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
 function ProfileActivity() {
   return (
     <section aria-label="Game list">
       <Card className={`${PANEL} items-start`}>
         <div>
+<<<<<<< HEAD
           <h2 className="text-xl font-semibold">Your game lists</h2>
           <p className="mt-2 text-sm text-[#b4aec7]">
             Your game lists will appear here when the feature is available.
+=======
+          <h2 className="text-xl font-semibold">Your Library</h2>
+          <p className="mt-2 text-sm text-[#b4aec7]">
+            Explore your game collection and track your progress across your library.
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
           </p>
         </div>
 
@@ -197,15 +428,22 @@ function ProfileActivity() {
           variant="outline"
           className={OUTLINE_BUTTON}
         >
+<<<<<<< HEAD
           <Link to="/my-list">
             <Library strokeWidth={1.7} aria-hidden="true" />
             View Game List
+=======
+          <Link to="/my-library">
+            <Library strokeWidth={1.7} aria-hidden="true" />
+            View Game Library
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
           </Link>
         </Button>
       </Card>
     </section>
   );
 }
+<<<<<<< HEAD
 export default function Profile() {
 const { user, loading } = useAuth();
    if (loading) {
@@ -213,11 +451,123 @@ const { user, loading } = useAuth();
   }
   return (
     
+=======
+
+export default function Profile() {
+  const { username } = useParams<{ username?: string }>();
+  const { user: authUser, loading: authLoading } = useAuth();
+
+  const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
+  const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [favorites, setFavorites] = useState<UserFavoriteGameEntry[]>([]);
+  const [libraryTotal, setLibraryTotal] = useState<number>(0);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  
+  const isOwnProfile = !username || Boolean(authUser && authUser.username === username);
+  const [selectedFriend, setSelectedFriend] = useState<SocialUser | null>(null);
+  const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | undefined>(undefined);
+  const [openUpward, setOpenUpward] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingProfile(true);
+    setError(null);
+
+    async function fetchProfileData() {
+      try {
+        if (isOwnProfile) {
+          const [meData, friendsData, listData, favsData] = await Promise.all([
+            getMe(),
+            getFriends(),
+            getMyGameList(),
+            getFavoriteGames(),
+          ]);
+
+          if (isMounted) {
+            const counts = listData?.counts;
+            const total = counts
+              ? Object.values(counts).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0)
+              : 0;
+
+            setProfileUser({
+              id: meData.id,
+              username: meData.username,
+              nickname: meData.nickname,
+              bio: meData.bio,
+              avatar_url: meData.avatar_url,
+              banner_url: meData.banner_url,
+              joined: meData.created_at,
+              friend_count: friendsData.length,
+              library: listData?.counts ?? null,
+              ratings_count: 0,
+              reviews_count: 0,
+            });
+            setFriends(friendsData ?? []);
+            setFavorites(favsData ?? []);
+            setLibraryTotal(total);
+          }
+        } else {
+          const profileData = await getUserProfile(username);
+          if (isMounted) {
+            setProfileUser(profileData);
+            setFriends([]);
+            setFavorites(profileData.favorites ?? []); 
+            
+            if (profileData.library) {
+              const total = Object.values(profileData.library).reduce(
+                (sum: number, val: any) => sum + (Number(val) || 0),
+                0
+              );
+              setLibraryTotal(total);
+            }
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError("Failed to load profile.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingProfile(false);
+        }
+      }
+    }
+
+    void fetchProfileData();
+    return () => {
+      isMounted = false;
+    };
+  }, [username, isOwnProfile]);
+
+  if (authLoading || loadingProfile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#201e2f] text-[#e0deeb]">
+        Loading profile...
+      </div>
+    );
+  }
+
+  if (error || !profileUser) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#201e2f] text-[#e0deeb] gap-4">
+        <p>{error || "Profile not found."}</p>
+        <Button asChild className="bg-[#a8484c] text-white">
+          <Link to="/home">Back to Home</Link>
+        </Button>
+      </div>
+    );
+  }
+
+ return (
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
     <div className="min-h-screen bg-[#201e2f]">
       <div
         className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#201e2f] text-[#e0deeb] antialiased"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
+<<<<<<< HEAD
        <Navbar />
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           <ProfileBanner />
@@ -228,6 +578,57 @@ const { user, loading } = useAuth();
         </main>
 
         <Footer />
+=======
+        <Navbar />
+        <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
+          <ProfileBanner profileUser={profileUser} isOwnProfile={isOwnProfile} />
+          <PlayerStatistics
+            libraryCount={libraryTotal}
+            friendCount={profileUser.friend_count ?? friends.length}
+            reviewsCount={profileUser.reviews_count ?? 0}
+          />
+          <FavoriteGames favorites={favorites} />
+          {isOwnProfile && (
+            <FriendsBar 
+              friends={friends} 
+              onSelectFriend={(friend, event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                // Mirror the exact upward logic from your Friends page
+                const isUpward = spaceBelow < 320;
+                setOpenUpward(isUpward);
+
+                // Calculate fixed coordinates matching the trigger element
+                setModalPosition({
+                  top: isUpward ? rect.top - 340 : rect.bottom + 8,
+                  left: Math.min(rect.left, window.innerWidth - 330), // Prevent overflowing right edge
+                });
+                setSelectedFriend(friend);
+              }} 
+            />
+          )}
+          <ProfileActivity />
+        </main>
+        <Footer />
+
+        {/* Reusing MiniProfileCard with exact coordinate placement */}
+        {selectedFriend && (
+          <div 
+            className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm animate-in fade-in-0"
+            onClick={() => setSelectedFriend(null)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <MiniProfileCard
+                user={selectedFriend}
+                position={modalPosition}
+                openUpward={openUpward}
+                isFriendsTab
+              />
+            </div>
+          </div>
+        )}
+>>>>>>> 49b12e250a4a1e7ad1e4efa2bdd01865a9f6d1e2
       </div>
     </div>
   );
