@@ -509,7 +509,15 @@ const CreatePlaylist = () => {
 
             <div className="mt-5 flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold">
-                {ownerName.slice(0, 2).toUpperCase()}
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.username}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  user?.username.slice(0, 2).toUpperCase()
+                )}
               </span>
               <span className="text-xs text-[#b6a8e8]">{ownerName}</span>
             </div>
