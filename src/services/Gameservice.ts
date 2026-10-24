@@ -111,6 +111,40 @@ export interface SteamGameDetail {
 }
 
 // ---------------------------------------------------------------------------
+// Similar games
+// ---------------------------------------------------------------------------
+export interface SimilarGameResult {
+  game: {
+    id: number;
+    appid: number;
+    title: string;
+    slug: string | null;
+    cover_image_url: string | null;
+    header_image?: string | null;
+    release_date: string | null;
+    genres: string[];
+  };
+  score: number;
+  rank: number;
+  reason?: { shared_features?: string[] };
+}
+
+export interface SimilarGamesResponse {
+  results: SimilarGameResult[];
+}
+
+// GET /similar/<app_id>/
+export async function getSimilarGames(
+  appId: number | string,
+  signal?: AbortSignal
+): Promise<SimilarGameResult[]> {
+  const { data } = await api.get<SimilarGamesResponse>(`/similar/${appId}/`, {
+    signal,
+  });
+  return data.results;
+}
+
+// ---------------------------------------------------------------------------
 // Steam reviews
 // ---------------------------------------------------------------------------
 export interface SteamReview {
