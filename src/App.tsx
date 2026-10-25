@@ -19,6 +19,9 @@ import Browse from "./pages/Browse";
 import CreatePlaylist from "./pages/CreatePlaylist";
 import CommunityPlaylists from "./pages/CommunityPlaylists";
 
+// Admin Dashboard Imports
+import { Dashboard } from "./pages/admin/Dashboard";
+import { Games } from "./pages/admin/Games";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +33,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* Public / User Storefront Routes */}
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -47,6 +51,10 @@ const App = () => (
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/browse" element={<Browse />} />
             <Route path="/interests" element={<ChooseInterest />} />
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<Dashboard />} />
+            <Route path="/admin/games" element={<Games />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
