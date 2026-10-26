@@ -18,7 +18,7 @@ import Friends from "./pages/Friends";
 import Browse from "./pages/Browse";
 import CreatePlaylist from "./pages/CreatePlaylist";
 import CommunityPlaylists from "./pages/CommunityPlaylists";
-
+import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
 // Admin Dashboard Imports
 import { Dashboard } from "./pages/admin/Dashboard";
 import { Games } from "./pages/admin/Games";
