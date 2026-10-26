@@ -18,7 +18,7 @@ import Friends from "./pages/Friends";
 import Browse from "./pages/Browse";
 import CreatePlaylist from "./pages/CreatePlaylist";
 import CommunityPlaylists from "./pages/CommunityPlaylists";
-
+import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +45,7 @@ const App = () => (
             <Route path="/friends" element={<Friends />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/profile/edit" element={<EditProfile />} />
+            <Route path="/profile/set-birthday" element={<SetBirthdayPage/>} />
             <Route path="/browse" element={<Browse />} />
             <Route path="/interests" element={<ChooseInterest />} />
           </Routes>

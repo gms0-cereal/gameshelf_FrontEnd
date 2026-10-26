@@ -8,11 +8,14 @@ export interface User {
   username: string;
   email: string;
   email_verified: boolean;
-  role: "user" | "moderator" | "admin";
   nickname: string | null;
   bio: string | null;
+  role: "user" | "moderator" | "admin";
   avatar_url: string | null;
   banner_url: string | null;
+  age: number | null;
+  gender: string | null;
+  pronouns: string | null;
   library_visibility: Visibility;
   friends_visibility: Visibility;
   created_at: string;
@@ -25,6 +28,9 @@ export interface UserProfile {
   bio: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  age: number | null;
+  gender: string | null;
+  pronouns: string | null;
   joined: string;
   friend_count: number | null;
   library: Record<LibraryStatus, number> | null;
@@ -36,7 +42,15 @@ export interface UserProfile {
 export type UpdateMeBody = Partial<
   Pick<
     User,
-    "nickname" | "bio" | "avatar_url" | "banner_url" | "library_visibility" | "friends_visibility"
+    | "nickname"
+    | "bio"
+    | "avatar_url"
+    | "banner_url"
+    | "age"
+    | "gender"
+    | "pronouns"
+    | "library_visibility"
+    | "friends_visibility"
   >
 >;
 
@@ -74,7 +88,18 @@ export interface UserFavoriteGameEntry {
   position: number;
 }
 
-
+export interface UserAchievement {
+  id: number;
+  game_id: number;
+  game_title?: string;
+  achievement_api_name: string;
+  title: string | null;
+  description: string | null;
+  icon_url: string | null;
+  achieved: boolean;
+  unlock_time: string | null;
+  updated_at: string;
+}
 
 function extractResults<T>(data: unknown): T[] {
   if (Array.isArray(data)) {
@@ -176,4 +201,10 @@ export async function addFavoriteGame(steamAppId: number): Promise<UserFavoriteG
 
 export async function removeFavoriteGame(steamAppId: number): Promise<void> {
   await api.delete("/users/favorites/", { data: { steam_app_id: steamAppId } });
+}
+
+export async function getUserAchievements(username?: string): Promise<UserAchievement[]> {
+  const url = username ? `/users/${encodeURIComponent(username)}/achievements/` : "/users/achievements/";
+  const { data } = await api.get(url);
+  return extractResults<UserAchievement>(data);
 }
