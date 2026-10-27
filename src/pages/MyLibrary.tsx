@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, LayoutGrid, List, Search, X } from "lucide-react";
+import { Check, LayoutGrid, List, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { IoPencilSharp } from "react-icons/io5";
 import { FaTrashAlt, FaHeart } from "react-icons/fa";
 import { CiHeart } from "react-icons/ci";
@@ -37,6 +37,8 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
   ...LIST_STATUS_OPTIONS,
 ];
+
+const PAGE_SIZE = 10;
 
 const labelFor = (status: ListStatus) =>
   LIST_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
@@ -87,6 +89,7 @@ export default function MyLibrary() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [view, setView] = useState<View>("rows");
+  const [page, setPage] = useState(1);
 
   const [entries, setEntries] = useState<UserGameEntry[]>([]);
   const [counts, setCounts] = useState(EMPTY_COUNTS);
@@ -104,9 +107,16 @@ export default function MyLibrary() {
   const [playlistsLoading, setPlaylistsLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1); // Reset to page 1 on new search
+    }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    setPage(1); // Reset to page 1 on filter change
+  }, [filter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,12 +131,10 @@ export default function MyLibrary() {
       .then(([listData, playlistData, favoriteData]) => {
         if (cancelled) return;
 
-        // Map favorite Steam app IDs into a Set for quick O(1) lookup
         const favoriteAppIds = new Set(
           favoriteData.map((fav) => fav.steam_app_id).filter(Boolean)
         );
 
-        // Attach is_favorite to each list entry
         const enrichedEntries = listData.results.map((entry) => ({
           ...entry,
           is_favorite: entry.steam_app_id ? favoriteAppIds.has(entry.steam_app_id) : false,
@@ -155,6 +163,10 @@ export default function MyLibrary() {
       cancelled = true;
     };
   }, [filter, debouncedSearch, reloadKey]);
+
+  // Pagination Slice (Limit 10 per page)
+  const totalPages = Math.ceil(entries.length / PAGE_SIZE) || 1;
+  const paginatedEntries = entries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     if (editing) {
@@ -346,7 +358,7 @@ export default function MyLibrary() {
                   </div>
 
                   <ul>
-                    {entries.map((entry) => {
+                    {paginatedEntries.map((entry) => {
                       const isEditing = editing?.id === entry.id;
                       return (
                         <li
@@ -389,7 +401,6 @@ export default function MyLibrary() {
                           <p className="text-xs">{scoreText(entry)}</p>
 
                           <div className="flex items-center gap-2 md:w-[124px]">
-                            {/* Heart (Favorite) */}
                             <button
                               type="button"
                               onClick={() => toggleFavorite(entry)}
@@ -403,7 +414,6 @@ export default function MyLibrary() {
                               )}
                             </button>
 
-                            {/* Pencil (Edit) */}
                             <button
                               type="button"
                               onClick={() => openEdit(entry)}
@@ -413,7 +423,6 @@ export default function MyLibrary() {
                               <IoPencilSharp className="size-4 text-[#c2ade7]" />
                             </button>
 
-                            {/* Trash (Delete) */}
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(entry)}
@@ -432,7 +441,7 @@ export default function MyLibrary() {
 
               {!error && entries.length > 0 && view === "grid" && (
                 <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {entries.map((entry) => (
+                  {paginatedEntries.map((entry) => (
                     <li
                       key={entry.id}
                       className="flex flex-col overflow-hidden rounded-xl border border-[#55516c] bg-[#2a2838]"
@@ -488,11 +497,36 @@ export default function MyLibrary() {
                 </ul>
               )}
 
+              {/* Pagination Controls Footer */}
               {!error && entries.length > 0 && (
-                <p className="mt-4 text-[10px] text-[#b4aec7]">
-                  Showing {entries.length} {entries.length === 1 ? "entry" : "entries"} from
-                  your {counts.all}-game collection.
-                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-between border-t border-[#55516c] pt-4 text-xs text-[#b4aec7]">
+                  <span>
+                    Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, entries.length)} of {entries.length} games
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page === 1}
+                      onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                      className="h-8 border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#373646]"
+                    >
+                      <ChevronLeft className="size-4" /> Previous
+                    </Button>
+                    <span className="px-2 text-white">
+                      Page {page} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                      className="h-8 border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#373646]"
+                    >
+                      Next <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

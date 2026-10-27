@@ -33,7 +33,7 @@ export interface UserProfile {
   pronouns: string | null;
   joined: string;
   friend_count: number | null;
-  library: Record<LibraryStatus, number> | null;
+  library: Record<"all" | "playing" | "plan_to_play" | "completed" | "on_hold" | "dropped", number> | null;
   ratings_count: number;
   favorites?: UserFavoriteGameEntry[];
   reviews_count: number;
@@ -204,7 +204,7 @@ export async function removeFavoriteGame(steamAppId: number): Promise<void> {
 }
 
 export async function getUserAchievements(username?: string): Promise<UserAchievement[]> {
-  const url = username ? `/users/${encodeURIComponent(username)}/achievements/` : "/users/achievements/";
-  const { data } = await api.get(url);
-  return extractResults<UserAchievement>(data);
+  const endpoint = username ? `/users/${username}/achievements/` : `/users/achievements/`;
+  const { data } = await api.get<UserAchievement[] | { results: UserAchievement[] }>(endpoint);
+  return Array.isArray(data) ? data : (data.results ?? []);
 }

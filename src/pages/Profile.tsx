@@ -385,9 +385,8 @@ export default function Profile() {
 
           if (isMounted) {
             const counts = listData?.counts;
-            const total = counts
-              ? Object.values(counts).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0)
-              : 0;
+            // ── FIX 1: Use counts.all directly instead of summing everything ──
+            const total = counts?.all ?? 0;
 
             setProfileUser({
               id: meData.id,
@@ -423,10 +422,7 @@ export default function Profile() {
             setAchievements(achievementsData ?? []);
             
             if (profileData.library) {
-              const total = Object.values(profileData.library).reduce(
-                (sum: number, val: any) => sum + (Number(val) || 0),
-                0
-              );
+              const total = profileData.library.all ?? 0;
               setLibraryTotal(total);
             }
           }
@@ -447,14 +443,6 @@ export default function Profile() {
       isMounted = false;
     };
   }, [username, isOwnProfile]);
-
-  if (authLoading || loadingProfile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#201e2f] text-[#e0deeb]">
-        Loading profile...
-      </div>
-    );
-  }
 
   if (error || !profileUser) {
     return (

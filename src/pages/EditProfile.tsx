@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Gamepad2, Save, Calendar } from "lucide-react";
+import { ArrowLeft, Gamepad2, Save, Calendar, Globe } from "lucide-react";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useAuth } from "@/context/AuthContext";
-import { getMe, type User } from "@/services/Userservice";
 import api from "@/lib/api";
 
 const PANEL =
@@ -70,6 +69,12 @@ export default function EditProfile() {
 
   const [cropTarget, setCropTarget] = useState<"avatar" | "banner" | null>(null);
   const [cropSource, setCropSource] = useState<File | null>(null);
+
+  // Steam Import States
+  const [steamUrl, setSteamUrl] = useState("");
+  const [steamLoading, setSteamLoading] = useState(false);
+  const [steamMessage, setSteamMessage] = useState<string | null>(null);
+  const [steamError, setSteamError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -152,6 +157,29 @@ export default function EditProfile() {
 
     setCropSource(null);
     setCropTarget(null);
+  }
+
+  async function handleSteamImport(e: React.FormEvent) {
+    e.preventDefault();
+    if (!steamUrl.trim()) return;
+
+    setSteamLoading(true);
+    setSteamError(null);
+    setSteamMessage(null);
+
+    try {
+      const { data } = await api.post("/users/import-steam/", { profile_url: steamUrl });
+      setSteamMessage(data.detail || "Steam library and achievements imported successfully!");
+      setSteamUrl("");
+      await refreshUser();
+    } catch (err: any) {
+      setSteamError(
+        err.response?.data?.detail || 
+        "Failed to import Steam library. Ensure your Steam profile and game details are set to Public."
+      );
+    } finally {
+      setSteamLoading(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -440,6 +468,38 @@ export default function EditProfile() {
                   />
                 )}
               </div>
+            </Card>
+
+            {/* Steam Profile Import Card */}
+            <Card className={PANEL}>
+              <div className="flex items-center gap-2">
+                <Globe className="size-5 text-[#c2ade7]" />
+                <h2 className="text-xl font-semibold">Import Steam Library</h2>
+              </div>
+              <p className="text-sm text-[#b4aec7]">
+                Paste your Steam profile URL or 17-digit SteamID64 (e.g. <code className="text-[#c2ade7]">https://steamcommunity.com/profiles/76562229554903814/</code>) to sync your owned games. Your Steam profile and game details must be set to <strong>Public</strong>.
+              </p>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Input
+                  type="text"
+                  placeholder="https://steamcommunity.com/profiles/..."
+                  value={steamUrl}
+                  onChange={(e) => setSteamUrl(e.target.value)}
+                  className={`flex-1 ${FIELD}`}
+                />
+                <Button
+                  type="button"
+                  disabled={steamLoading || !steamUrl.trim()}
+                  onClick={handleSteamImport}
+                  className="h-11 bg-[#8870b6] text-white hover:bg-[#76609f]"
+                >
+                  {steamLoading ? "Syncing..." : "Sync Steam Library"}
+                </Button>
+              </div>
+
+              {steamMessage && <p className="text-sm text-emerald-400">{steamMessage}</p>}
+              {steamError && <p className="text-sm text-rose-400">{steamError}</p>}
             </Card>
 
             {/* Privacy Settings */}
