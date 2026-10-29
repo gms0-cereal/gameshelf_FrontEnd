@@ -1,31 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Gamepad2, Library, Pencil, Users, X, ExternalLink, UserCheck, Trophy } from "lucide-react";
+import { Gamepad2, Pencil, Users, Lock, Eye, UserCheck } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import {
   getFriends,
   getUserProfile,
   getMe,
   getFavoriteGames,
-  getUserAchievements,
   type SocialUser,
   type UserProfile,
   type UserFavoriteGameEntry,
-  type UserAchievement,
 } from "@/services/Userservice";
 import { getMyGameList } from "@/services/Gameservice";
 import MiniProfileCard from "@/components/social/MiniProfileCard";
-
-const PANEL =
-  "gap-6 rounded-2xl border-0 bg-[#373646] p-7 " +
-  "text-[#e0deeb] shadow-none ring-1 ring-inset ring-[#55516c]";
 
 const OUTLINE_BUTTON =
   "h-11 gap-[9px] rounded-lg border border-[#55516c] " +
@@ -33,6 +26,32 @@ const OUTLINE_BUTTON =
   "leading-[17px] text-[#e0deeb] shadow-none " +
   "hover:bg-[#454256] hover:text-[#e0deeb] " +
   "[&_svg]:size-[18px]";
+
+function VisibilityBadge({ visibility }: { visibility?: string }) {
+  const vis = visibility?.toLowerCase() || "public";
+
+  if (vis === "private") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-[#55516c] bg-[#2a2838] px-2 py-0.5 text-[11px] text-[#e58d91]">
+        <Lock className="size-3" /> Private Profile
+      </span>
+    );
+  }
+
+  if (vis === "friends" || vis === "friends_only") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-[#55516c] bg-[#2a2838] px-2 py-0.5 text-[11px] text-[#c2ade7]">
+        <UserCheck className="size-3" /> Friends Only
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md border border-[#55516c] bg-[#2a2838] px-2 py-0.5 text-[11px] text-[#b4aec7]">
+      <Eye className="size-3" /> Public
+    </span>
+  );
+}
 
 function ProfileBanner({
   profileUser,
@@ -42,6 +61,12 @@ function ProfileBanner({
   isOwnProfile: boolean;
 }) {
   const displayName = profileUser?.nickname?.trim() || profileUser?.username || "Player";
+  const joinedDate = profileUser?.joined
+    ? new Date(profileUser.joined).toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <section
@@ -51,7 +76,7 @@ function ProfileBanner({
       <img
         src={profileUser?.banner_url || "/images/profile-banner.png"}
         alt=""
-        className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
+        className="absolute inset-0 -z-20 h-full w-full object-cover object-center contrast-110 saturate-125"
       />
 
       <div
@@ -59,7 +84,7 @@ function ProfileBanner({
         className="absolute inset-0 -z-10"
         style={{
           background:
-            "linear-gradient(180deg, rgba(32,30,47,0.2) 0%, rgba(32,30,47,0.851) 100%)",
+            "linear-gradient(180deg, rgba(32,30,47,0.2) 0%, rgba(32,30,47,0.85) 100%)",
         }}
       />
 
@@ -76,17 +101,24 @@ function ProfileBanner({
         </Avatar>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          {/* Display Name / Nickname */}
-          <h2
-            id="player-name"
-            className="break-words text-3xl font-bold tracking-tight text-white md:text-4xl"
-          >
-            {displayName}
-          </h2>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2
+              id="player-name"
+              className="break-words text-3xl font-bold tracking-tight text-white md:text-4xl"
+            >
+              {displayName}
+            </h2>
+            <VisibilityBadge visibility={(profileUser as any)?.visibility} />
+          </div>
 
-          {/* Username . Pronouns . Age */}
           <div className="flex flex-wrap items-center gap-2 text-sm text-[#b4aec7]">
             <span>@{profileUser?.username}</span>
+            {joinedDate && (
+              <>
+                <span className="text-[#8f899f]">•</span>
+                <span className="text-[#d0ccdc]">Member since {joinedDate}</span>
+              </>
+            )}
             {profileUser?.pronouns && (
               <>
                 <span className="text-[#8f899f]">•</span>
@@ -101,7 +133,6 @@ function ProfileBanner({
             )}
           </div>
 
-          {/* Bio */}
           <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-sm leading-relaxed text-[#d0ccdc] md:text-base">
             {profileUser?.bio?.trim() || "No bio yet."}
           </p>
@@ -114,11 +145,7 @@ function ProfileBanner({
             className={`${OUTLINE_BUTTON} w-[137px] shrink-0 border-white/20 bg-black/20 text-white hover:bg-white/10 hover:text-white`}
           >
             <Link to="/profile/edit">
-              <Pencil
-                className="size-4"
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
+              <Pencil className="size-4" strokeWidth={1.7} aria-hidden="true" />
               Edit Profile
             </Link>
           </Button>
@@ -165,14 +192,8 @@ function PlayerStatistics({
 
 function FavoriteGames({ favorites }: { favorites: UserFavoriteGameEntry[] }) {
   return (
-    <section
-      aria-labelledby="favorite-games-title"
-      className="flex flex-col gap-5"
-    >
-      <h2
-        id="favorite-games-title"
-        className="text-2xl font-semibold tracking-tight"
-      >
+    <section aria-labelledby="favorite-games-title" className="flex flex-col gap-5">
+      <h2 id="favorite-games-title" className="text-2xl font-semibold tracking-tight">
         Favorite games
       </h2>
 
@@ -189,7 +210,8 @@ function FavoriteGames({ favorites }: { favorites: UserFavoriteGameEntry[] }) {
                   <img
                     src={game.cover_image_url}
                     alt={game.title}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                    className="h-full w-full object-cover contrast-110 saturate-125 transition-transform duration-300 group-hover:scale-105"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
@@ -202,7 +224,7 @@ function FavoriteGames({ favorites }: { favorites: UserFavoriteGameEntry[] }) {
                   {game.title}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] text-[#b4aec7]">
-                  {game.genres.join(" / ") || "Favorite"}
+                  {game.genres?.join(" / ") || "Favorite"}
                 </p>
               </div>
             </Link>
@@ -229,10 +251,7 @@ function FriendsBar({
   onSelectFriend: (friend: SocialUser, event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
-    <section
-      aria-labelledby="friends-title"
-      className="flex flex-col gap-5"
-    >
+    <section aria-labelledby="friends-title" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <h2 id="friends-title" className="text-2xl font-semibold tracking-tight">
           Friends
@@ -282,86 +301,17 @@ function FriendsBar({
   );
 }
 
-function AchievementsBar({ achievements }: { achievements: UserAchievement[] }) {
-  return (
-    <section aria-labelledby="achievements-title" className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h2 id="achievements-title" className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-          <Trophy className="size-5 text-[#c2ade7]" />
-          Recent Achievements
-        </h2>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {achievements.length > 0 ? (
-          achievements.slice(0, 6).map((ach) => (
-            <div
-              key={ach.id}
-              className="flex flex-col items-center gap-2 rounded-xl border border-[#55516c] bg-[#373646] p-4 text-center"
-            >
-              {ach.icon_url ? (
-                <img src={ach.icon_url} alt={ach.title || "Achievement"} className="size-12 rounded object-cover" />
-              ) : (
-                <div className="flex size-12 items-center justify-center rounded bg-[#4d3e68]">
-                  <Gamepad2 className="size-6 text-[#c2ade7]" />
-                </div>
-              )}
-              <span className="truncate text-xs font-medium text-[#e0deeb] w-full" title={ach.title || ach.achievement_api_name}>
-                {ach.title || ach.achievement_api_name}
-              </span>
-              <span className="truncate text-[10px] text-[#b4aec7] w-full">
-                {ach.game_title || "Steam Game"}
-              </span>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full rounded-2xl bg-[#373646] p-6 text-center ring-1 ring-inset ring-[#55516c]">
-            <p className="text-sm text-[#b4aec7]">No Steam achievements unlocked yet.</p>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function ProfileActivity() {
-  return (
-    <section aria-label="Game list">
-      <Card className={`${PANEL} items-start`}>
-        <div>
-          <h2 className="text-xl font-semibold">Your Library</h2>
-          <p className="mt-2 text-sm text-[#b4aec7]">
-            Explore your game collection and track your progress across your library.
-          </p>
-        </div>
-
-        <Button
-          asChild
-          variant="outline"
-          className={OUTLINE_BUTTON}
-        >
-          <Link to="/my-library">
-            <Library strokeWidth={1.7} aria-hidden="true" />
-            View Game Library
-          </Link>
-        </Button>
-      </Card>
-    </section>
-  );
-}
-
 export default function Profile() {
   const { username } = useParams<{ username?: string }>();
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser } = useAuth();
 
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [friends, setFriends] = useState<SocialUser[]>([]);
   const [favorites, setFavorites] = useState<UserFavoriteGameEntry[]>([]);
-  const [achievements, setAchievements] = useState<UserAchievement[]>([]);
   const [libraryTotal, setLibraryTotal] = useState<number>(0);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const isOwnProfile = !username || Boolean(authUser && authUser.username === username);
   const [selectedFriend, setSelectedFriend] = useState<SocialUser | null>(null);
   const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | undefined>(undefined);
@@ -375,17 +325,15 @@ export default function Profile() {
     async function fetchProfileData() {
       try {
         if (isOwnProfile) {
-          const [meData, friendsData, listData, favsData, achievementsData] = await Promise.all([
+          const [meData, friendsData, listData, favsData] = await Promise.all([
             getMe(),
             getFriends(),
             getMyGameList(),
             getFavoriteGames(),
-            getUserAchievements().catch(() => []),
           ]);
 
           if (isMounted) {
             const counts = listData?.counts;
-            // ── FIX 1: Use counts.all directly instead of summing everything ──
             const total = counts?.all ?? 0;
 
             setProfileUser({
@@ -406,28 +354,23 @@ export default function Profile() {
             });
             setFriends(friendsData ?? []);
             setFavorites(favsData ?? []);
-            setAchievements(achievementsData ?? []);
             setLibraryTotal(total);
           }
         } else {
-          const [profileData, achievementsData] = await Promise.all([
-            getUserProfile(username),
-            getUserAchievements(username).catch(() => []),
-          ]);
+          const profileData = await getUserProfile(username);
 
           if (isMounted) {
             setProfileUser(profileData);
             setFriends([]);
-            setFavorites(profileData.favorites ?? []); 
-            setAchievements(achievementsData ?? []);
-            
+            setFavorites(profileData.favorites ?? []);
+
             if (profileData.library) {
               const total = profileData.library.all ?? 0;
               setLibraryTotal(total);
             }
           }
         }
-      } catch (err) {
+      } catch {
         if (isMounted) {
           setError("Failed to load profile.");
         }
@@ -443,6 +386,14 @@ export default function Profile() {
       isMounted = false;
     };
   }, [username, isOwnProfile]);
+
+  if (loadingProfile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#201e2f] text-[#b4aec7]">
+        <p className="text-sm">Loading profile…</p>
+      </div>
+    );
+  }
 
   if (error || !profileUser) {
     return (
@@ -471,12 +422,12 @@ export default function Profile() {
           />
           <FavoriteGames favorites={favorites} />
           {isOwnProfile && (
-            <FriendsBar 
-              friends={friends} 
+            <FriendsBar
+              friends={friends}
               onSelectFriend={(friend, event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 const spaceBelow = window.innerHeight - rect.bottom;
-                
+
                 const isUpward = spaceBelow < 320;
                 setOpenUpward(isUpward);
 
@@ -485,16 +436,14 @@ export default function Profile() {
                   left: Math.min(rect.left, window.innerWidth - 330),
                 });
                 setSelectedFriend(friend);
-              }} 
+              }}
             />
           )}
-          <AchievementsBar achievements={achievements} />
-          <ProfileActivity />
         </main>
         <Footer />
 
         {selectedFriend && (
-          <div 
+          <div
             className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm animate-in fade-in-0"
             onClick={() => setSelectedFriend(null)}
           >
