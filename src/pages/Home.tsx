@@ -7,16 +7,17 @@ import {
   getSteamGamesExpanded,
   getSteamGameSummaries,
   getMyGameList,
+  getSimilarGames,
+  type SimilarGameResult,
   type SteamGameCard,
   type UserGameEntry,
 } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import GameGrid from "@/components/games/GameGrid";
-import { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
 import { getTasteRecommendations, type TasteRecommendation } from "../services/tasteService";
-
+import GameCard, { type GameSummary } from "@/components/games/GameCard";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 
 const STEAM_PAGE_SIZE = 12;
@@ -34,14 +35,13 @@ const TOP_10_HERO_IDS = [
   1809540, // Nine Sols
 ];
 
-const HOLLOW_KNIGHT_IDS = [367520, 774361, 1369630, 504230];
+// const HOLLOW_KNIGHT_IDS = [367520, 774361, 1369630, 504230];
 const RPG_IDS = [1245620, 1809540, 1244090, 1971650];
 
 // The hero and both recommendation sections share several games,
 // so every unique id is fetched only once, in a single request.
-const CURATED_IDS = Array.from(
-  new Set([...TOP_10_HERO_IDS, ...HOLLOW_KNIGHT_IDS, ...RPG_IDS])
-);
+
+const CURATED_IDS = Array.from(new Set([...TOP_10_HERO_IDS, ...RPG_IDS]));
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   playing: { label: "Playing", className: "bg-[#e0e7ff] text-[#3730a3]" },
@@ -105,6 +105,13 @@ function recommendationBio(reason?: TasteRecommendation["reason"]) {
     : "Recommended based on your interests.";
 }
 
+function similarBio(result: SimilarGameResult, sourceTitle: string) {
+  const shared = result.reason?.shared_features ?? [];
+  return shared.length > 0
+    ? `Shares: ${shared.slice(0, 4).join(", ")}.`
+    : `Similar to ${sourceTitle}.`;
+}
+
 export default function Home() {
   // Raw cards from the backend. The user's list status is applied separately
   // (see useMemo below), so loading the list never triggers another fetch.
@@ -130,8 +137,25 @@ export default function Home() {
   const scrollCarousel = (dir: 1 | -1) =>
     carouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
 
+  const similarRef = useRef<HTMLDivElement>(null);
+  const scrollSimilar = (dir: 1 | -1) =>
+    similarRef.current?.scrollBy({
+      left: dir * (similarRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
+  const recommendedRef = useRef<HTMLDivElement>(null);
+  const scrollRecommended = (dir: 1 | -1) =>
+    recommendedRef.current?.scrollBy({
+      left: dir * (recommendedRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
   // in the effect:
-  getPlaylists({ limit: 10, offset: 0 })
+  const [listLoaded, setListLoaded] = useState(false);
+  const [similarResults, setSimilarResults] = useState<SimilarGameResult[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(true);
+  const [similarError, setSimilarError] = useState<string | null>(null);
 
   const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Player";
 
@@ -203,14 +227,76 @@ export default function Home() {
       .then((data) => {
         const map = new Map<string, UserGameEntry>();
         data.results.forEach((entry) => {
-          if (entry.steam_app_id) {
-            map.set(String(entry.steam_app_id), entry);
-          }
+          if (entry.steam_app_id) map.set(String(entry.steam_app_id), entry);
         });
         setUserListMap(map);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setListLoaded(true));
   }, []);
+
+  // Most recently completed game in the user's library
+  const completedEntry = useMemo(() => {
+    const completed = Array.from(userListMap.values()).filter(
+      (e) => e.status === "completed" && e.steam_app_id
+    );
+    completed.sort(
+      (a, b) =>
+        (Date.parse(b.completed_at ?? "") || 0) -
+        (Date.parse(a.completed_at ?? "") || 0)
+    );
+    return completed[0] ?? null;
+  }, [userListMap]);
+
+  const completedAppId = completedEntry?.steam_app_id ?? null;
+
+  useEffect(() => {
+    if (!listLoaded) return;
+
+    if (!completedAppId) {
+      setSimilarResults([]);
+      setSimilarLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setSimilarLoading(true);
+    setSimilarError(null);
+
+    getSimilarGames(completedAppId, controller.signal)
+      .then((results) => {
+        setSimilarResults(results.filter((r) => r.game.appid !== completedAppId));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setSimilarError("Failed to load similar games.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSimilarLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [listLoaded, completedAppId]);
+
+  const becauseCompletedGames = useMemo<GameSummary[]>(() => {
+    const sourceTitle = completedEntry?.title ?? "your last game";
+    return similarResults.map((result) => {
+      const userEntry = userListMap.get(String(result.game.appid));
+      const style = STATUS_STYLES[userEntry?.status ?? "unplayed"] ?? STATUS_STYLES.unplayed;
+      return {
+        id: result.game.appid,
+        title: result.game.title,
+        slug: String(result.game.appid),
+        cover: result.game.header_image ?? result.game.cover_image_url ?? "",
+        genres: result.game.genres?.length ? result.game.genres : ["Steam Game"],
+        platforms: ["PC"],
+        statusLabel: style.label,
+        statusClassName: style.className,
+        bio: similarBio(result, sourceTitle),
+      };
+    });
+  }, [similarResults, userListMap, completedEntry]);
 
   // Hero + Hollow Knight + RPG sections: ONE request for all unique games.
   useEffect(() => {
@@ -255,10 +341,10 @@ export default function Home() {
     () => pickSummaries(TOP_10_HERO_IDS, curatedCards, userListMap),
     [curatedCards, userListMap]
   );
-  const hollowKnightGames = useMemo(
-    () => pickSummaries(HOLLOW_KNIGHT_IDS, curatedCards, userListMap),
-    [curatedCards, userListMap]
-  );
+  // const hollowKnightGames = useMemo(
+  //   () => pickSummaries(HOLLOW_KNIGHT_IDS, curatedCards, userListMap),
+  //   [curatedCards, userListMap]
+  // );
   const rpgGames = useMemo(
     () => pickSummaries(RPG_IDS, curatedCards, userListMap),
     [curatedCards, userListMap]
@@ -372,7 +458,7 @@ export default function Home() {
           </section>
 
           {/* Hollow Knight Section */}
-          <section aria-labelledby="hollow-knight-title" className="flex flex-col gap-8">
+          {/* <section aria-labelledby="hollow-knight-title" className="flex flex-col gap-8">
             <div className="flex flex-col">
               <h2 id="hollow-knight-title" className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">
                 Because you played Hollow Knight
@@ -380,7 +466,80 @@ export default function Home() {
               <p className="text-[13px] leading-4 text-[#b4aec7] mt-1">EXPLORATION • CHALLENGE • DISCOVERY</p>
             </div>
             <GameGrid games={hollowKnightGames} loading={hollowKnightGames.length === 0} />
-          </section>
+          </section> */}
+
+          {/* Because you completed ... */}
+          {(similarLoading || completedEntry) && (
+            <section aria-labelledby="because-completed-title" className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <h2
+                    id="because-completed-title"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                  >
+                    {completedEntry ? (
+                      <>
+                        Because you completed{" "}
+                        <Link
+                          to={`/gamedetails/${completedEntry.steam_app_id}`}
+                          className="text-[#c2ade7] hover:text-[#e0deeb]"
+                        >
+                          {completedEntry.title}
+                        </Link>
+                      </>
+                    ) : (
+                      "Because you completed a game"
+                    )}
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                    Similar games based on your finished library
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollSimilar(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollSimilar(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {similarError && (
+                <p role="alert" className="text-sm text-[#e58d91]">{similarError}</p>
+              )}
+
+              {similarLoading && (
+                <p role="status" className="text-sm text-[#b4aec7]">Loading similar games…</p>
+              )}
+
+              {!similarLoading && !similarError && becauseCompletedGames.length > 0 && (
+                <div
+                  ref={similarRef}
+                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {becauseCompletedGames.map((game) => (
+                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* RPGs Section */}
           <section aria-labelledby="rpg-title" className="flex flex-col gap-8">
@@ -393,50 +552,75 @@ export default function Home() {
             <GameGrid games={rpgGames} loading={rpgGames.length === 0} />
           </section>
 
-          <section
-            aria-labelledby="taste-recommendations-title"
-            className="flex flex-col gap-8"
-          >
-            <div className="flex flex-col">
-              <div className="flex min-h-[29px] flex-wrap items-center justify-between gap-3">
+          {/* Recommended for You */}
+          <section aria-labelledby="taste-recommendations-title" className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
                 <h2
                   id="taste-recommendations-title"
                   className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
                 >
                   Recommended for You
                 </h2>
-
+                <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                  Games selected based on your genres, platforms, and liked games.
+                </p>
                 <Link
                   to="/interests"
-                  className="text-[13px] leading-4 text-[#c2ade7] hover:text-[#e0deeb]"
+                  className="mt-1 text-[13px] leading-4 text-[#c2ade7] hover:text-[#e0deeb]"
                 >
                   Tune your suggestions: edit genres and liked games →
                 </Link>
               </div>
 
-              <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
-                Games selected based on your genres, platforms, and liked games.
-              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollRecommended(-1)}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollRecommended(1)}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
             </div>
 
             {recommendationsError && (
-              <p role="alert" className="text-sm text-[#e58d91]">
-                {recommendationsError}
+              <p role="alert" className="text-sm text-[#e58d91]">{recommendationsError}</p>
+            )}
+
+            {recommendationsLoading && (
+              <p role="status" className="text-sm text-[#b4aec7]">Loading recommendations…</p>
+            )}
+
+            {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
+              <p className="text-sm text-[#b4aec7]">
+                No recommendations yet. Update your interests to get personalized suggestions.
               </p>
             )}
 
-            <GameGrid
-              games={recommendedGames}
-              loading={recommendationsLoading}
-            />
-
-            {!recommendationsLoading &&
-              !recommendationsError &&
-              recommendedGames.length === 0 && (
-                <p className="text-sm text-[#b4aec7]">
-                  No recommendations yet. Update your interests to get personalized suggestions.
-                </p>
-              )}
+            {!recommendationsLoading && !recommendationsError && recommendedGames.length > 0 && (
+              <div
+                ref={recommendedRef}
+                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {recommendedGames.map((game) => (
+                  <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                    <GameCard game={game} />
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Discover on Steam Section */}
