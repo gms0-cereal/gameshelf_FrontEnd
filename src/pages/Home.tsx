@@ -5,13 +5,12 @@ import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
 import {
   getMyGameList,
-  getSimilarGames,
-  type SimilarGameResult,
   type SteamGameCard,
   type UserGameEntry,
 } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import GameGrid from "@/components/games/GameGrid";
+import { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
@@ -29,11 +28,10 @@ const TOP_10_HERO_IDS = [
   774361, 730, 1369630, 1245620, 1809540,
 ];
 
-// const HOLLOW_KNIGHT_IDS = [367520, 774361, 1369630, 504230];
 const RPG_IDS = [1245620, 1809540, 1244090, 1971650];
 
 const CURATED_IDS_STRING = Array.from(
-  new Set([...TOP_10_HERO_IDS, ...HOLLOW_KNIGHT_IDS, ...RPG_IDS])
+  new Set([...TOP_10_HERO_IDS, ...RPG_IDS])
 ).join(",");
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
@@ -78,9 +76,9 @@ function pickSummaries(
 
 export default function Home() {
   const [heroIndex, setHeroIndex] = useState(0);
-  const [userListMap, setUserListMap] = useState<Map<string, UserGameEntry>>(new Map());
+  const [userListMap, setUserListMap] = useState>(new Map());
 
-  // 1. Fetch User's Game List to map statuses (Fixes unused 'setUserListMap')
+  // Fetch User's Game List to map statuses
   useEffect(() => {
     let cancelled = false;
 
@@ -101,6 +99,7 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
   const [cursors, setCursors] = useState<number[]>([0]);
   const currentCursor = cursors[cursors.length - 1];
   const pageNumber = cursors.length;
@@ -116,7 +115,7 @@ export default function Home() {
   const scrollCarousel = (dir: 1 | -1) =>
     carouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
 
-  // Fetch Community Playlists with lazy-loading support
+  // Fetch Community Playlists
   useEffect(() => {
     let cancelled = false;
 
@@ -136,7 +135,7 @@ export default function Home() {
     };
   }, []);
 
-  // 1. RTK Query: Fetch Curated Hero/Section Games in 1 Cached Request
+  // RTK Query: Fetch Curated Hero & Section Games in 1 Cached Request
   const { data: curatedData } = useGetGameSummariesQuery(CURATED_IDS_STRING);
   
   const curatedCardsMap = useMemo(() => {
@@ -145,7 +144,7 @@ export default function Home() {
     return map;
   }, [curatedData]);
 
-  // 2. RTK Query: Fetch Steam Catalog List with Pagination & Expansion
+  // RTK Query: Fetch Steam Catalog List with Pagination & Expansion
   const { data: catalogData, isLoading: catalogLoading, error: catalogError } = useGetGameListQuery({
     limit: STEAM_PAGE_SIZE,
     last_appid: currentCursor,
@@ -159,10 +158,6 @@ export default function Home() {
   // Derived memoized summaries
   const heroGames = useMemo(
     () => pickSummaries(TOP_10_HERO_IDS, curatedCardsMap, userListMap),
-    [curatedCardsMap, userListMap]
-  );
-  const hollowKnightGames = useMemo(
-    () => pickSummaries(HOLLOW_KNIGHT_IDS, curatedCardsMap, userListMap),
     [curatedCardsMap, userListMap]
   );
   const rpgGames = useMemo(
@@ -203,7 +198,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hero Banner (Above-the-fold: fetchPriority high) */}
+          {/* Hero Banner */}
           <section className="relative flex min-h-[420px] items-end overflow-hidden rounded-2xl bg-[#201e2f] px-6 py-10 md:px-11 xl:h-[440px]">
             {currentHero && (
               <img
@@ -215,6 +210,8 @@ export default function Home() {
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-[#201e2f] via-[#201e2f]/50 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#201e2f] via-[#201e2f]/60 to-transparent" />
+
             <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
               <span className="text-xs font-medium text-[#e0deeb]">
                 {heroIndex + 1} / {Math.max(heroGames.length, 1)}
@@ -238,6 +235,7 @@ export default function Home() {
                 </Button>
               </div>
             </div>
+
             <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
               <p className="text-[11px] leading-[13px] tracking-[2px] text-[#c2ade7] font-semibold">
                 TOP RATED THIS MONTH
@@ -249,119 +247,48 @@ export default function Home() {
                 {currentHero ? currentHero.bio : "Explore top-tier titles trending across the community."}
               </p>
               {currentHero && (
-                <Button asChild className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#a8484c] px-6 text-[14px] font-semibold text-[#e0deeb] hover:bg-[#ae494e]">
-                  <Link to={`/gamedetails/${currentHero.slug}`}>
-                    <Info className="size-4" /> Details
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-4 pt-2">
+                  <Button asChild className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#a8484c] px-6 text-[14px] font-semibold text-[#e0deeb] hover:bg-[#ae494e]">
+                    <Link to={`/gamedetails/${currentHero.slug}`}>
+                      <Info className="size-4" /> Details
+                    </Link>
+                  </Button>
+                </div>
               )}
             </div>
           </section>
 
-          {/* Hollow Knight Section */}
-          <section className="flex flex-col gap-8">
-            <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">Because you played Hollow Knight</h2>
-            <GameGrid games={hollowKnightGames} loading={hollowKnightGames.length === 0} />
-          </section> */}
-
-          {/* Because you completed ... */}
-          {(similarLoading || completedEntry) && (
-            <section aria-labelledby="because-completed-title" className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2
-                    id="because-completed-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
-                  >
-                    {completedEntry ? (
-                      <>
-                        Because you completed{" "}
-                        <Link
-                          to={`/gamedetails/${completedEntry.steam_app_id}`}
-                          className="text-[#c2ade7] hover:text-[#e0deeb]"
-                        >
-                          {completedEntry.title}
-                        </Link>
-                      </>
-                    ) : (
-                      "Because you completed a game"
-                    )}
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
-                    Similar games based on your finished library
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollSimilar(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollSimilar(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {similarError && (
-                <p role="alert" className="text-sm text-[#e58d91]">{similarError}</p>
-              )}
-
-              {similarLoading && (
-                <p role="status" className="text-sm text-[#b4aec7]">Loading similar games…</p>
-              )}
-
-              {!similarLoading && !similarError && becauseCompletedGames.length > 0 && (
-                <div
-                  ref={similarRef}
-                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  {becauseCompletedGames.map((game) => (
-                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
-                      <GameCard game={game} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
           {/* RPGs Section */}
           <section className="flex flex-col gap-8">
-            <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">More RPGs for you</h2>
+            <div className="flex flex-col">
+              <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">More RPGs for you</h2>
+              <p className="text-[13px] leading-4 text-[#b4aec7] mt-1">Inspired by your favorite genre</p>
+            </div>
             <GameGrid games={rpgGames} loading={rpgGames.length === 0} />
           </section>
 
           {/* Discover on Steam Section */}
           <section className="flex flex-col gap-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">Discover on Steam</h2>
+              <div className="flex flex-col">
+                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">Discover on Steam</h2>
+                <p className="text-[13px] leading-4 text-[#b4aec7] mt-1">Pulled live from the Steam catalog</p>
+              </div>
             </div>
             {catalogError && <p className="text-sm text-[#e58d91]">Failed to load catalog games.</p>}
             <GameGrid games={steamSummaries} loading={catalogLoading} />
             <nav className="flex items-center justify-center gap-4 pt-4">
-              <Button onClick={goToPreviousPage} disabled={pageNumber === 1 || catalogLoading} className="bg-[#373646] text-[#e0deeb]">
+              <Button onClick={goToPreviousPage} disabled={pageNumber === 1 || catalogLoading} className="h-10 rounded-lg border-0 bg-[#373646] px-5 text-sm font-semibold text-[#e0deeb] hover:bg-[#46445a] disabled:opacity-50">
                 Previous
               </Button>
               <span className="text-[13px] text-[#b4aec7]">Page {pageNumber}</span>
-              <Button onClick={goToNextPage} disabled={!hasMore || catalogLoading} className="bg-[#9f4044] text-[#e0deeb]">
+              <Button onClick={goToNextPage} disabled={!hasMore || catalogLoading} className="h-10 rounded-lg border-0 bg-[#9f4044] px-5 text-sm font-semibold text-[#e0deeb] hover:bg-[#ae494e] disabled:opacity-50">
                 Next
               </Button>
             </nav>
           </section>
 
-          {/* Community Playlists Section (Restored & Lazy-loaded) */}
+          {/* Community Playlists Section */}
           <section id="community-playlists" aria-labelledby="community-playlists-title" className="flex flex-col gap-5">
             <div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
