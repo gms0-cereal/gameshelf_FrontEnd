@@ -5,12 +5,13 @@ import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
 import {
   getMyGameList,
+  getSimilarGames,
+  type SimilarGameResult,
   type SteamGameCard,
   type UserGameEntry,
 } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import GameGrid from "@/components/games/GameGrid";
-import { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
@@ -28,7 +29,7 @@ const TOP_10_HERO_IDS = [
   774361, 730, 1369630, 1245620, 1809540,
 ];
 
-const HOLLOW_KNIGHT_IDS = [367520, 774361, 1369630, 504230];
+// const HOLLOW_KNIGHT_IDS = [367520, 774361, 1369630, 504230];
 const RPG_IDS = [1245620, 1809540, 1244090, 1971650];
 
 const CURATED_IDS_STRING = Array.from(
@@ -261,7 +262,80 @@ export default function Home() {
           <section className="flex flex-col gap-8">
             <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">Because you played Hollow Knight</h2>
             <GameGrid games={hollowKnightGames} loading={hollowKnightGames.length === 0} />
-          </section>
+          </section> */}
+
+          {/* Because you completed ... */}
+          {(similarLoading || completedEntry) && (
+            <section aria-labelledby="because-completed-title" className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <h2
+                    id="because-completed-title"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                  >
+                    {completedEntry ? (
+                      <>
+                        Because you completed{" "}
+                        <Link
+                          to={`/gamedetails/${completedEntry.steam_app_id}`}
+                          className="text-[#c2ade7] hover:text-[#e0deeb]"
+                        >
+                          {completedEntry.title}
+                        </Link>
+                      </>
+                    ) : (
+                      "Because you completed a game"
+                    )}
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                    Similar games based on your finished library
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollSimilar(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollSimilar(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {similarError && (
+                <p role="alert" className="text-sm text-[#e58d91]">{similarError}</p>
+              )}
+
+              {similarLoading && (
+                <p role="status" className="text-sm text-[#b4aec7]">Loading similar games…</p>
+              )}
+
+              {!similarLoading && !similarError && becauseCompletedGames.length > 0 && (
+                <div
+                  ref={similarRef}
+                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {becauseCompletedGames.map((game) => (
+                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* RPGs Section */}
           <section className="flex flex-col gap-8">
