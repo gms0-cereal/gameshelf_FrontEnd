@@ -20,7 +20,7 @@ import {
 } from "@/services/Gameservice";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
-import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/UserService";
+import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/Userservice";
 
 type Filter = "all" | ListStatus;
 type View = "rows" | "grid";
