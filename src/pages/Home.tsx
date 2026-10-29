@@ -19,7 +19,7 @@ import { getPlaylists, type Playlist } from "@/services/playlistService";
 import { getTasteRecommendations, type TasteRecommendation } from "../services/tasteService";
 import GameCard, { type GameSummary } from "@/components/games/GameCard";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
-
+import { getPlayersLikeYou, type PlayersLikeYouItem } from "@/services/playersLikeYouService";
 const STEAM_PAGE_SIZE = 12;
 
 const TOP_10_HERO_IDS = [
@@ -111,7 +111,24 @@ function similarBio(result: SimilarGameResult, sourceTitle: string) {
     ? `Shares: ${shared.slice(0, 4).join(", ")}.`
     : `Similar to ${sourceTitle}.`;
 }
+function playersLikeYouToSummary(item: PlayersLikeYouItem): GameSummary | null {
+  const appId = item.game.steam_app_id;
+  if (!appId) return null; // GameCard links use Steam app IDs, so skip games without one
 
+  return {
+    id: appId,
+    title: item.game.title,
+    slug: String(appId),
+    cover:
+      item.game.cover_image_url ??
+      `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
+    genres: item.game.genres?.length ? item.game.genres : ["Steam Game"],
+    platforms: ["PC"],
+    statusLabel: "Unplayed",
+    statusClassName: STATUS_STYLES.unplayed.className,
+    bio: item.reason_text || "Players with similar taste liked this",
+  };
+}
 export default function Home() {
   // Raw cards from the backend. The user's list status is applied separately
   // (see useMemo below), so loading the list never triggers another fetch.
@@ -150,6 +167,51 @@ export default function Home() {
       left: dir * (recommendedRef.current.clientWidth * 0.8),
       behavior: "smooth",
     });
+
+  const playersRef = useRef<HTMLDivElement>(null);
+  const scrollPlayers = (dir: 1 | -1) =>
+    playersRef.current?.scrollBy({
+      left: dir * (playersRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
+  const [playersGames, setPlayersGames] = useState<GameSummary[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
+  const [playersError, setPlayersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setPlayersGames([]);
+      setPlayersLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setPlayersLoading(true);
+    setPlayersError(null);
+
+    getPlayersLikeYou(20, controller.signal)
+      .then((data) => {
+        // Only real SVD picks go in this section. The popular fallback stays hidden.
+        if (data.source !== "personalized") {
+          setPlayersGames([]);
+          return;
+        }
+        setPlayersGames(
+          data.results
+            .map(playersLikeYouToSummary)
+            .filter((g): g is GameSummary => g !== null)
+        );
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPlayersError("Failed to load Players Like You.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPlayersLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [user?.id]);
 
   // in the effect:
   const [listLoaded, setListLoaded] = useState(false);
@@ -622,6 +684,63 @@ export default function Home() {
               </div>
             )}
           </section>
+
+          {/* Players Like You */}
+          {user && (playersLoading || playersError || playersGames.length > 0) && (
+            <section aria-labelledby="players-like-you-title" className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <h2
+                    id="players-like-you-title"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                  >
+                    Players Like You
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                    Discover games you may enjoy based on the preferences and ratings of players with
+                    similar gaming tastes.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlayers(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlayers(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {playersError && <p role="alert" className="text-sm text-[#e58d91]">{playersError}</p>}
+              {playersLoading && <p role="status" className="text-sm text-[#b4aec7]">Loading Players Like You…</p>}
+
+              {!playersLoading && !playersError && playersGames.length > 0 && (
+                <div
+                  ref={playersRef}
+                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {playersGames.map((game) => (
+                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Discover on Steam Section */}
           <section aria-labelledby="steam-title" className="flex flex-col gap-8">
