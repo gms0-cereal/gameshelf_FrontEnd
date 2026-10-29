@@ -169,23 +169,21 @@ export async function declineFriendRequest(id: number): Promise<void> {
 export async function cancelFriendRequest(id: number): Promise<void> {
   await api.post(`/users/friend-requests/${id}/cancel/`);
 }
-
 export async function getBlockedUsers(search = ""): Promise<SocialUser[]> {
-  const { data } = await api.get("/users/blocks/", { params: { search } });
+  const { data } = await api.get("/blocks/", { params: { search } });
   return extractResults<SocialUser>(data);
 }
 
 export async function blockUser(username: string): Promise<unknown> {
-  const { data } = await api.post("/users/blocks/", { username });
+  const { data } = await api.post("/blocks/", { username });
   return data;
 }
 
 export async function unblockUser(username: string): Promise<void> {
-  await api.delete(`/users/blocks/${encodeURIComponent(username)}/`);
+  await api.delete(`/blocks/${encodeURIComponent(username)}/`);
 }
-
 export async function reportUser(username: string, reason: string, details?: string): Promise<unknown> {
-  const { data } = await api.post("/users/reports/", { username, reason, details });
+  const { data } = await api.post("/reports/", { username, reason, details });
   return data;
 }
 
