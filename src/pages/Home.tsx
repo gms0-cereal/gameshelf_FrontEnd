@@ -76,7 +76,7 @@ function pickSummaries(
 
 export default function Home() {
   const [heroIndex, setHeroIndex] = useState(0);
-  const [userListMap, setUserListMap] = useState>(new Map());
+  const [userListMap, setUserListMap] = useState<Map<string, UserGameEntry>>(new Map());
 
   // Fetch User's Game List to map statuses
   useEffect(() => {
@@ -198,7 +198,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hero Banner */}
+{/* Hero Banner */}
           <section className="relative flex min-h-[420px] items-end overflow-hidden rounded-2xl bg-[#201e2f] px-6 py-10 md:px-11 xl:h-[440px]">
             {currentHero && (
               <img
@@ -206,11 +206,12 @@ export default function Home() {
                 alt={currentHero.title}
                 fetchPriority="high"
                 loading="eager"
-                className="absolute inset-0 h-full w-full object-cover object-center filter brightness-95"
+                className="absolute inset-0 h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#201e2f] via-[#201e2f]/50 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#201e2f] via-[#201e2f]/60 to-transparent" />
+            {/* Lighter overlays to keep text readable */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#201e2f] via-[#201e2f]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#201e2f]/80 via-transparent to-transparent" />
 
             <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
               <span className="text-xs font-medium text-[#e0deeb]">
@@ -240,10 +241,10 @@ export default function Home() {
               <p className="text-[11px] leading-[13px] tracking-[2px] text-[#c2ade7] font-semibold">
                 TOP RATED THIS MONTH
               </p>
-              <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] md:text-[46px]">
+              <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] md:text-[46px] text-white drop-shadow-md">
                 {currentHero ? currentHero.title : "Loading featured games..."}
               </h2>
-              <p className="line-clamp-2 text-[14px] leading-relaxed text-[#b4aec7]">
+              <p className="line-clamp-2 text-[14px] leading-relaxed text-[#e0deeb] drop-shadow">
                 {currentHero ? currentHero.bio : "Explore top-tier titles trending across the community."}
               </p>
               {currentHero && (
@@ -257,7 +258,6 @@ export default function Home() {
               )}
             </div>
           </section>
-
           {/* RPGs Section */}
           <section className="flex flex-col gap-8">
             <div className="flex flex-col">

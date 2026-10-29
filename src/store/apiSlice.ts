@@ -16,6 +16,23 @@ const axiosBaseQuery = () => async ({ url, method, data, params }: { url: string
   }
 };
 
+export interface BrowseGame {
+  appid: number;
+  name: string;
+  header_image: string;
+  genres: string[];
+  platforms: string[];
+  release_year?: number;
+  score?: number;
+  price?: string;
+}
+
+export interface BrowseResponse {
+  count: number;
+  total_pages: number;
+  results: BrowseGame[];
+}
+
 export const gameShelfApi = createApi({
   reducerPath: 'gameShelfApi',
   baseQuery: axiosBaseQuery(),
@@ -53,12 +70,23 @@ export const gameShelfApi = createApi({
         params: { appids: appIdsString },
       }),
     }),
+    browseGames: builder.query<BrowseResponse, { q?: string; genre?: string; platform?: string; sort?: string; page?: number }>({
+        query: (params) => ({
+            url: "games/steam/browse/", // Adjust to match your backend browse url route
+            method: "GET",
+            params,
+        }),
+        keepUnusedDataFor: 300, // Keeps cache fresh for 5 minutes matching Redis TTL
+}),
   }),
 });
+
+
 
 export const {
   useGetGameListQuery,
   useGetGameBrowseQuery,
   useGetGameDetailsQuery,
   useGetGameSummariesQuery,
+  useBrowseGamesQuery,
 } = gameShelfApi;
