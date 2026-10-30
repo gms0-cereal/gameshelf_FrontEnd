@@ -42,7 +42,7 @@ type ProfileForm = {
   pronouns: string;
   library_visibility: string;
   friends_visibility: string;
-  birth_date?: string;
+  birth_day?: string; // Updated to birth_day to match backend
   age?: number | null;
 };
 
@@ -59,7 +59,7 @@ export default function EditProfile() {
     pronouns: "",
     library_visibility: "public",
     friends_visibility: "public",
-    birth_date: "",
+    birth_day: "",
     age: null,
   });
 
@@ -97,7 +97,7 @@ export default function EditProfile() {
       pronouns: user.pronouns ?? "",
       library_visibility: user.library_visibility ?? "public",
       friends_visibility: user.friends_visibility ?? "public",
-      birth_date: (user as any).birth_date ?? "",
+      birth_day: (user as any).birth_day ?? "",
       age: user.age ?? null,
     });
 
@@ -184,7 +184,7 @@ export default function EditProfile() {
   function handleBirthdayConfirm() {
     if (!tempBirthDate) return;
     const calculated = calculateAge(tempBirthDate);
-    updateField("birth_date", tempBirthDate);
+    updateField("birth_day", tempBirthDate); // Synced with birth_day
     updateField("age", calculated);
     setShowBirthdayModal(false);
     setConfirmBirthdayStep(false);
@@ -230,8 +230,8 @@ export default function EditProfile() {
       payload.append("library_visibility", form.library_visibility);
       payload.append("friends_visibility", form.friends_visibility);
       
-      if (form.birth_date) {
-        payload.append("birth_date", form.birth_date);
+      if (form.birth_day) {
+        payload.append("birth_day", form.birth_day); // Sending birth_day to backend
       }
       if (form.age !== null && form.age !== undefined) {
         payload.append("age", String(form.age));
@@ -420,33 +420,36 @@ export default function EditProfile() {
                     <Calendar className="size-5 text-[#c2ade7]" />
                     <h3 className="text-sm font-semibold text-[#e0deeb]">Age & Birthday</h3>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setTempBirthDate(form.birth_date || "");
-                      setConfirmBirthdayStep(false);
-                      setShowBirthdayModal(true);
-                    }}
-                    className="bg-[#8870b6] hover:bg-[#76609f] text-white text-xs h-9 px-4"
-                  >
-                    {form.age ? "Update Birthday" : "Set Birthday"}
-                  </Button>
+                  {/* Hide button if birth_day is already set (one-time lock rule) */}
+                  {!form.birth_day && !(user as any)?.birth_day && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setTempBirthDate(form.birth_day || "");
+                        setConfirmBirthdayStep(false);
+                        setShowBirthdayModal(true);
+                      }}
+                      className="bg-[#8870b6] hover:bg-[#76609f] text-white text-xs h-9 px-4"
+                    >
+                      Set Birthday
+                    </Button>
+                  )}
                 </div>
                 <p className="text-xs text-[#b4aec7]">
-                  {form.age
-                    ? `Current age: ${form.age} years old (exact birthday is kept private)`
+                  {form.birth_day || (user as any)?.birth_day
+                    ? `Current age: ${form.age ?? calculateAge(form.birth_day || (user as any).birth_day)} years old (exact birthday is kept private, locked 🔒)`
                     : "No birthday set. Click to select your birthday."}
                 </p>
               </div>
 
-              {/* Bio */}
+              {/* Bio with height constraints */}
               <div className="flex flex-col gap-2">
                 <label className={LABEL} htmlFor="bio">
                   Bio
                 </label>
                 <Textarea
                   id="bio"
-                  className={`${FIELD} min-h-28`}
+                  className={`${FIELD} min-h-24 max-h-36 resize-y`}
                   maxLength={300}
                   placeholder="Tell other players a little about yourself..."
                   value={form.bio}
@@ -582,7 +585,6 @@ export default function EditProfile() {
                   onChange={(e) => updateField("friends_visibility", e.target.value)}
                 >
                   <option value="public">Public</option>
-                  <option value="friends">Friends only</option>
                   <option value="private">Private</option>
                 </select>
               </div>
@@ -619,7 +621,7 @@ export default function EditProfile() {
         <Footer />
       </div>
 
-      {/* Birthday Modal Dialog */}
+    {/* Birthday Modal Dialog */}
       {showBirthdayModal && (
         <div
           role="dialog"
@@ -635,20 +637,45 @@ export default function EditProfile() {
               {confirmBirthdayStep ? "Confirm Your Birthday" : "Set Your Birthday"}
             </h3>
 
-            {!confirmBirthdayStep ? (
+            {/* Check if the user already set their birthday (One-time lock) */}
+            {user?.birth_day ? (
+              <div className="mt-4 flex flex-col gap-4">
+                <p className="text-sm text-[#b4aec7]">
+                  Your birthday has already been set and cannot be changed. If you need assistance, please contact support.
+                </p>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={() => setShowBirthdayModal(false)}
+                    className="bg-[#8870b6] text-white hover:bg-[#76609f]"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : !confirmBirthdayStep ? (
               <div className="mt-4 flex flex-col gap-4">
                 <p className="text-xs text-[#b4aec7]">
-                  Select your date of birth using the calendar below. Your exact birthday remains private, and your age is calculated automatically.
+                  Select your date of birth using the calendar below. Your exact birthday remains private, and your age is calculated automatically. Note: This can only be set once.
                 </p>
                 <div className="flex flex-col gap-2">
                   <label className={LABEL}>Date of Birth</label>
                   <input
                     type="date"
                     value={tempBirthDate}
+                    max={new Date(Date.now() - 86400000).toISOString().split("T")[0]}
                     onChange={(e) => setTempBirthDate(e.target.value)}
                     className="h-11 rounded-lg border border-[#55516c] bg-[#201e2f] px-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
                   />
                 </div>
+
+                {/* Validation error if under 5 years old */}
+                {tempBirthDate && calculateAge(tempBirthDate) < 5 && (
+                  <p className="text-xs text-[#f4b6ba]">
+                    You must be at least 5 years old to set a birthday.
+                  </p>
+                )}
+
                 <div className="mt-4 flex justify-end gap-3">
                   <Button
                     type="button"
@@ -660,7 +687,7 @@ export default function EditProfile() {
                   </Button>
                   <Button
                     type="button"
-                    disabled={!tempBirthDate}
+                    disabled={!tempBirthDate || calculateAge(tempBirthDate) < 5}
                     onClick={() => setConfirmBirthdayStep(true)}
                     className="bg-[#8870b6] text-white hover:bg-[#76609f]"
                   >
@@ -674,6 +701,9 @@ export default function EditProfile() {
                   <AlertCircle className="size-5 text-[#c2ade7] shrink-0 mt-0.5" />
                   <div className="text-sm text-[#e0deeb]">
                     <p className="font-medium text-white">Are you sure this is your correct birthday?</p>
+                    <p className="mt-1 text-xs text-[#f4b6ba] font-medium">
+                      ⚠️ Note: This can only be set once and cannot be changed later.
+                    </p>
                     <p className="mt-1 text-xs text-[#b4aec7]">
                       Selected Date: <strong className="text-white">{tempBirthDate}</strong>
                     </p>

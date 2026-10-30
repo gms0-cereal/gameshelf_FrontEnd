@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState, memo } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, memo, useRef} from "react";
+import { Link, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Heart, LayoutGrid, List, Loader2 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import { timeAgo } from "../components/playlists/PlaylistCards";
 import { getPlaylist, toggleLikePlaylist, type Playlist, type PlaylistGame } from "../services/playlistService";
+import MiniProfileCard from "@/components/social/MiniProfileCard";
+import { getUserProfile, type UserProfile } from "../services/Userservice";
 
 const steamCover = (appid: number) =>
   `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
@@ -94,6 +96,46 @@ const PlaylistDetail = () => {
   const [genreFilter, setGenreFilter] = useState<string | null>(null);
   const [showAllGenres, setShowAllGenres] = useState(false);
 
+  const [showMiniProfile, setShowMiniProfile] = useState(false);
+  const profileCardRef = useRef<HTMLDivElement>(null);
+
+  // Close mini profile when clicking outside of it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileCardRef.current && !profileCardRef.current.contains(event.target as Node)) {
+        setShowMiniProfile(false);
+      }
+    }
+    if (showMiniProfile) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMiniProfile]);
+  const [miniProfileUser, setMiniProfileUser] = useState<UserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const handleAvatarClick = async () => {
+    if (showMiniProfile) {
+      setShowMiniProfile(false);
+      return;
+    }
+
+    setShowMiniProfile(true);
+
+    if (playlist?.owner?.username && !miniProfileUser) {
+      setLoadingProfile(true);
+      try {
+        const data = await getUserProfile(playlist.owner.username);
+        setMiniProfileUser(data);
+      } catch {
+        // Gracefully fall back to owner basic info on network error
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+  };
   useEffect(() => {
     const playlistId = Number(id);
     if (!Number.isInteger(playlistId)) {
@@ -217,30 +259,46 @@ const PlaylistDetail = () => {
         {playlist && (
           <>
             {/* Header: details left, compiled genres right */}
-            <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold overflow-hidden border border-[#8b6fd6]/30">
-                    <OwnerAvatar src={getFullUrl(ownerAvatar)} name={ownerName} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold">{ownerName}</p>
-                    <p className="font-mono text-[11px] text-[#8f8ca9]">
-                      <span className="capitalize">{playlist.visibility}</span> · {total}{" "}
-                      {total === 1 ? "title" : "titles"} · Created {timeAgo(playlist.created_at)} · Updated{" "}
-                      {timeAgo(playlist.updated_at)}
-                    </p>
-                  </div>
-                </div>
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
+            <div>
+              <div className="flex items-center gap-3">
 
-                <h1 className="mt-4 text-[32px] font-semibold leading-tight">{playlist.title}</h1>
+          <div className="relative inline-block" ref={profileCardRef}>
+            <button
+              type="button"
+              onClick={handleAvatarClick} // <--- Use the proper handler function here!
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold overflow-hidden border border-[#8b6fd6]/30 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
+              aria-label={`View ${ownerName}'s profile card`}
+            >
+              <OwnerAvatar src={getFullUrl(ownerAvatar)} name={ownerName} />
+            </button>
 
-                {playlist.description && (
-                  <p className="mt-3 max-w-2xl whitespace-pre-line text-[14px] leading-6 text-[#b4aec7]">
-                    {playlist.description}
-                  </p>
-                )}
+            {showMiniProfile && playlist.owner && (
+              <div className="absolute left-0 top-full z-50">
+                <MiniProfileCard
+                  user={{
+                    ...playlist.owner,
+                    ...(miniProfileUser ?? {}), // <--- Pulls in the full profile data (banner, bio, favorites)
+                    avatar_url: getFullUrl(miniProfileUser?.avatar_url || playlist.owner.avatar_url),
+                    banner_url: getFullUrl(miniProfileUser?.banner_url || playlist.owner.banner_url),
+                  }}
+                  side="bottom"
+                />
+              </div>
+            )}  
+          </div>
 
+      <div className="min-w-0">
+        <p className="truncate text-[14px] font-semibold">{ownerName}</p>
+        <p className="font-mono text-[11px] text-[#8f8ca9]">
+          <span className="capitalize">{playlist.visibility}</span> · {total}{" "}
+          {total === 1 ? "title" : "titles"} · Created {timeAgo(playlist.created_at)} · Updated{" "}
+          {timeAgo(playlist.updated_at)}
+        </p>
+      </div>
+    </div>
+
+    <h1 className="mt-4 text-[32px] font-semibold leading-tight">{playlist.title}</h1>
                 {/* Interactive Like Button */}
                 <button
                   type="button"
