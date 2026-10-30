@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
@@ -85,21 +85,23 @@ function parseApiError(err: unknown): { general?: string; fields: FieldErrors } 
 const inputBase =
   "w-full rounded-lg border border-[#4a4766] bg-[#1f1d2e] px-3 text-[13px] text-[#e6e3f5] placeholder:text-[#9a97b5] focus:outline-none focus:ring-2 focus:ring-[#8b6fd6]/60";
 
-/** Cover image, with a soft gradient if it fails to load or is missing. */
-function Cover({ src, className }: { src?: string | null; className: string }) {
+/** Cover image, with a soft gradient if it fails to load or is missing. Optimized with lazy-loading. */
+const Cover = memo(({ src, className }: { src?: string | null; className: string }) => {
   const [failed, setFailed] = useState(false);
   return src && !failed ? (
     <img
       src={src}
       alt=""
       loading="lazy"
+      decoding="async"
       onError={() => setFailed(true)}
       className={`object-cover ${className}`}
     />
   ) : (
     <div className={`bg-gradient-to-br from-[#3b3560] to-[#1d2b33] ${className}`} aria-hidden="true" />
   );
-}
+});
+Cover.displayName = "Cover";
 
 const CreatePlaylist = () => {
   const { user, loading: authLoading } = useAuth();
@@ -508,12 +510,14 @@ const CreatePlaylist = () => {
             </div>
 
             <div className="mt-5 flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold overflow-hidden">
                 {user?.avatar_url ? (
                   <img
                     src={user.avatar_url}
                     alt={user.username}
-                    className="h-full w-full rounded-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
                   user?.username.slice(0, 2).toUpperCase()

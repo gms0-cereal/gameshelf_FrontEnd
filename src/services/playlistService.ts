@@ -123,6 +123,12 @@ export async function createPlaylist(input: CreatePlaylistInput) {
   return data;
 }
 
+export async function toggleLikePlaylist(id: number): Promise<{ is_liked: boolean; like_count: number }> {
+  const { data } = await api.post(`/social/playlists/${id}/like/`);
+  return data;
+}
+
+
 // ─── Steam search for the "Find games" box (social app) ───────────────────────
 export async function searchSteamGames(
   q: string,
