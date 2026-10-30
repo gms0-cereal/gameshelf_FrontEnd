@@ -51,7 +51,7 @@ export function PlaylistCarouselCard({ playlist }: { playlist: Playlist }) {
 
   return (
     <Link
-      to={`/playlists/${playlist.id}`}
+      to={`/playlists/${playlist.owner.username}/${playlist.id}`}
       className="group block w-[300px] shrink-0 snap-start focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6] sm:w-[360px] rounded-xl"
     >
       <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-[#2a2838]">
@@ -82,7 +82,7 @@ export function PlaylistListCard({ playlist }: { playlist: Playlist }) {
 
   return (
     <Link
-      to={`/playlists/${playlist.id}`}
+      to={`/playlists/${playlist.owner.username}/${playlist.id}`}
       className="block rounded-xl border border-[#2f2d40] bg-[#262436] p-5 transition-colors hover:border-[#8b6fd6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
     >
       <div className="flex items-center gap-3">

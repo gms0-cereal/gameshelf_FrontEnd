@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, memo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Heart, LayoutGrid, List, Loader2 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
@@ -83,7 +83,7 @@ function GameLink({ game, className, children }: { game: PlaylistGame; className
 }
 
 const PlaylistDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, username } = useParams<{ id: string; username?: string }>();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -171,12 +171,23 @@ const PlaylistDetail = () => {
     return games;
   }, [playlist, sort, genreFilter]);
 
-  const ownerName = playlist?.owner?.nickname || playlist?.owner?.username || "Player";
+  const ownerUsername = playlist?.owner?.username;
+  const ownerName = playlist?.owner?.nickname || ownerUsername || "Player";
   const ownerAvatar = playlist?.owner?.avatar_url;
   const total = playlist?.games.length ?? 0;
   const shownGenres = showAllGenres ? genreCounts : genreCounts.slice(0, TOP_GENRES_SHOWN);
   const hiddenGenres = genreCounts.length - TOP_GENRES_SHOWN;
   const isLiked = Boolean((playlist as any)?.is_liked);
+
+  // Canonical URL: /playlists/:ownerUsername/:id
+  // Redirects old /playlists/:id links and fixes a wrong username in the URL.
+  if (
+    playlist &&
+    ownerUsername &&
+    username?.toLowerCase() !== ownerUsername.toLowerCase()
+  ) {
+    return <Navigate to={`/playlists/${encodeURIComponent(ownerUsername)}/${playlist.id}`} replace />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-[#282539] font-sans text-[#e6e3f5]">

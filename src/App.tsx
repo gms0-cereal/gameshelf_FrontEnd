@@ -45,7 +45,7 @@ const App = () => (
               <Route path="/gamedetails/:appid/reviews" element={<GameReviews />} />
               <Route path="/my-library" element={<MyLibrary />} />
               <Route path="/playlists/new" element={<CreatePlaylist />} />
-              <Route path="/playlists/:id" element={<PlaylistDetails />} />
+              <Route path="/playlists/:username/:id" element={<PlaylistDetails />} />
               <Route path="/playlists" element={<CommunityPlaylists />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/:username" element={<Profile />} />
