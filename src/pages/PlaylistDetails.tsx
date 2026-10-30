@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Heart, LayoutGrid, List, Loader2 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import { timeAgo } from "../components/playlists/PlaylistCards";
-import { getPlaylist, type Playlist, type PlaylistGame } from "../services/playlistService";
+import { getPlaylist, toggleLikePlaylist, type Playlist, type PlaylistGame } from "../services/playlistService";
 
 const steamCover = (appid: number) =>
   `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
@@ -22,14 +22,51 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]["value"];
 
-function Cover({ src, className }: { src?: string | null; className: string }) {
+/** Cover image, with a soft gradient if it fails to load or is missing. */
+const Cover = memo(({ src, className }: { src?: string | null; className: string }) => {
   const [failed, setFailed] = useState(false);
   return src && !failed ? (
-    <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={`object-cover ${className}`} />
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className={`object-cover ${className}`}
+    />
   ) : (
     <div className={`bg-gradient-to-br from-[#3b3560] to-[#1d2b33] ${className}`} aria-hidden="true" />
   );
-}
+});
+Cover.displayName = "Cover";
+
+const getFullUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
+/** Owner Avatar with automatic error fallback to gradient and initials. */
+const OwnerAvatar = memo(({ src, name }: { src?: string | null; name: string }) => {
+  const [failed, setFailed] = useState(false);
+  const initials = name ? name.slice(0, 2).toUpperCase() : "U";
+
+  return src && !failed ? (
+    <img
+      src={src}
+      alt={name}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="h-full w-full object-cover"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#3b3560] to-[#1d2b33] text-[11px] font-semibold text-[#c2ade7]" aria-hidden="true">
+      {initials}
+    </div>
+  );
+});
+OwnerAvatar.displayName = "OwnerAvatar";
 
 /** Wraps a game in a link to its details page when it has a Steam id. */
 function GameLink({ game, className, children }: { game: PlaylistGame; className: string; children: React.ReactNode }) {
@@ -50,6 +87,7 @@ const PlaylistDetail = () => {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [liking, setLiking] = useState(false);
 
   const [sort, setSort] = useState<Sort>("order");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -85,7 +123,38 @@ const PlaylistDetail = () => {
     };
   }, [id]);
 
-  // Genres compiled from every game in the playlist: [["Action", 16], ...]
+  // Handle like toggle functionality
+  const handleLikeToggle = async () => {
+    if (!playlist || liking) return;
+    const playlistId = Number(id);
+    if (!Number.isInteger(playlistId)) return;
+
+    setLiking(true);
+    const previousIsLiked = (playlist as any).is_liked;
+    const previousLikeCount = playlist.like_count;
+
+    // Optimistic UI Update
+    const nextIsLiked = !previousIsLiked;
+    setPlaylist({
+      ...playlist,
+      is_liked: nextIsLiked,
+      like_count: nextIsLiked ? previousLikeCount + 1 : Math.max(0, previousLikeCount - 1),
+    } as any);
+
+    try {
+      const res = await toggleLikePlaylist(playlistId);
+      if (res && typeof res.like_count === "number") {
+        setPlaylist((prev) => prev ? { ...prev, like_count: res.like_count, is_liked: res.is_liked ?? nextIsLiked } : null);
+      }
+    } catch {
+      // Rollback on error
+      setPlaylist((prev) => prev ? { ...prev, is_liked: previousIsLiked, like_count: previousLikeCount } : null);
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  // Genres compiled from every game in the playlist
   const genreCounts = useMemo(() => {
     const counts = new Map<string, number>();
     playlist?.games.forEach((g) =>
@@ -102,10 +171,12 @@ const PlaylistDetail = () => {
     return games;
   }, [playlist, sort, genreFilter]);
 
-  const ownerName = playlist?.owner.nickname || playlist?.owner.username || "";
+  const ownerName = playlist?.owner?.nickname || playlist?.owner?.username || "Player";
+  const ownerAvatar = playlist?.owner?.avatar_url;
   const total = playlist?.games.length ?? 0;
   const shownGenres = showAllGenres ? genreCounts : genreCounts.slice(0, TOP_GENRES_SHOWN);
   const hiddenGenres = genreCounts.length - TOP_GENRES_SHOWN;
+  const isLiked = Boolean((playlist as any)?.is_liked);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#282539] font-sans text-[#e6e3f5]">
@@ -138,8 +209,8 @@ const PlaylistDetail = () => {
             <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
               <div>
                 <div className="flex items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold">
-                    {ownerName.slice(0, 2).toUpperCase()}
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold overflow-hidden border border-[#8b6fd6]/30">
+                    <OwnerAvatar src={getFullUrl(ownerAvatar)} name={ownerName} />
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-semibold">{ownerName}</p>
@@ -159,9 +230,21 @@ const PlaylistDetail = () => {
                   </p>
                 )}
 
-                <div className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#312e45] px-4 py-2.5 text-[13px]">
-                  <Heart className="size-4" aria-hidden="true" /> {playlist.like_count}
-                </div>
+                {/* Interactive Like Button */}
+                <button
+                  type="button"
+                  onClick={handleLikeToggle}
+                  disabled={liking}
+                  aria-label={isLiked ? "Unlike playlist" : "Like playlist"}
+                  className={`mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] transition-colors border ${
+                    isLiked
+                      ? "border-[#a8454b] bg-[#a8454b]/20 text-[#f4b6ba] hover:bg-[#a8454b]/30"
+                      : "border-[#3a3754] bg-[#312e45] text-[#e6e3f5] hover:border-[#8b6fd6]"
+                  }`}
+                >
+                  <Heart className={`size-4 ${isLiked ? "fill-[#f4b6ba] text-[#f4b6ba]" : ""}`} aria-hidden="true" />
+                  <span>{playlist.like_count}</span>
+                </button>
               </div>
 
               <aside aria-label="Top genres">

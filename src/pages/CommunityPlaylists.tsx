@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gamepad2, RotateCcw, Search } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { PlaylistListCard } from "@/components/playlists/PlaylistCards";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
+import { getMe, type UserProfile } from "@/services/Userservice";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const PAGE_SIZE = 12;
 
@@ -41,8 +43,7 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]["value"];
 
-/** 1 … 4 5 [6] 7 8 … 20 */
-function pageList(current: number, total: number): (number | "…")[] {
+function generatePageList(current: number, total: number): (number | "…")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const pages = new Set([1, total, current - 1, current, current + 1]);
   const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
@@ -64,11 +65,47 @@ export default function CommunityPlaylists() {
 
   const [searchText, setSearchText] = useState(q);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+
+  // Sync current user avatar profile safely mapped to UserProfile
+  useEffect(() => {
+    let isMounted = true;
+    getMe()
+      .then((meData: any) => {
+        if (isMounted && meData) {
+          setCurrentUser({
+            id: meData.id,
+            username: meData.username,
+            nickname: meData.nickname,
+            bio: meData.bio,
+            avatar_url: meData.avatar_url,
+            banner_url: meData.banner_url,
+            age: meData.age,
+            gender: meData.gender,
+            pronouns: meData.pronouns,
+            joined: meData.created_at,
+            friend_count: 0,
+            library: null,
+            ratings_count: 0,
+            reviews_count: 0,
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Sync search input box if URL param 'q' changes externally
+  useEffect(() => {
+    setSearchText(q);
+  }, [q]);
 
   const update = (next: Record<string, string | null>) => {
     const p = new URLSearchParams(params);
@@ -76,13 +113,14 @@ export default function CommunityPlaylists() {
     setParams(p, { replace: true });
   };
 
-  // Typing updates the URL 300ms after you stop, and goes back to page 1.
+  // Typing updates the URL 300ms after you stop
   useEffect(() => {
     if (searchText.trim() === q) return;
-    const t = setTimeout(() => update({ q: searchText.trim() || null, page: null }), 300);
+    const t = setTimeout(() => {
+      update({ q: searchText.trim() || null, page: null });
+    }, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText]);
+  }, [searchText, q]);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,9 +151,13 @@ export default function CommunityPlaylists() {
 
   const goTo = (n: number) => update({ page: n > 1 ? String(n) : null });
 
+  const visiblePages = useMemo(() => generatePageList(page, totalPages), [page, totalPages]);
+
   const field =
     "h-10 w-full rounded-lg border border-[#2f2d40] bg-[#262436] px-3 text-[13px] text-[#e0deeb] placeholder:text-[#8b86a3] focus:outline-none focus:ring-2 focus:ring-[#8b6fd6]/60";
   const label = "mb-2 block font-mono text-[10px] uppercase tracking-widest text-[#8b86a3]";
+
+  const userDisplayName = currentUser?.nickname?.trim() || currentUser?.username || "Player";
 
   return (
     <div className="min-h-screen bg-[#201e2f]">
@@ -129,13 +171,34 @@ export default function CommunityPlaylists() {
             <span className="text-[#e0deeb]">Community playlists</span>
           </nav>
 
-          <h1 className="mt-5 text-[32px] font-semibold">Community Playlists</h1>
-          <p className="mt-2 text-[14px] text-[#b4aec7]">
-            Curated lists made by players. Discover new games or share your own.{" "}
-            <Link to="/playlists/new" className="text-[#c2ade7] hover:underline">
-              Create new playlist →
-            </Link>
-          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-[32px] font-semibold">Community Playlists</h1>
+              <p className="mt-2 text-[14px] text-[#b4aec7]">
+                Curated lists made by players. Discover new games or share your own.
+              </p>
+            </div>
+
+            {/* User Profile Avatar Bar & Create Link */}
+            <div className="flex items-center gap-3 rounded-2xl border border-[#55516c] bg-[#373646] p-2.5 px-4">
+              <Avatar className="size-10 shrink-0 overflow-hidden border border-[#8870b6] bg-[#4d3e68]">
+                <AvatarImage
+                  src={currentUser?.avatar_url || undefined}
+                  alt={userDisplayName}
+                  className="object-cover contrast-110 saturate-125"
+                />
+                <AvatarFallback className="bg-[#4d3e68]">
+                  <Gamepad2 className="size-5 text-[#c2ade7]" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col text-xs">
+                <span className="font-medium text-white">{userDisplayName}</span>
+                <Link to="/playlists/new" className="text-[11px] font-semibold text-[#c2ade7] hover:underline">
+                  Create new playlist →
+                </Link>
+              </div>
+            </div>
+          </div>
 
           {/* Filters */}
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_200px_120px]">
@@ -216,7 +279,7 @@ export default function CommunityPlaylists() {
 
           {error && <p role="alert" className="mt-4 text-sm text-[#e58d91]">{error}</p>}
 
-          <div className={`mt-4 grid gap-5 lg:grid-cols-2 ${loading ? "opacity-60" : ""}`}>
+          <div className={`mt-4 grid gap-5 lg:grid-cols-2 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
             {playlists.map((p) => (
               <PlaylistListCard key={p.id} playlist={p} />
             ))}
@@ -241,14 +304,14 @@ export default function CommunityPlaylists() {
                 <ChevronLeft className="size-4" />
               </button>
 
-              {pageList(page, totalPages).map((p, i) =>
+              {visiblePages.map((p, i) =>
                 p === "…" ? (
                   <span key={`gap-${i}`} className="px-1 text-[#8b86a3]">…</span>
                 ) : (
                   <button
                     key={p}
                     type="button"
-                    onClick={() => goTo(p)}
+                    onClick={() => goTo(Number(p))}
                     disabled={loading}
                     aria-current={p === page ? "page" : undefined}
                     className={`size-9 rounded-lg text-[13px] ${
