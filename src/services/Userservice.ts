@@ -8,11 +8,14 @@ export interface User {
   username: string;
   email: string;
   email_verified: boolean;
-  role: "user" | "moderator" | "admin";
   nickname: string | null;
   bio: string | null;
+  role: "user" | "moderator" | "admin";
   avatar_url: string | null;
   banner_url: string | null;
+  age: number | null;
+  gender: string | null;
+  pronouns: string | null;
   library_visibility: Visibility;
   friends_visibility: Visibility;
   created_at: string;
@@ -25,9 +28,12 @@ export interface UserProfile {
   bio: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  age: number | null;
+  gender: string | null;
+  pronouns: string | null;
   joined: string;
   friend_count: number | null;
-  library: Record<LibraryStatus, number> | null;
+  library: Record<"all" | "playing" | "plan_to_play" | "completed" | "on_hold" | "dropped", number> | null;
   ratings_count: number;
   favorites?: UserFavoriteGameEntry[];
   reviews_count: number;
@@ -36,7 +42,15 @@ export interface UserProfile {
 export type UpdateMeBody = Partial<
   Pick<
     User,
-    "nickname" | "bio" | "avatar_url" | "banner_url" | "library_visibility" | "friends_visibility"
+    | "nickname"
+    | "bio"
+    | "avatar_url"
+    | "banner_url"
+    | "age"
+    | "gender"
+    | "pronouns"
+    | "library_visibility"
+    | "friends_visibility"
   >
 >;
 
@@ -74,7 +88,18 @@ export interface UserFavoriteGameEntry {
   position: number;
 }
 
-
+export interface UserAchievement {
+  id: number;
+  game_id: number;
+  game_title?: string;
+  achievement_api_name: string;
+  title: string | null;
+  description: string | null;
+  icon_url: string | null;
+  achieved: boolean;
+  unlock_time: string | null;
+  updated_at: string;
+}
 
 function extractResults<T>(data: unknown): T[] {
   if (Array.isArray(data)) {
@@ -144,23 +169,21 @@ export async function declineFriendRequest(id: number): Promise<void> {
 export async function cancelFriendRequest(id: number): Promise<void> {
   await api.post(`/users/friend-requests/${id}/cancel/`);
 }
-
 export async function getBlockedUsers(search = ""): Promise<SocialUser[]> {
-  const { data } = await api.get("/users/blocks/", { params: { search } });
+  const { data } = await api.get("/blocks/", { params: { search } });
   return extractResults<SocialUser>(data);
 }
 
 export async function blockUser(username: string): Promise<unknown> {
-  const { data } = await api.post("/users/blocks/", { username });
+  const { data } = await api.post("/blocks/", { username });
   return data;
 }
 
 export async function unblockUser(username: string): Promise<void> {
-  await api.delete(`/users/blocks/${encodeURIComponent(username)}/`);
+  await api.delete(`/blocks/${encodeURIComponent(username)}/`);
 }
-
 export async function reportUser(username: string, reason: string, details?: string): Promise<unknown> {
-  const { data } = await api.post("/users/reports/", { username, reason, details });
+  const { data } = await api.post("/reports/", { username, reason, details });
   return data;
 }
 
@@ -176,4 +199,10 @@ export async function addFavoriteGame(steamAppId: number): Promise<UserFavoriteG
 
 export async function removeFavoriteGame(steamAppId: number): Promise<void> {
   await api.delete("/users/favorites/", { data: { steam_app_id: steamAppId } });
+}
+
+export async function getUserAchievements(username?: string): Promise<UserAchievement[]> {
+  const endpoint = username ? `/users/${username}/achievements/` : `/users/achievements/`;
+  const { data } = await api.get<UserAchievement[] | { results: UserAchievement[] }>(endpoint);
+  return Array.isArray(data) ? data : (data.results ?? []);
 }

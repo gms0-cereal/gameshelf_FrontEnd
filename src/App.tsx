@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Provider } from "react-redux"; // <--- 1. Import Redux Provider
+import { store } from "./store/store";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { AuthProvider } from "./context/AuthContext";
@@ -12,44 +14,57 @@ import EditProfile from "./pages/EditProfile";
 import GameDetails from "./pages/GameDetails";
 import MyLibrary from "./pages/MyLibrary";
 import GameReviews from "./pages/GameReviews";
+import ChooseInterest from "./pages/ChooseInterest";
 import PlaylistDetails from "./pages/PlaylistDetails";
 import Friends from "./pages/Friends";
 import Browse from "./pages/Browse";
 import CreatePlaylist from "./pages/CreatePlaylist";
 import CommunityPlaylists from "./pages/CommunityPlaylists";
-
+import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
+// Admin Dashboard Imports
+import { Dashboard } from "./pages/admin/Dashboard";
+import { Games } from "./pages/admin/Games";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster richColors position="top-right" />
+  <Provider store={store}> {/* <--- 3. Wrap your providers with Redux */}
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster richColors position="top-right" />
 
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/gamedetails/:appid" element={<GameDetails />} />
-            <Route path="/gamedetails/:appid/reviews" element={<GameReviews />} />
-            <Route path="/my-library" element={<MyLibrary />} />
-            <Route path="/playlists/new" element={<CreatePlaylist />} />
-            <Route path="/playlists/:id" element={<PlaylistDetails />} />
-            <Route path="/playlists" element={<CommunityPlaylists />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/profile/:username" element={<Profile />} />
-            <Route path="/friends" element={<Friends />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/profile/edit" element={<EditProfile />} />
-            <Route path="/browse" element={<Browse />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              {/* Public / User Storefront Routes */}
+              <Route path="/" element={<Login />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/gamedetails/:appid" element={<GameDetails />} />
+              <Route path="/gamedetails/:appid/reviews" element={<GameReviews />} />
+              <Route path="/my-library" element={<MyLibrary />} />
+              <Route path="/playlists/new" element={<CreatePlaylist />} />
+              <Route path="/playlists/:id" element={<PlaylistDetails />} />
+              <Route path="/playlists" element={<CommunityPlaylists />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/:username" element={<Profile />} />
+              <Route path="/friends" element={<Friends />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/profile/edit" element={<EditProfile />} />
+              <Route path="/profile/set-birthday" element={<SetBirthdayPage/>} />
+              <Route path="/browse" element={<Browse />} />
+              <Route path="/interests" element={<ChooseInterest />} />
+
+              {/* Admin Routes */}
+              <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin/games" element={<Games />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </Provider>
 );
 
 export default App;

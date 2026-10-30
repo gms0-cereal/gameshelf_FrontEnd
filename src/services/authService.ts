@@ -38,6 +38,7 @@ export interface VerifyEmailBody {
 export interface MessageResponse {
   detail: string;
 }
+
 export interface AuthUser {
   id: number;
   username: string;
@@ -45,14 +46,16 @@ export interface AuthUser {
   email_verified: boolean;
   role: string;
   nickname: string | null;
-  bio: string;
+  bio: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  age: number | null;
+  gender: string | null;
+  pronouns: string | null;
   library_visibility: string;
   friends_visibility: string;
   created_at: string;
 }
-
 
 // GET /auth/csrf/  (call once when the app starts so the csrftoken cookie exists)
 export async function getCsrf(): Promise<void> {

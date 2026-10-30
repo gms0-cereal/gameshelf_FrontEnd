@@ -1,7 +1,6 @@
-
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Gamepad2, Save, UserRound } from "lucide-react";
+import { ArrowLeft, Gamepad2, Save, Calendar, Globe, Lock, Eye, UserCheck, AlertCircle } from "lucide-react";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -39,8 +38,12 @@ type ProfileForm = {
   bio: string;
   avatar_url: string;
   banner_url: string;
+  gender: string;
+  pronouns: string;
   library_visibility: string;
   friends_visibility: string;
+  birth_date?: string;
+  age?: number | null;
 };
 
 export default function EditProfile() {
@@ -52,8 +55,12 @@ export default function EditProfile() {
     bio: "",
     avatar_url: "",
     banner_url: "",
+    gender: "",
+    pronouns: "",
     library_visibility: "public",
     friends_visibility: "public",
+    birth_date: "",
+    age: null,
   });
 
   const [saving, setSaving] = useState(false);
@@ -67,6 +74,17 @@ export default function EditProfile() {
   const [cropTarget, setCropTarget] = useState<"avatar" | "banner" | null>(null);
   const [cropSource, setCropSource] = useState<File | null>(null);
 
+  // Steam Import States
+  const [steamUrl, setSteamUrl] = useState("");
+  const [steamLoading, setSteamLoading] = useState(false);
+  const [steamMessage, setSteamMessage] = useState<string | null>(null);
+  const [steamError, setSteamError] = useState<string | null>(null);
+
+  // Birthday Modal States
+  const [showBirthdayModal, setShowBirthdayModal] = useState(false);
+  const [tempBirthDate, setTempBirthDate] = useState("");
+  const [confirmBirthdayStep, setConfirmBirthdayStep] = useState(false);
+
   useEffect(() => {
     if (!user) return;
 
@@ -75,62 +93,55 @@ export default function EditProfile() {
       bio: user.bio ?? "",
       avatar_url: user.avatar_url ?? "",
       banner_url: user.banner_url ?? "",
+      gender: user.gender ?? "",
+      pronouns: user.pronouns ?? "",
       library_visibility: user.library_visibility ?? "public",
       friends_visibility: user.friends_visibility ?? "public",
+      birth_date: (user as any).birth_date ?? "",
+      age: user.age ?? null,
     });
 
-     setAvatarPreview(user.avatar_url ?? "");
-     setBannerPreview(user.banner_url ?? "");
+    setAvatarPreview(user.avatar_url ?? "");
+    setBannerPreview(user.banner_url ?? "");
   }, [user]);
 
-  function updateField(field: keyof ProfileForm, value: string) {
+  function updateField(field: keyof ProfileForm, value: any) {
     setForm((current) => ({
       ...current,
       [field]: value,
     }));
   }
-  function startCrop(target: "avatar" | "banner", file?: File) {
-  if (!file) return;
 
-  if (!file.type.startsWith("image/")) {
-    setError("Please choose an image file.");
-    return;
-  }
-
-  if (file.size > 10 * 1024 * 1024) {
-    setError("Image must be 10 MB or smaller.");
-    return;
-  }
-
-  setError("");
-  setCropTarget(target);
-  setCropSource(file);
-}
-const handleImageSelect = (
-  file: File,
-  target: "avatar" | "banner"
-) => {
-  if (file.type === "image/gif") {
-    // GIF: upload original file to preserve animation
-    const preview = URL.createObjectURL(file);
-
-    if (target === "avatar") {
-      setAvatarPreview(preview);
-      setAvatarUpload(file);
-    } else {
-      setBannerPreview(preview);
-      setBannerUpload(file);
+  function handleImageSelect(file: File, target: "avatar" | "banner") {
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose a valid image file.");
+      return;
     }
 
-    return; // Don't open the cropper
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Image must be 10 MB or smaller.");
+      return;
+    }
+
+    setError("");
+
+    if (file.type === "image/gif") {
+      const preview = URL.createObjectURL(file);
+      if (target === "avatar") {
+        setAvatarPreview(preview);
+        setAvatarUpload(file);
+      } else {
+        setBannerPreview(preview);
+        setBannerUpload(file);
+      }
+      return;
+    }
+
+    setCropTarget(target);
+    setCropSource(file);
   }
 
-  // Other images: keep using your existing cropper
-  setCropTarget(target);
-  setCropSource(file);
-};
-
-function handleCroppedImage(blob: Blob) {
+  function handleCroppedImage(blob: Blob) {
     if (!cropTarget) return;
 
     const file = new File(
@@ -158,6 +169,51 @@ function handleCroppedImage(blob: Blob) {
     setCropSource(null);
     setCropTarget(null);
   }
+
+  function calculateAge(dateString: string): number {
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  function handleBirthdayConfirm() {
+    if (!tempBirthDate) return;
+    const calculated = calculateAge(tempBirthDate);
+    updateField("birth_date", tempBirthDate);
+    updateField("age", calculated);
+    setShowBirthdayModal(false);
+    setConfirmBirthdayStep(false);
+    setTempBirthDate("");
+  }
+
+  async function handleSteamImport(e: React.FormEvent) {
+    e.preventDefault();
+    if (!steamUrl.trim()) return;
+
+    setSteamLoading(true);
+    setSteamError(null);
+    setSteamMessage(null);
+
+    try {
+      const { data } = await api.post("/users/import-steam/", { profile_url: steamUrl });
+      setSteamMessage(data.detail || "Steam library and achievements imported successfully!");
+      setSteamUrl("");
+      await refreshUser();
+    } catch (err: any) {
+      setSteamError(
+        err.response?.data?.detail || 
+        "Failed to import Steam library. Ensure your Steam profile and game details are set to Public."
+      );
+    } finally {
+      setSteamLoading(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -165,47 +221,54 @@ function handleCroppedImage(blob: Blob) {
     setError("");
 
     try {
-        const payload = new FormData();
+      const payload = new FormData();
 
-        payload.append("nickname", form.nickname.trim());
-        payload.append("bio", form.bio);
-        payload.append("library_visibility", form.library_visibility);
-        payload.append("friends_visibility", form.friends_visibility);
+      payload.append("nickname", form.nickname.trim());
+      payload.append("bio", form.bio);
+      payload.append("gender", form.gender);
+      payload.append("pronouns", form.pronouns.trim());
+      payload.append("library_visibility", form.library_visibility);
+      payload.append("friends_visibility", form.friends_visibility);
+      
+      if (form.birth_date) {
+        payload.append("birth_date", form.birth_date);
+      }
+      if (form.age !== null && form.age !== undefined) {
+        payload.append("age", String(form.age));
+      }
 
-        if (avatarUpload) {
-          payload.append("avatar_file", avatarUpload);
-        }
+      if (avatarUpload) {
+        payload.append("avatar_file", avatarUpload);
+      }
 
-        if (bannerUpload) {
-          payload.append("banner_file", bannerUpload);
-        }
-
-       const response = await api.patch("/users/me/", payload);
+      if (bannerUpload) {
+        payload.append("banner_file", bannerUpload);
+      }
 
       await api.patch("/users/me/", payload);
       await refreshUser();
       navigate("/profile");
-      } catch (err: any) {
-        const data = err?.response?.data;
+    } catch (err: any) {
+      const data = err?.response?.data;
 
-        setError(
-          typeof data === "object" && data !== null
-            ? Object.entries(data)
-                .map(([key, value]) => {
-                  const message = Array.isArray(value)
-                    ? value.join(", ")
-                    : typeof value === "object"
-                      ? JSON.stringify(value)
-                      : String(value);
+      setError(
+        typeof data === "object" && data !== null
+          ? Object.entries(data)
+              .map(([key, value]) => {
+                const message = Array.isArray(value)
+                  ? value.join(", ")
+                  : typeof value === "object"
+                    ? JSON.stringify(value)
+                    : String(value);
 
-                  return `${key}: ${message}`;
-                })
-                .join(" | ")
-            : "Couldn't save your profile. Please try again.",
-        );
-      } finally {
-        setSaving(false);
-      }
+                return `${key}: ${message}`;
+              })
+              .join(" | ")
+          : "Couldn't save your profile. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {
@@ -220,10 +283,7 @@ function handleCroppedImage(blob: Blob) {
     return (
       <div className="min-h-screen bg-[#201e2f] p-8 text-[#e0deeb]">
         <p>You need to log in to edit your profile.</p>
-        <Link
-          to="/login"
-          className="mt-4 inline-block text-[#c2ade7]"
-        >
+        <Link to="/login" className="mt-4 inline-block text-[#c2ade7]">
           Go to login
         </Link>
       </div>
@@ -238,14 +298,8 @@ function handleCroppedImage(blob: Blob) {
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="mb-2 text-sm text-[#b4aec7]">
-                PLAYER SETTINGS
-              </p>
-
-              <h1 className="text-3xl font-semibold">
-                Edit Profile
-              </h1>
-
+              <p className="mb-2 text-sm text-[#b4aec7]">PLAYER SETTINGS</p>
+              <h1 className="text-3xl font-semibold">Edit Profile</h1>
               <p className="mt-2 text-sm text-[#b4aec7]">
                 Customize how other players see you.
               </p>
@@ -263,21 +317,17 @@ function handleCroppedImage(blob: Blob) {
             </Button>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-7"
-          >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-7">
+            {/* Public Profile Card */}
             <Card className={PANEL}>
-              <h2 className="text-xl font-semibold">
-                Public profile
-              </h2>
+              <h2 className="text-xl font-semibold">Public profile</h2>
 
               <div className="flex flex-wrap items-center gap-4">
                 <Avatar className="size-24 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
                   <AvatarImage
-                    src={form.avatar_url || undefined}
+                    src={avatarPreview || undefined}
                     alt={user?.nickname || user?.username || "Player"}
-                    className="object-cover"
+                    className="object-cover contrast-110 saturate-125"
                   />
                   <AvatarFallback className="bg-[#4d3e68]">
                     <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
@@ -285,94 +335,154 @@ function handleCroppedImage(blob: Blob) {
                 </Avatar>
 
                 <div>
-                  <p className="font-semibold">
-                    {form.nickname || user.username}
-                  </p>
-
-                  <p className="text-sm text-[#b4aec7]">
-                    @{user.username}
-                  </p>
-
-                  <p className="mt-1 text-xs text-[#8f899f]">
-                    Preview of your profile avatar
-                  </p>
+                  <p className="font-semibold">{form.nickname || user.username}</p>
+                  <p className="text-sm text-[#b4aec7]">@{user.username}</p>
+                  <p className="mt-1 text-xs text-[#8f899f]">Preview of your profile avatar</p>
                 </div>
               </div>
 
+              {/* Display Name */}
               <div className="flex flex-col gap-2">
                 <label className={LABEL} htmlFor="nickname">
                   Display name
                 </label>
-
                 <Input
                   id="nickname"
                   className={FIELD}
                   maxLength={50}
                   placeholder={user.username}
                   value={form.nickname}
-                  onChange={(event) =>
-                    updateField("nickname", event.target.value)
-                  }
+                  onChange={(e) => updateField("nickname", e.target.value)}
                 />
               </div>
 
+              {/* Gender Radio Options */}
+              <div className="flex flex-col gap-3">
+                <label className={LABEL}>Gender</label>
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className={`flex items-center gap-2 cursor-pointer rounded-lg px-4 py-2.5 border ${form.gender === "Male" ? "border-blue-400 bg-blue-950/30 text-blue-200" : "border-[#55516c] bg-[#29263b] text-[#e0deeb]"}`}>
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="Male"
+                      checked={form.gender === "Male"}
+                      onChange={(e) => updateField("gender", e.target.value)}
+                      className="accent-blue-500"
+                    />
+                    <span className="text-sm font-medium">Male</span>
+                  </label>
+
+                  <label className={`flex items-center gap-2 cursor-pointer rounded-lg px-4 py-2.5 border ${form.gender === "Female" ? "border-pink-400 bg-pink-950/30 text-pink-200" : "border-[#55516c] bg-[#29263b] text-[#e0deeb]"}`}>
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="Female"
+                      checked={form.gender === "Female"}
+                      onChange={(e) => updateField("gender", e.target.value)}
+                      className="accent-pink-500"
+                    />
+                    <span className="text-sm font-medium">Female</span>
+                  </label>
+
+                  <label className={`flex items-center gap-2 cursor-pointer rounded-lg px-4 py-2.5 border ${form.gender === "" ? "border-[#c2ade7] bg-[#4d3e68]/30 text-white" : "border-[#55516c] bg-[#29263b] text-[#e0deeb]"}`}>
+                    <input
+                      type="radio"
+                      name="gender"
+                      value=""
+                      checked={form.gender === ""}
+                      onChange={(e) => updateField("gender", e.target.value)}
+                      className="accent-[#8870b6]"
+                    />
+                    <span className="text-sm font-medium">Prefer not to say / Unspecified</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Pronouns Field */}
+              <div className="flex flex-col gap-2">
+                <label className={LABEL} htmlFor="pronouns">
+                  Pronouns
+                </label>
+                <Input
+                  id="pronouns"
+                  className={FIELD}
+                  maxLength={50}
+                  placeholder="e.g. they/them, she/her, he/him"
+                  value={form.pronouns}
+                  onChange={(e) => updateField("pronouns", e.target.value)}
+                />
+              </div>
+
+              {/* Age & Birthday Section with Inline Modal */}
+              <div className="flex flex-col gap-3 rounded-xl border border-[#55516c] bg-[#29263b] p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="size-5 text-[#c2ade7]" />
+                    <h3 className="text-sm font-semibold text-[#e0deeb]">Age & Birthday</h3>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setTempBirthDate(form.birth_date || "");
+                      setConfirmBirthdayStep(false);
+                      setShowBirthdayModal(true);
+                    }}
+                    className="bg-[#8870b6] hover:bg-[#76609f] text-white text-xs h-9 px-4"
+                  >
+                    {form.age ? "Update Birthday" : "Set Birthday"}
+                  </Button>
+                </div>
+                <p className="text-xs text-[#b4aec7]">
+                  {form.age
+                    ? `Current age: ${form.age} years old (exact birthday is kept private)`
+                    : "No birthday set. Click to select your birthday."}
+                </p>
+              </div>
+
+              {/* Bio */}
               <div className="flex flex-col gap-2">
                 <label className={LABEL} htmlFor="bio">
                   Bio
                 </label>
-
                 <Textarea
                   id="bio"
                   className={`${FIELD} min-h-28`}
                   maxLength={300}
                   placeholder="Tell other players a little about yourself..."
                   value={form.bio}
-                  onChange={(event) =>
-                    updateField("bio", event.target.value)
-                  }
+                  onChange={(e) => updateField("bio", e.target.value)}
                 />
-
-                <p className="text-right text-xs text-[#8f899f]">
-                  {form.bio.length}/300
-                </p>
+                <p className="text-right text-xs text-[#8f899f]">{form.bio.length}/300</p>
               </div>
 
+              {/* Avatar Upload */}
               <div className="flex flex-col gap-2">
-                  <label className={LABEL}>Avatar image</label>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label
-                      htmlFor="avatar-upload"
-                      className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-[#8870b6] px-4 text-sm font-semibold text-white hover:bg-[#76609f]"
-                    >
-                      Choose avatar
-                    </label>
-
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="sr-only"
-                      onChange={(e) => {
+                <label className={LABEL}>Avatar image</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label
+                    htmlFor="avatar-upload"
+                    className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-[#8870b6] px-4 text-sm font-semibold text-white hover:bg-[#76609f]"
+                  >
+                    Choose avatar
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleImageSelect(file, "avatar");
                       e.target.value = "";
                     }}
-                    />
-
-                    <span className="text-xs text-[#b4aec7]">
-                      JPG, PNG, or WebP · Max 10 MB
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-[#8f899f]">
-                    Select an image to reposition and crop it.
-                  </p>
+                  />
+                  <span className="text-xs text-[#b4aec7]">JPG, PNG, WebP, or GIF · Max 10 MB</span>
+                </div>
               </div>
 
+              {/* Banner Upload */}
               <div className="flex flex-col gap-2">
                 <label className={LABEL}>Profile banner</label>
-
                 <div className="flex flex-wrap items-center gap-3">
                   <label
                     htmlFor="banner-upload"
@@ -380,64 +490,80 @@ function handleCroppedImage(blob: Blob) {
                   >
                     Choose banner
                   </label>
-
                   <input
                     id="banner-upload"
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                     className="sr-only"
-                   onChange={(e) => {
+                    onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleImageSelect(file, "banner");
                       e.target.value = "";
-                  }}
+                    }}
                   />
                 </div>
-
                 {bannerPreview && (
                   <img
                     src={bannerPreview}
                     alt="Banner preview"
-                    className="mt-2 h-32 w-full rounded-xl border border-[#55516c] object-cover"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
+                    loading="lazy"
+                    className="mt-2 h-32 w-full rounded-xl border border-[#55516c] object-cover contrast-110 saturate-125"
                   />
                 )}
-
-                <p className="text-xs text-[#8f899f]">
-                  Choose a wide image and adjust which part is visible.
-                </p>
               </div>
             </Card>
 
+            {/* Steam Profile Import Card */}
             <Card className={PANEL}>
-              <h2 className="text-xl font-semibold">
-                Privacy settings
-              </h2>
-
+              <div className="flex items-center gap-2">
+                <Globe className="size-5 text-[#c2ade7]" />
+                <h2 className="text-xl font-semibold">Import Steam Library</h2>
+              </div>
               <p className="text-sm text-[#b4aec7]">
-                Choose who can see your library and friends.
+                Paste your Steam profile URL or 17-digit SteamID64 (e.g. <code className="text-[#c2ade7]">https://steamcommunity.com/profiles/76562229554903814/</code>) to sync your owned games. Your Steam profile and game details must be set to <strong>Public</strong>.
               </p>
 
-              <div className="flex flex-col gap-2">
-                <label
-                  className={LABEL}
-                  htmlFor="library_visibility"
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Input
+                  type="text"
+                  placeholder="https://steamcommunity.com/profiles/..."
+                  value={steamUrl}
+                  onChange={(e) => setSteamUrl(e.target.value)}
+                  className={`flex-1 ${FIELD}`}
+                />
+                <Button
+                  type="button"
+                  disabled={steamLoading || !steamUrl.trim()}
+                  onClick={handleSteamImport}
+                  className="h-11 bg-[#8870b6] text-white hover:bg-[#76609f]"
                 >
+                  {steamLoading ? "Syncing Steam..." : "Sync Steam Library"}
+                </Button>
+              </div>
+
+              {steamLoading && (
+                <p className="text-xs text-[#c2ade7] animate-pulse">
+                  ⏳ Syncing Steam library and achievements... This may take up to a minute for large public libraries. Please keep this page open.
+                </p>
+              )}
+              {steamMessage && <p className="text-sm text-emerald-400">{steamMessage}</p>}
+              {steamError && <p className="text-sm text-rose-400">{steamError}</p>}
+            </Card>
+
+            {/* Privacy Settings */}
+            <Card className={PANEL}>
+              <h2 className="text-xl font-semibold">Privacy settings</h2>
+              <p className="text-sm text-[#b4aec7]">Choose who can see your library and friends.</p>
+
+              <div className="flex flex-col gap-2">
+                <label className={LABEL} htmlFor="library_visibility">
                   Game library visibility
                 </label>
-
                 <select
                   id="library_visibility"
                   className={`h-11 rounded-md border px-3 text-sm ${FIELD}`}
                   value={form.library_visibility}
-                  onChange={(event) =>
-                    updateField(
-                      "library_visibility",
-                      event.target.value,
-                    )
-                  }
+                  onChange={(e) => updateField("library_visibility", e.target.value)}
                 >
                   <option value="public">Public</option>
                   <option value="friends">Friends only</option>
@@ -446,23 +572,14 @@ function handleCroppedImage(blob: Blob) {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label
-                  className={LABEL}
-                  htmlFor="friends_visibility"
-                >
+                <label className={LABEL} htmlFor="friends_visibility">
                   Friends list visibility
                 </label>
-
                 <select
                   id="friends_visibility"
                   className={`h-11 rounded-md border px-3 text-sm ${FIELD}`}
                   value={form.friends_visibility}
-                  onChange={(event) =>
-                    updateField(
-                      "friends_visibility",
-                      event.target.value,
-                    )
-                  }
+                  onChange={(e) => updateField("friends_visibility", e.target.value)}
                 >
                   <option value="public">Public</option>
                   <option value="friends">Friends only</option>
@@ -501,6 +618,94 @@ function handleCroppedImage(blob: Blob) {
 
         <Footer />
       </div>
+
+      {/* Birthday Modal Dialog */}
+      {showBirthdayModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-in fade-in-0"
+          onClick={() => setShowBirthdayModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-[#55516c] bg-[#2a2838] p-6 text-[#e0deeb] shadow-2xl animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-white">
+              {confirmBirthdayStep ? "Confirm Your Birthday" : "Set Your Birthday"}
+            </h3>
+
+            {!confirmBirthdayStep ? (
+              <div className="mt-4 flex flex-col gap-4">
+                <p className="text-xs text-[#b4aec7]">
+                  Select your date of birth using the calendar below. Your exact birthday remains private, and your age is calculated automatically.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <label className={LABEL}>Date of Birth</label>
+                  <input
+                    type="date"
+                    value={tempBirthDate}
+                    onChange={(e) => setTempBirthDate(e.target.value)}
+                    className="h-11 rounded-lg border border-[#55516c] bg-[#201e2f] px-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
+                  />
+                </div>
+                <div className="mt-4 flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowBirthdayModal(false)}
+                    className="border-[#55516c] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={!tempBirthDate}
+                    onClick={() => setConfirmBirthdayStep(true)}
+                    className="bg-[#8870b6] text-white hover:bg-[#76609f]"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="flex items-start gap-3 rounded-xl border border-[#8870b6]/40 bg-[#373646]/50 p-4">
+                  <AlertCircle className="size-5 text-[#c2ade7] shrink-0 mt-0.5" />
+                  <div className="text-sm text-[#e0deeb]">
+                    <p className="font-medium text-white">Are you sure this is your correct birthday?</p>
+                    <p className="mt-1 text-xs text-[#b4aec7]">
+                      Selected Date: <strong className="text-white">{tempBirthDate}</strong>
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#b4aec7]">
+                      Calculated Age: <strong className="text-white">{calculateAge(tempBirthDate)} years old</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirmBirthdayStep(false)}
+                    className="border-[#55516c] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleBirthdayConfirm}
+                    className="bg-[#8870b6] text-white hover:bg-[#76609f]"
+                  >
+                    Confirm & Save
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Image Crop Dialog */}
       {cropSource && cropTarget && (
         <ImageCropDialog
           file={cropSource}
@@ -512,6 +717,6 @@ function handleCroppedImage(blob: Blob) {
           onComplete={handleCroppedImage}
         />
       )}
-    </div >
+    </div>
   );
 }

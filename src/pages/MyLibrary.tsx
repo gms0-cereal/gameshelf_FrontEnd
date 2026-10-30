@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, LayoutGrid, List, Search, X } from "lucide-react";
+import { Check, LayoutGrid, List, Search, X, ChevronLeft, ChevronRight, ListMusic } from "lucide-react";
 import { IoPencilSharp } from "react-icons/io5";
 import { FaTrashAlt, FaHeart } from "react-icons/fa";
 import { CiHeart } from "react-icons/ci";
@@ -19,7 +19,8 @@ import {
   type UserGameListResponse,
 } from "@/services/Gameservice";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
-import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/UserService";
+import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
+import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/Userservice";
 
 type Filter = "all" | ListStatus;
 type View = "rows" | "grid";
@@ -37,6 +38,8 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
   ...LIST_STATUS_OPTIONS,
 ];
+
+const PAGE_SIZE = 10;
 
 const labelFor = (status: ListStatus) =>
   LIST_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
@@ -73,9 +76,9 @@ function Cover({ entry, className }: { entry: UserGameEntry; className: string }
   return entry.cover_image_url ? (
     <img
       src={entry.cover_image_url}
-      alt=""
+      alt={entry.title || "Game cover"}
       loading="lazy"
-      className={`${className} object-cover`}
+      className={`${className} object-cover contrast-110 saturate-125`}
     />
   ) : (
     <div className={`${className} bg-[#2a2838]`} />
@@ -87,6 +90,7 @@ export default function MyLibrary() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [view, setView] = useState<View>("rows");
+  const [page, setPage] = useState(1);
 
   const [entries, setEntries] = useState<UserGameEntry[]>([]);
   const [counts, setCounts] = useState(EMPTY_COUNTS);
@@ -103,10 +107,22 @@ export default function MyLibrary() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(true);
 
+  // Carousel ref for My Playlists
+  const playlistCarouselRef = useRef<HTMLDivElement>(null);
+  const scrollPlaylistCarousel = (dir: 1 | -1) =>
+    playlistCarouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
+
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,12 +137,10 @@ export default function MyLibrary() {
       .then(([listData, playlistData, favoriteData]) => {
         if (cancelled) return;
 
-        // Map favorite Steam app IDs into a Set for quick O(1) lookup
         const favoriteAppIds = new Set(
           favoriteData.map((fav) => fav.steam_app_id).filter(Boolean)
         );
 
-        // Attach is_favorite to each list entry
         const enrichedEntries = listData.results.map((entry) => ({
           ...entry,
           is_favorite: entry.steam_app_id ? favoriteAppIds.has(entry.steam_app_id) : false,
@@ -155,6 +169,9 @@ export default function MyLibrary() {
       cancelled = true;
     };
   }, [filter, debouncedSearch, reloadKey]);
+
+  const totalPages = Math.ceil(entries.length / PAGE_SIZE) || 1;
+  const paginatedEntries = entries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     if (editing) {
@@ -346,7 +363,7 @@ export default function MyLibrary() {
                   </div>
 
                   <ul>
-                    {entries.map((entry) => {
+                    {paginatedEntries.map((entry) => {
                       const isEditing = editing?.id === entry.id;
                       return (
                         <li
@@ -389,7 +406,6 @@ export default function MyLibrary() {
                           <p className="text-xs">{scoreText(entry)}</p>
 
                           <div className="flex items-center gap-2 md:w-[124px]">
-                            {/* Heart (Favorite) */}
                             <button
                               type="button"
                               onClick={() => toggleFavorite(entry)}
@@ -403,7 +419,6 @@ export default function MyLibrary() {
                               )}
                             </button>
 
-                            {/* Pencil (Edit) */}
                             <button
                               type="button"
                               onClick={() => openEdit(entry)}
@@ -413,7 +428,6 @@ export default function MyLibrary() {
                               <IoPencilSharp className="size-4 text-[#c2ade7]" />
                             </button>
 
-                            {/* Trash (Delete) */}
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(entry)}
@@ -432,7 +446,7 @@ export default function MyLibrary() {
 
               {!error && entries.length > 0 && view === "grid" && (
                 <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {entries.map((entry) => (
+                  {paginatedEntries.map((entry) => (
                     <li
                       key={entry.id}
                       className="flex flex-col overflow-hidden rounded-xl border border-[#55516c] bg-[#2a2838]"
@@ -488,11 +502,36 @@ export default function MyLibrary() {
                 </ul>
               )}
 
+              {/* Pagination Controls Footer */}
               {!error && entries.length > 0 && (
-                <p className="mt-4 text-[10px] text-[#b4aec7]">
-                  Showing {entries.length} {entries.length === 1 ? "entry" : "entries"} from
-                  your {counts.all}-game collection.
-                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-between border-t border-[#55516c] pt-4 text-xs text-[#b4aec7]">
+                  <span>
+                    Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, entries.length)} of {entries.length} games
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page === 1}
+                      onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                      className="h-8 border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#373646]"
+                    >
+                      <ChevronLeft className="size-4" /> Previous
+                    </Button>
+                    <span className="px-2 text-white">
+                      Page {page} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                      className="h-8 border-[#55516c] bg-[#2a2838] text-[#e0deeb] hover:bg-[#373646]"
+                    >
+                      Next <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -556,50 +595,66 @@ export default function MyLibrary() {
             </section>
           )}
 
-          {/* My Playlists Bottom Section */}
-          <section className="mt-8 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">My Playlists</h2>
-                <p className="mt-1 text-xs text-[#b4aec7]">
-                  Manage your personal collections and custom playlists.
-                </p>
+          {/* My Playlists Carousel Section (Matched to Home page style) */}
+          <section id="my-playlists" aria-labelledby="my-playlists-title" className="mt-8 flex flex-col gap-5">
+            <div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 id="my-playlists-title" className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">
+                    My Playlists
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">Manage your personal collections and custom playlists</p>
+                  <Link to="/playlists" className="text-[13px] text-[#b4aec7] hover:text-[#e0deeb]">
+                    View more →
+                  </Link>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/playlists/new"
+                    className="mr-2 rounded-lg bg-[#9f4044] px-4 py-2.5 text-[13px] font-medium hover:bg-[#ae494e]"
+                  >
+                    Create playlist
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlaylistCarousel(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlaylistCarousel(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
               </div>
-              <Button
-                asChild
-                className="bg-[#8063a8] text-white hover:bg-[#9274bb] h-9 px-4 text-xs font-semibold"
-              >
-                <Link to="/playlists/new">+ Create Playlist</Link>
-              </Button>
             </div>
 
-            {playlistsLoading ? (
-              <p className="text-xs text-[#b4aec7]">Loading your playlists...</p>
-            ) : playlists.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {playlists.map((playlist) => (
-                  <div
-                    key={playlist.id}
-                    className="overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] p-4 flex flex-col justify-between"
-                  >
-                    <div>
-                      <h3 className="truncate font-semibold text-white">{playlist.title}</h3>
-                      <p className="mt-1 text-xs text-[#b4aec7] line-clamp-2">
-                        {playlist.description || "No description provided."}
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between text-xs text-[#8b86a3]">
-                      <span>{playlist.game_count} {playlist.game_count === 1 ? "game" : "games"}</span>
-                      <span className="capitalize px-2 py-0.5 rounded bg-[#2a2838] text-[#c2ade7] text-[10px] border border-[#55516c]">
-                        {playlist.visibility}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+            {playlistsLoading && <p role="status" className="text-sm text-[#b4aec7]">Loading your playlists…</p>}
+
+            {!playlistsLoading && playlists.length === 0 && (
+              <div className="rounded-xl border border-dashed border-[#55516c] px-6 py-10 text-center">
+                <ListMusic className="mx-auto size-8 text-[#8b86a3]" strokeWidth={1.5} />
+                <p className="mt-3 text-sm text-[#b4aec7]">You haven't created any playlists yet.</p>
               </div>
-            ) : (
-              <div className="rounded-xl border border-[#55516c] bg-[#373646] p-8 text-center">
-                <p className="text-xs text-[#b4aec7]">You haven't created any playlists yet.</p>
+            )}
+
+            {!playlistsLoading && playlists.length > 0 && (
+              <div
+                ref={playlistCarouselRef}
+                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {playlists.map((playlist) => (
+                  <PlaylistCarouselCard key={playlist.id} playlist={playlist} />
+                ))}
               </div>
             )}
           </section>
