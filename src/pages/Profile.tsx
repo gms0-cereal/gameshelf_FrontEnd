@@ -27,10 +27,13 @@ const OUTLINE_BUTTON =
   "hover:bg-[#454256] hover:text-[#e0deeb] " +
   "[&_svg]:size-[18px]";
 
-function VisibilityBadge({ visibility }: { visibility?: string }) {
-  const vis = visibility?.toLowerCase() || "public";
+function VisibilityBadge({ profileUser }: { profileUser: UserProfile | null }) {
+  // Check library and friends visibility settings from user data
+  const libVis = (profileUser as any)?.library_visibility?.toLowerCase() || "public";
+  const friendVis = (profileUser as any)?.friends_visibility?.toLowerCase() || "public";
 
-  if (vis === "private") {
+  // If both are private
+  if (libVis === "private" && friendVis === "private") {
     return (
       <span className="inline-flex items-center gap-1 rounded-md border border-[#55516c] bg-[#2a2838] px-2 py-0.5 text-[11px] text-[#e58d91]">
         <Lock className="size-3" /> Private Profile
@@ -38,7 +41,8 @@ function VisibilityBadge({ visibility }: { visibility?: string }) {
     );
   }
 
-  if (vis === "friends" || vis === "friends_only") {
+  // If either or both are friends only
+  if (libVis === "friends" || friendVis === "friends" || libVis === "friends_only" || friendVis === "friends_only") {
     return (
       <span className="inline-flex items-center gap-1 rounded-md border border-[#55516c] bg-[#2a2838] px-2 py-0.5 text-[11px] text-[#c2ade7]">
         <UserCheck className="size-3" /> Friends Only
@@ -93,7 +97,7 @@ function ProfileBanner({
           <AvatarImage
             src={profileUser?.avatar_url || undefined}
             alt={displayName}
-            className="object-cover"
+            className="object-cover contrast-110 saturate-125"
           />
           <AvatarFallback className="bg-[#4d3e68]">
             <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
@@ -108,7 +112,7 @@ function ProfileBanner({
             >
               {displayName}
             </h2>
-            <VisibilityBadge visibility={(profileUser as any)?.visibility} />
+            <VisibilityBadge profileUser={profileUser} />
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm text-[#b4aec7]">
@@ -351,7 +355,9 @@ export default function Profile() {
               library: listData?.counts ?? null,
               ratings_count: 0,
               reviews_count: 0,
-            });
+              library_visibility: meData.library_visibility,
+              friends_visibility: meData.friends_visibility,
+            } as any);
             setFriends(friendsData ?? []);
             setFavorites(favsData ?? []);
             setLibraryTotal(total);
