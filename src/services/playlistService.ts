@@ -35,6 +35,8 @@ export interface Playlist {
     username: string;
     nickname: string | null;
     avatar_url: string | null;
+    banner_url: string | null;
+    bio: string | null;
   };
   game_count: number;
   like_count: number;
