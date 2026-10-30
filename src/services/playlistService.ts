@@ -73,6 +73,15 @@ function extractResults<T>(data: unknown): T[] {
   return [];
 }
 
+function toPaginated(data: unknown): PaginatedPlaylists {
+  const results = extractResults<Playlist>(data);
+  const count =
+    data && typeof data === "object" && "count" in data
+      ? Number((data as { count: unknown }).count)
+      : results.length;
+  return { count, results };
+}
+
 function normalizePickerGame(value: unknown): PickerGame | null {
   if (!value || typeof value !== "object") return null;
 
@@ -130,7 +139,6 @@ export async function toggleLikePlaylist(id: number): Promise<{ is_liked: boolea
   return data;
 }
 
-
 // ─── Steam search for the "Find games" box (social app) ───────────────────────
 export async function searchSteamGames(
   q: string,
@@ -158,7 +166,7 @@ export async function searchSteamGames(
     });
 }
 
-// ─── Reading playlists (Home page) ────────────────────────────────────────────
+// ─── Community playlists: everyone's PUBLIC playlists ─────────────────────────
 export async function getPlaylists(params?: {
   search?: string;
   user?: string;
@@ -169,12 +177,13 @@ export async function getPlaylists(params?: {
   offset?: number;
 }): Promise<PaginatedPlaylists> {
   const { data } = await api.get("/social/playlists/", { params });
-  const results = extractResults<Playlist>(data);
-  const count =
-    data && typeof data === "object" && "count" in data
-      ? Number((data as { count: unknown }).count)
-      : results.length;
-  return { count, results };
+  return toPaginated(data);
+}
+
+// ─── My playlists (MyLibrary): only the logged-in user's, public + private ────
+export async function getMyPlaylists(): Promise<PaginatedPlaylists> {
+  const { data } = await api.get("/social/playlists/mine/", { params: { limit: 50 } });
+  return toPaginated(data);
 }
 
 export async function getPlaylist(id: number): Promise<Playlist> {

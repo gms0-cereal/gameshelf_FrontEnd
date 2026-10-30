@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, memo, useRef} from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Heart, LayoutGrid, List, Loader2 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";

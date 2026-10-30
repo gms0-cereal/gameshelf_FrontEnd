@@ -18,7 +18,7 @@ import {
   type UserGameEntry,
   type UserGameListResponse,
 } from "@/services/Gameservice";
-import { getPlaylists, type Playlist } from "@/services/playlistService";
+import { getMyPlaylists, getPlaylists, type Playlist} from "@/services/playlistService";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/Userservice";
 
@@ -131,7 +131,7 @@ export default function MyLibrary() {
 
     Promise.all([
       getMyGameList({ status: filter, search: debouncedSearch }),
-      getPlaylists(),
+      getMyPlaylists().catch(() => ({ count: 0, results: [] as Playlist[] })),
       getFavoriteGames(),
     ])
       .then(([listData, playlistData, favoriteData]) => {
