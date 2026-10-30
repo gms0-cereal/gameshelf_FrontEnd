@@ -21,6 +21,7 @@ import Browse from "./pages/Browse";
 import CreatePlaylist from "./pages/CreatePlaylist";
 import CommunityPlaylists from "./pages/CommunityPlaylists";
 import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
+import AppealReportPage from "./pages/AppealReportPage";
 // Admin Dashboard Imports
 import { Dashboard } from "./pages/admin/Dashboard";
 import { Games } from "./pages/admin/Games";
@@ -55,7 +56,7 @@ const App = () => (
               <Route path="/profile/set-birthday" element={<SetBirthdayPage/>} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/interests" element={<ChooseInterest />} />
-
+              <Route path="/appeal-report" element={<AppealReportPage />} />
               {/* Admin Routes */}
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/games" element={<Games />} />
