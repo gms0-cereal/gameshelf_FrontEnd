@@ -5,26 +5,31 @@ import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
 import {
   getMyGameList,
+  type SimilarGameResult,
   type SteamGameCard,
   type UserGameEntry,
 } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
 import GameGrid from "@/components/games/GameGrid";
-import { type GameSummary } from "@/components/games/GameCard";
+import GameCard, { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
-
+import { getPlayersLikeYou, type PlayersLikeYouItem } from "@/services/playersLikeYouService";
+import {
+  getTasteRecommendations,
+  type TasteRecommendation,
+} from "@/services/tasteService";
 // RTK Query hooks from store
-import { 
-  useGetGameSummariesQuery, 
-  useGetGameListQuery 
+import {
+  useGetGameSummariesQuery,
+  useGetGameListQuery,
 } from "@/store/apiSlice";
 
 const STEAM_PAGE_SIZE = 12;
 
 const TOP_10_HERO_IDS = [
-  367520, 504230, 1030300, 620, 387290, 
+  367520, 504230, 1030300, 620, 387290,
   774361, 730, 1369630, 1245620, 1809540,
 ];
 
@@ -74,9 +79,181 @@ function pickSummaries(
     .map((card) => toGameSummary(card, userListMap.get(String(card.appid))));
 }
 
+// Shape inferred from how it's used below. Replace with your real type if you have one.
+// type TasteRecommendation = {
+//   reason?: {
+//     similar_to?: string;
+//     matched_genres?: string[];
+//     matched_tags?: string[];
+//   };
+// };
+
+function recommendationBio(reason?: TasteRecommendation["reason"]) {
+  if (reason?.similar_to) return `Because you like ${reason.similar_to}.`;
+  const matched = [...(reason?.matched_genres ?? []), ...(reason?.matched_tags ?? [])];
+  return matched.length > 0
+    ? `Matches your interests: ${matched.slice(0, 4).join(", ")}.`
+    : "Recommended based on your interests.";
+}
+
+function similarBio(result: SimilarGameResult, sourceTitle: string) {
+  const shared = result.reason?.shared_features ?? [];
+  return shared.length > 0
+    ? `Shares: ${shared.slice(0, 4).join(", ")}.`
+    : `Similar to ${sourceTitle}.`;
+}
+
+function recommendationToSummary(rec: TasteRecommendation): GameSummary | null {
+  const appId = rec.game.appid;
+  if (!appId) return null;
+
+  return {
+    id: appId,
+    title: rec.game.title,
+    slug: String(appId),
+    cover:
+      rec.game.header_image ??
+      rec.game.cover_image_url ??
+      `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
+    genres: rec.game.genres?.length ? rec.game.genres : ["Steam Game"],
+    platforms: rec.game.platforms?.length ? rec.game.platforms : ["PC"],
+    statusLabel: STATUS_STYLES.unplayed.label,
+    statusClassName: STATUS_STYLES.unplayed.className,
+    bio: recommendationBio(rec.reason),
+  };
+}
+
+function playersLikeYouToSummary(item: PlayersLikeYouItem): GameSummary | null {
+  const appId = item.game.steam_app_id;
+  if (!appId) return null; // GameCard links use Steam app IDs, so skip games without one
+
+  return {
+    id: appId,
+    title: item.game.title,
+    slug: String(appId),
+    cover:
+      item.game.cover_image_url ??
+      `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
+    genres: item.game.genres?.length ? item.game.genres : ["Steam Game"],
+    platforms: ["PC"],
+    statusLabel: "Unplayed",
+    statusClassName: STATUS_STYLES.unplayed.className,
+    bio: item.reason_text || "Players with similar taste liked this",
+  };
+}
+
 export default function Home() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [userListMap, setUserListMap] = useState<Map<string, UserGameEntry>>(new Map());
+
+  const { user } = useAuth();
+
+  // Catalog pagination (data itself comes from RTK Query below)
+  const [cursors, setCursors] = useState<number[]>([0]);
+  const currentCursor = cursors[cursors.length - 1];
+  const pageNumber = cursors.length;
+
+  // Community Playlists State
+  const [communityPlaylists, setCommunityPlaylists] = useState<Playlist[]>([]);
+  const [playlistsLoading, setPlaylistsLoading] = useState(true);
+  const [playlistsError, setPlaylistsError] = useState<string | null>(null);
+
+  // Carousel refs
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarousel = (dir: 1 | -1) =>
+    carouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
+
+  const recommendedRef = useRef<HTMLDivElement>(null);
+  const scrollRecommended = (dir: 1 | -1) =>
+    recommendedRef.current?.scrollBy({
+      left: dir * (recommendedRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
+  const playersRef = useRef<HTMLDivElement>(null);
+  const scrollPlayers = (dir: 1 | -1) =>
+    playersRef.current?.scrollBy({
+      left: dir * (playersRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
+  // Players Like You State
+  const [playersGames, setPlayersGames] = useState<GameSummary[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
+  const [playersError, setPlayersError] = useState<string | null>(null);
+
+  // Recommended for You State
+  const [recommendedGames, setRecommendedGames] = useState<GameSummary[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(true);
+  const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
+
+  // Fetch taste-based recommendations
+  useEffect(() => {
+    if (!user) {
+      setRecommendedGames([]);
+      setRecommendationsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setRecommendationsLoading(true);
+    setRecommendationsError(null);
+
+    getTasteRecommendations()
+      .then((data) => {
+        if (cancelled) return;
+        setRecommendedGames(
+          (data.results ?? [])
+            .map(recommendationToSummary)
+            .filter((g): g is GameSummary => g !== null)
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setRecommendationsError("Failed to load recommendations.");
+      })
+      .finally(() => {
+        if (!cancelled) setRecommendationsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  // Fetch Players Like You
+  useEffect(() => {
+    if (!user) {
+      setPlayersGames([]);
+      setPlayersLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setPlayersLoading(true);
+    setPlayersError(null);
+
+    getPlayersLikeYou(20, controller.signal)
+      .then((data) => {
+        // Only real SVD picks go in this section. The popular fallback stays hidden.
+        if (data.source !== "personalized") {
+          setPlayersGames([]);
+          return;
+        }
+        setPlayersGames(
+          data.results
+            .map(playersLikeYouToSummary)
+            .filter((g): g is GameSummary => g !== null)
+        );
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPlayersError("Failed to load Players Like You.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPlayersLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [user?.id]);
 
   // Fetch User's Game List to map statuses
   useEffect(() => {
@@ -100,21 +277,6 @@ export default function Home() {
     };
   }, []);
 
-  const [cursors, setCursors] = useState<number[]>([0]);
-  const currentCursor = cursors[cursors.length - 1];
-  const pageNumber = cursors.length;
-
-  const { user } = useAuth();
-  
-  // Community Playlists State
-  const [communityPlaylists, setCommunityPlaylists] = useState<Playlist[]>([]);
-  const [playlistsLoading, setPlaylistsLoading] = useState(true);
-  const [playlistsError, setPlaylistsError] = useState<string | null>(null);
-
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const scrollCarousel = (dir: 1 | -1) =>
-    carouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
-
   // Fetch Community Playlists
   useEffect(() => {
     let cancelled = false;
@@ -137,7 +299,7 @@ export default function Home() {
 
   // RTK Query: Fetch Curated Hero & Section Games in 1 Cached Request
   const { data: curatedData } = useGetGameSummariesQuery(CURATED_IDS_STRING);
-  
+
   const curatedCardsMap = useMemo(() => {
     const map = new Map<number, SteamGameCard>();
     curatedData?.results?.forEach((card: SteamGameCard) => map.set(card.appid, card));
@@ -198,7 +360,7 @@ export default function Home() {
             </div>
           </div>
 
-{/* Hero Banner */}
+          {/* Hero Banner */}
           <section className="relative flex min-h-[420px] items-end overflow-hidden rounded-2xl bg-[#201e2f] px-6 py-10 md:px-11 xl:h-[440px]">
             {currentHero && (
               <img
@@ -258,6 +420,7 @@ export default function Home() {
               )}
             </div>
           </section>
+
           {/* RPGs Section */}
           <section className="flex flex-col gap-8">
             <div className="flex flex-col">
@@ -266,6 +429,134 @@ export default function Home() {
             </div>
             <GameGrid games={rpgGames} loading={rpgGames.length === 0} />
           </section>
+
+          {/* Recommended for You */}
+          <section aria-labelledby="taste-recommendations-title" className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <h2
+                  id="taste-recommendations-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                >
+                  Recommended for You
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                  Games selected based on your genres, platforms, and liked games.
+                </p>
+                <Link
+                  to="/interests"
+                  className="mt-1 text-[13px] leading-4 text-[#c2ade7] hover:text-[#e0deeb]"
+                >
+                  Tune your suggestions: edit genres and liked games →
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollRecommended(-1)}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollRecommended(1)}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            {recommendationsError && (
+              <p role="alert" className="text-sm text-[#e58d91]">{recommendationsError}</p>
+            )}
+
+            {recommendationsLoading && (
+              <p role="status" className="text-sm text-[#b4aec7]">Loading recommendations…</p>
+            )}
+
+            {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
+              <p className="text-sm text-[#b4aec7]">
+                No recommendations yet. Update your interests to get personalized suggestions.
+              </p>
+            )}
+
+            {!recommendationsLoading && !recommendationsError && recommendedGames.length > 0 && (
+              <div
+                ref={recommendedRef}
+                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {recommendedGames.map((game) => (
+                  <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                    <GameCard game={game} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Players Like You */}
+          {user && (playersLoading || playersError || playersGames.length > 0) && (
+            <section aria-labelledby="players-like-you-title" className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <h2
+                    id="players-like-you-title"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                  >
+                    Players Like You
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                    Discover games you may enjoy based on the preferences and ratings of players with
+                    similar gaming tastes.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlayers(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlayers(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {playersError && <p role="alert" className="text-sm text-[#e58d91]">{playersError}</p>}
+              {playersLoading && <p role="status" className="text-sm text-[#b4aec7]">Loading Players Like You…</p>}
+
+              {!playersLoading && !playersError && playersGames.length > 0 && (
+                <div
+                  ref={playersRef}
+                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {playersGames.map((game) => (
+                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Discover on Steam Section */}
           <section className="flex flex-col gap-8">

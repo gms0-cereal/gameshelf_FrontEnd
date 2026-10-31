@@ -27,7 +27,12 @@ import {
   type SteamReviewsResponse,
 } from "@/services/Gameservice";
 import {
+  apiErrorMessage,
+  getGameLike,
   getGameshelfReviews,
+  likeGame,
+  unlikeGame,
+  type GameLikeStats,
   type GameshelfReview,
 } from "@/services/Reviewservice";
 import ThirdPartyReviews from "@/components/reviews/ThirdPartyReviews";
@@ -68,6 +73,27 @@ function movieSource(movie: SteamMovie) {
     movie.webm?.["480"] ??
     null
   );
+}
+
+type RequirementRow = { label: string; value: string };
+
+// Steam sends requirements as HTML (<ul><li><strong>OS:</strong> Windows 10</li>…).
+// Turn it into plain label/value rows instead of injecting the HTML.
+function parseRequirements(html: string | undefined): RequirementRow[] {
+  if (!html) return [];
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  return Array.from(doc.querySelectorAll("li"))
+    .map((li) => {
+      const clone = li.cloneNode(true) as HTMLElement;
+      const strong = clone.querySelector("strong");
+      const label = (strong?.textContent ?? "").replace(/:\s*$/, "").trim();
+      strong?.remove();
+      const value = (clone.textContent ?? "").replace(/\s+/g, " ").trim();
+      return { label, value };
+    })
+    // drop empty rows like "Additional Notes:" with no value
+    .filter((row) => row.value);
 }
 
 // ---------------------------------------------------------------------------
@@ -273,6 +299,121 @@ function TrailerTile({
   );
 }
 
+function RequirementColumn({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: RequirementRow[];
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-[#c2ade7]">{title}</h3>
+
+      {rows.length === 0 ? (
+        <p className="text-xs text-[#b4aec7]">Not specified.</p>
+      ) : (
+        <dl className="flex flex-col gap-3 text-xs">
+          {rows.map((row, index) =>
+            row.label ? (
+              <div key={`${row.label}-${index}`}>
+                <dt className="mb-0.5 uppercase tracking-wide text-[#8b86a3]">
+                  {row.label}
+                </dt>
+                <dd className="leading-5 text-[#e0deeb]">{row.value}</dd>
+              </div>
+            ) : (
+              <p key={index} className="leading-5 text-[#b4aec7]">
+                {row.value}
+              </p>
+            )
+          )}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+function SystemRequirements({ game }: { game: SteamGameDetail }) {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+
+  const sources = [
+    { key: "pc", label: "PC", supported: game.platforms?.windows, data: game.pc_requirements },
+    { key: "mac", label: "Mac", supported: game.platforms?.mac, data: game.mac_requirements },
+    { key: "linux", label: "Linux", supported: game.platforms?.linux, data: game.linux_requirements },
+  ].map(({ key, label, supported, data }) => {
+    // Steam sends [] instead of an object when there are no requirements
+    const reqs = data && !Array.isArray(data) ? data : undefined;
+    const minimum = parseRequirements(reqs?.minimum);
+    const recommended = parseRequirements(reqs?.recommended);
+    return {
+      key,
+      label,
+      supported: Boolean(supported),
+      minimum,
+      recommended,
+      hasData: minimum.length > 0 || recommended.length > 0,
+    };
+  });
+
+  // Nothing to show at all
+  if (!sources.some((s) => s.hasData || s.supported)) return null;
+
+  // Default to the first platform that has data, otherwise PC
+  const active =
+    sources.find((s) => s.key === activeKey) ??
+    sources.find((s) => s.hasData) ??
+    sources[0];
+
+  return (
+    <section className="flex flex-col gap-5">
+      <SectionHeading title="System requirements" note="From the Steam store page" />
+
+      <Card className="gap-0 rounded-xl border border-[#55516c] bg-[#373646] py-0 text-[#e0deeb] shadow-none">
+        <CardContent className="flex flex-col gap-5 p-6">
+          <div
+            role="tablist"
+            aria-label="Platform"
+            className="flex w-fit gap-1 rounded-lg border border-[#55516c] bg-[#2a2838] p-1"
+          >
+            {sources.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                role="tab"
+                aria-selected={active.key === s.key}
+                onClick={() => setActiveKey(s.key)}
+                className={`h-8 cursor-pointer rounded-md px-4 text-xs font-medium transition-colors ${
+                  active.key === s.key
+                    ? "bg-[#4a3d73] text-[#e0deeb]"
+                    : s.hasData || s.supported
+                      ? "text-[#b4aec7] hover:text-[#e0deeb]"
+                      : "text-[#6f6a85] hover:text-[#b4aec7]"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          {active.hasData ? (
+            <div className="grid gap-8 md:grid-cols-2">
+              <RequirementColumn title="Minimum" rows={active.minimum} />
+              <RequirementColumn title="Recommended" rows={active.recommended} />
+            </div>
+          ) : (
+            <p className="text-sm text-[#b4aec7]">
+              {active.supported
+                ? `The publisher hasn’t listed ${active.label} requirements for this game.`
+                : `This game isn’t available on ${active.label}.`}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // page
 // ---------------------------------------------------------------------------
@@ -297,7 +438,8 @@ export default function GameDetails() {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState(false);
 
-  const [liked, setLiked] = useState(false);
+  const [like, setLike] = useState<GameLikeStats>({ liked: false, like_count: 0 });
+  const [likeBusy, setLikeBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -335,6 +477,45 @@ export default function GameDetails() {
     };
   }, [appid]);
 
+  // Has this user already liked the game?
+  useEffect(() => {
+    if (!appid || !/^\d+$/.test(appid)) return;
+    let cancelled = false;
+    setLike({ liked: false, like_count: 0 });
+
+    getGameLike(appid)
+      .then((data) => {
+        if (!cancelled) setLike(data);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appid]);
+
+  async function toggleLike() {
+    if (!appid || likeBusy) return;
+    const previous = like;
+
+    // optimistic update
+    setLike({
+      liked: !previous.liked,
+      like_count: Math.max(0, previous.like_count + (previous.liked ? -1 : 1)),
+    });
+    setLikeBusy(true);
+
+    try {
+      setLike(previous.liked ? await unlikeGame(appid) : await likeGame(appid));
+    } catch (err) {
+      setLike(previous);
+      toast.error(apiErrorMessage(err, "Couldn’t update your like. Please try again."));
+    } finally {
+      setLikeBusy(false);
+    }
+  }
+
+  // Page title
   useEffect(() => {
     if (game) document.title = `${game.name} | GameShelf`;
   }, [game]);
@@ -635,16 +816,24 @@ export default function GameDetails() {
 
                     <button
                       type="button"
-                      onClick={() => setLiked((value) => !value)}
-                      aria-pressed={liked}
-                      className="flex w-fit cursor-pointer items-center gap-2 text-sm text-[#b4aec7] hover:text-[#e0deeb]"
+                      onClick={toggleLike}
+                      disabled={likeBusy}
+                      aria-pressed={like.liked}
+                      className={`flex w-fit cursor-pointer items-center gap-2 text-sm transition-colors ${
+                        like.liked ? "text-[#e58d91]" : "text-[#b4aec7] hover:text-[#e0deeb]"
+                      }`}
                     >
                       <Heart
-                        className={`size-4 ${liked ? "fill-[#e58d91] text-[#e58d91]" : ""}`}
+                        className={`size-4 ${like.liked ? "fill-[#e58d91] text-[#e58d91]" : ""}`}
                         strokeWidth={1.7}
                         aria-hidden="true"
                       />
-                      {liked ? "You like this game" : "Like this game"}
+                      {like.liked ? "Liked" : "Like this game"}
+                      {like.like_count > 0 && (
+                        <span className="text-xs text-[#8b86a3]">
+                          • {like.like_count.toLocaleString()}
+                        </span>
+                      )}
                     </button>
                   </CardContent>
                 </Card>
@@ -720,6 +909,9 @@ export default function GameDetails() {
                   </div>
                 </section>
               )}
+
+              {/* System requirements */}
+              <SystemRequirements game={game} />
 
               {/* Similar games */}
               <SimilarGames appId={game.steam_appid} />
