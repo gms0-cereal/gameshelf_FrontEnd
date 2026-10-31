@@ -89,6 +89,11 @@ export interface SteamMovie {
   mp4?: Record<string, string>;
 }
 
+export interface SteamRequirements {
+  minimum?: string;
+  recommended?: string;
+}
+
 export interface SteamGameDetail {
   steam_appid: number;
   name: string;
@@ -108,6 +113,9 @@ export interface SteamGameDetail {
   screenshots?: SteamScreenshot[];
   movies?: SteamMovie[];
   dlc?: number[];
+  pc_requirements?: SteamRequirements | [];
+  mac_requirements?: SteamRequirements | [];
+  linux_requirements?: SteamRequirements | [];
 }
 
 // ---------------------------------------------------------------------------

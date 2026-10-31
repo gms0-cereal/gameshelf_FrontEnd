@@ -75,6 +75,27 @@ function movieSource(movie: SteamMovie) {
   );
 }
 
+type RequirementRow = { label: string; value: string };
+
+// Steam sends requirements as HTML (<ul><li><strong>OS:</strong> Windows 10</li>…).
+// Turn it into plain label/value rows instead of injecting the HTML.
+function parseRequirements(html: string | undefined): RequirementRow[] {
+  if (!html) return [];
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  return Array.from(doc.querySelectorAll("li"))
+    .map((li) => {
+      const clone = li.cloneNode(true) as HTMLElement;
+      const strong = clone.querySelector("strong");
+      const label = (strong?.textContent ?? "").replace(/:\s*$/, "").trim();
+      strong?.remove();
+      const value = (clone.textContent ?? "").replace(/\s+/g, " ").trim();
+      return { label, value };
+    })
+    // drop empty rows like "Additional Notes:" with no value
+    .filter((row) => row.value);
+}
+
 // ---------------------------------------------------------------------------
 // small components
 // ---------------------------------------------------------------------------
@@ -275,6 +296,121 @@ function TrailerTile({
     >
       {overlay}
     </button>
+  );
+}
+
+function RequirementColumn({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: RequirementRow[];
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-[#c2ade7]">{title}</h3>
+
+      {rows.length === 0 ? (
+        <p className="text-xs text-[#b4aec7]">Not specified.</p>
+      ) : (
+        <dl className="flex flex-col gap-3 text-xs">
+          {rows.map((row, index) =>
+            row.label ? (
+              <div key={`${row.label}-${index}`}>
+                <dt className="mb-0.5 uppercase tracking-wide text-[#8b86a3]">
+                  {row.label}
+                </dt>
+                <dd className="leading-5 text-[#e0deeb]">{row.value}</dd>
+              </div>
+            ) : (
+              <p key={index} className="leading-5 text-[#b4aec7]">
+                {row.value}
+              </p>
+            )
+          )}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+function SystemRequirements({ game }: { game: SteamGameDetail }) {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+
+  const sources = [
+    { key: "pc", label: "PC", supported: game.platforms?.windows, data: game.pc_requirements },
+    { key: "mac", label: "Mac", supported: game.platforms?.mac, data: game.mac_requirements },
+    { key: "linux", label: "Linux", supported: game.platforms?.linux, data: game.linux_requirements },
+  ].map(({ key, label, supported, data }) => {
+    // Steam sends [] instead of an object when there are no requirements
+    const reqs = data && !Array.isArray(data) ? data : undefined;
+    const minimum = parseRequirements(reqs?.minimum);
+    const recommended = parseRequirements(reqs?.recommended);
+    return {
+      key,
+      label,
+      supported: Boolean(supported),
+      minimum,
+      recommended,
+      hasData: minimum.length > 0 || recommended.length > 0,
+    };
+  });
+
+  // Nothing to show at all
+  if (!sources.some((s) => s.hasData || s.supported)) return null;
+
+  // Default to the first platform that has data, otherwise PC
+  const active =
+    sources.find((s) => s.key === activeKey) ??
+    sources.find((s) => s.hasData) ??
+    sources[0];
+
+  return (
+    <section className="flex flex-col gap-5">
+      <SectionHeading title="System requirements" note="From the Steam store page" />
+
+      <Card className="gap-0 rounded-xl border border-[#55516c] bg-[#373646] py-0 text-[#e0deeb] shadow-none">
+        <CardContent className="flex flex-col gap-5 p-6">
+          <div
+            role="tablist"
+            aria-label="Platform"
+            className="flex w-fit gap-1 rounded-lg border border-[#55516c] bg-[#2a2838] p-1"
+          >
+            {sources.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                role="tab"
+                aria-selected={active.key === s.key}
+                onClick={() => setActiveKey(s.key)}
+                className={`h-8 cursor-pointer rounded-md px-4 text-xs font-medium transition-colors ${
+                  active.key === s.key
+                    ? "bg-[#4a3d73] text-[#e0deeb]"
+                    : s.hasData || s.supported
+                      ? "text-[#b4aec7] hover:text-[#e0deeb]"
+                      : "text-[#6f6a85] hover:text-[#b4aec7]"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          {active.hasData ? (
+            <div className="grid gap-8 md:grid-cols-2">
+              <RequirementColumn title="Minimum" rows={active.minimum} />
+              <RequirementColumn title="Recommended" rows={active.recommended} />
+            </div>
+          ) : (
+            <p className="text-sm text-[#b4aec7]">
+              {active.supported
+                ? `The publisher hasn’t listed ${active.label} requirements for this game.`
+                : `This game isn’t available on ${active.label}.`}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -773,6 +909,9 @@ export default function GameDetails() {
                   </div>
                 </section>
               )}
+
+              {/* System requirements */}
+              <SystemRequirements game={game} />
 
               {/* Similar games */}
               <SimilarGames appId={game.steam_appid} />
