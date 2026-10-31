@@ -339,3 +339,29 @@ export async function getExternalReviews(
   );
   return data;
 }
+
+// ---------------------------------------------------------------------------
+// game likes
+// ---------------------------------------------------------------------------
+export interface GameLikeStats {
+  liked: boolean;
+  like_count: number;
+}
+
+// GET /reviews/likes/<app_id>/
+export async function getGameLike(appId: number | string) {
+  const { data } = await api.get<GameLikeStats>(`/reviews/likes/${appId}/`);
+  return data;
+}
+
+// PUT /reviews/likes/<app_id>/
+export async function likeGame(appId: number | string) {
+  const { data } = await api.put<GameLikeStats>(`/reviews/likes/${appId}/`);
+  return data;
+}
+
+// DELETE /reviews/likes/<app_id>/
+export async function unlikeGame(appId: number | string) {
+  const { data } = await api.delete<GameLikeStats>(`/reviews/likes/${appId}/`);
+  return data;
+}

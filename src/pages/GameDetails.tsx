@@ -26,7 +26,12 @@ import {
   type SteamReviewsResponse,
 } from "@/services/Gameservice";
 import {
+  apiErrorMessage,
+  getGameLike,
   getGameshelfReviews,
+  likeGame,
+  unlikeGame,
+  type GameLikeStats,
   type GameshelfReview,
 } from "@/services/Reviewservice";
 import ThirdPartyReviews from "@/components/reviews/ThirdPartyReviews";
@@ -300,7 +305,8 @@ export default function GameDetails() {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState(false);
 
-  const [liked, setLiked] = useState(false);
+  const [like, setLike] = useState<GameLikeStats>({ liked: false, like_count: 0 });
+  const [likeBusy, setLikeBusy] = useState(false);
 
   // Game details
   useEffect(() => {
@@ -338,6 +344,44 @@ export default function GameDetails() {
       cancelled = true;
     };
   }, [appid]);
+
+  // Has this user already liked the game?
+  useEffect(() => {
+    if (!appid || !/^\d+$/.test(appid)) return;
+    let cancelled = false;
+    setLike({ liked: false, like_count: 0 });
+
+    getGameLike(appid)
+      .then((data) => {
+        if (!cancelled) setLike(data);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appid]);
+
+  async function toggleLike() {
+    if (!appid || likeBusy) return;
+    const previous = like;
+
+    // optimistic update
+    setLike({
+      liked: !previous.liked,
+      like_count: Math.max(0, previous.like_count + (previous.liked ? -1 : 1)),
+    });
+    setLikeBusy(true);
+
+    try {
+      setLike(previous.liked ? await unlikeGame(appid) : await likeGame(appid));
+    } catch (err) {
+      setLike(previous);
+      toast.error(apiErrorMessage(err, "Couldn’t update your like. Please try again."));
+    } finally {
+      setLikeBusy(false);
+    }
+  }
 
   // Page title
   useEffect(() => {
@@ -644,16 +688,24 @@ export default function GameDetails() {
 
                     <button
                       type="button"
-                      onClick={() => setLiked((value) => !value)}
-                      aria-pressed={liked}
-                      className="flex w-fit cursor-pointer items-center gap-2 text-sm text-[#b4aec7] hover:text-[#e0deeb]"
+                      onClick={toggleLike}
+                      disabled={likeBusy}
+                      aria-pressed={like.liked}
+                      className={`flex w-fit cursor-pointer items-center gap-2 text-sm transition-colors ${
+                        like.liked ? "text-[#e58d91]" : "text-[#b4aec7] hover:text-[#e0deeb]"
+                      }`}
                     >
                       <Heart
-                        className={`size-4 ${liked ? "fill-[#e58d91] text-[#e58d91]" : ""}`}
+                        className={`size-4 ${like.liked ? "fill-[#e58d91] text-[#e58d91]" : ""}`}
                         strokeWidth={1.7}
                         aria-hidden="true"
                       />
-                      {liked ? "You like this game" : "Like this game"}
+                      {like.liked ? "Liked" : "Like this game"}
+                      {like.like_count > 0 && (
+                        <span className="text-xs text-[#8b86a3]">
+                          • {like.like_count.toLocaleString()}
+                        </span>
+                      )}
                     </button>
                   </CardContent>
                 </Card>

@@ -18,7 +18,7 @@ import {
   type ReportReason,
   type ReviewComment,
 } from "@/services/Reviewservice";
-
+import SpoilerMask from "@/components/reviews/SpoilerMask";
 
 interface Props {
   review: GameshelfReview;
@@ -234,39 +234,47 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
         </div>
       </div>
 
-      {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>}
+      {/* {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>} */}
 
       {/* body */}
       {editing ? (
-        <div className="flex flex-col gap-2">
-          <textarea
-            value={draftContent}
-            onChange={(e) => setDraftContent(e.target.value)}
-            rows={5}
-            className="w-full rounded-lg border border-[#55516c] bg-[#2a2838] p-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
-          />
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              onClick={saveEdit}
-              disabled={saving}
-              className="h-8 rounded-lg border-0 bg-[#a8484c] px-4 text-xs font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
-            >
-              {saving ? "Saving…" : "Save"}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setEditing(false)}
-              className="h-8 rounded-lg border border-[#55516c] bg-transparent px-4 text-xs text-[#e0deeb] shadow-none hover:bg-[#46445a]"
-            >
-              Cancel
-            </Button>
+        <>
+          {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>}
+          <div className="flex flex-col gap-2">
+            <textarea
+              value={draftContent}
+              onChange={(e) => setDraftContent(e.target.value)}
+              rows={5}
+              className="w-full rounded-lg border border-[#55516c] bg-[#2a2838] p-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                onClick={saveEdit}
+                disabled={saving}
+                className="h-8 rounded-lg border-0 bg-[#a8484c] px-4 text-xs font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
+              >
+                {saving ? "Saving…" : "Save"}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="h-8 rounded-lg border border-[#55516c] bg-transparent px-4 text-xs text-[#e0deeb] shadow-none hover:bg-[#46445a]"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
-        </div>
+        </>
       ) : (
-        <p className="line-clamp-6 whitespace-pre-line text-sm leading-6 text-[#e0deeb]">
-          {review.content || "No written review."}
-        </p>
+        <SpoilerMask active={review.contains_spoilers}>
+          <div className="flex flex-col gap-3">
+            {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>}
+            <p className="line-clamp-6 whitespace-pre-line text-sm leading-6 text-[#e0deeb]">
+              {review.content || "No written review."}
+            </p>
+          </div>
+        </SpoilerMask>
       )}
 
       {/* report form (opened from the 3-dot menu) */}
