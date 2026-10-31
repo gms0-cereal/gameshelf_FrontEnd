@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Send, ShieldAlert, UserX } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Send, ShieldAlert, UserX, Gavel } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import api from "@/lib/api";
 
 type TicketType = "ban_appeal" | "user_report";
+
+export interface UserSanction {
+  id: number;
+  sanction_type: "warning" | "suspension" | "ban";
+  reason: string;
+  starts_at: string;
+  ends_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
 
 const PANEL =
   "gap-6 rounded-2xl border-0 bg-[#373646] p-7 " +
@@ -36,46 +46,96 @@ export default function AppealReportPage() {
 
   const [type, setType] = useState<TicketType>(initialType);
   const [targetUser, setTargetUser] = useState(initialUser);
-  const [reason, setReason] = useState("");
-  const [details, setDetails] = useState("");
+
+  // Appeal fields matching SanctionAppeal
+  const [sanctions, setSanctions] = useState<UserSanction[]>([]);
+  const [selectedSanctionId, setSelectedSanctionId] = useState<string>("");
+  const [message, setMessage] = useState("");
+  const [loadingSanctions, setLoadingSanctions] = useState(false);
+
+  // Report fields
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Load user's active sanctions when on the appeal tab
+  useEffect(() => {
+    if (type !== "ban_appeal") return;
+
+    let cancelled = false;
+    setLoadingSanctions(true);
+
+    api
+      .get<UserSanction[]>("/sanctions/my/")
+      .then(({ data }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        setSanctions(list);
+        if (list.length > 0) {
+          setSelectedSanctionId(String(list[0].id));
+        }
+      })
+      .catch(() => {
+        // Fallback for non-sanction endpoints
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSanctions(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [type]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reason.trim() || !details.trim()) {
-      setError("Please fill in both the summary reason and detailed explanation.");
-      return;
-    }
+    setError(null);
 
-    if (type === "user_report" && !targetUser.trim()) {
-      setError("Please specify the username of the player you are reporting.");
-      return;
+    if (type === "ban_appeal") {
+      if (!selectedSanctionId) {
+        setError("Please select a sanction to appeal.");
+        return;
+      }
+      if (!message.trim()) {
+        setError("Please provide an appeal message explaining your case.");
+        return;
+      }
+    } else {
+      if (!targetUser.trim()) {
+        setError("Please specify the username of the player you are reporting.");
+        return;
+      }
+      if (!reportReason.trim() || !reportDetails.trim()) {
+        setError("Please fill in both the reason and detailed evidence.");
+        return;
+      }
     }
 
     setSubmitting(true);
-    setError(null);
 
     try {
       if (type === "ban_appeal") {
-        await api.post("/reports/appeal/", {
-          reason: reason.trim(),
-          details: details.trim(),
+        await api.post("/sanctions/appeals/", {
+          sanction: Number(selectedSanctionId),
+          message: message.trim(),
         });
       } else {
         await api.post("/reports/", {
           username: targetUser.trim(),
-          reason: reason.trim(),
-          details: details.trim(),
+          reason: reportReason.trim(),
+          details: reportDetails.trim(),
         });
       }
 
       setSuccess(true);
     } catch (err: any) {
       setError(
-        err.response?.data?.detail || "Failed to submit request. Please try again."
+        err.response?.data?.detail ||
+          err.response?.data?.message ||
+          "Failed to submit ticket. Please verify your details."
       );
     } finally {
       setSubmitting(false);
@@ -91,19 +151,15 @@ export default function AppealReportPage() {
           {/* Header */}
           <div className="mb-8 flex items-center justify-between gap-4">
             <div>
-              <p className="mb-1 text-xs font-semibold tracking-wider text-[#b4aec7] uppercase">
-                Support Center
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#b4aec7]">
+                Support & Conduct
               </p>
               <h1 className="text-3xl font-semibold text-white">
-                {type === "ban_appeal" ? "Account Appeal" : "Report a Misdemeanor"}
+                {type === "ban_appeal" ? "Sanction Appeal" : "Report Misdemeanor"}
               </h1>
             </div>
 
-            <Button
-              asChild
-              variant="outline"
-              className={OUTLINE_BUTTON}
-            >
+            <Button asChild variant="outline" className={OUTLINE_BUTTON}>
               <Link to="/home">
                 <ArrowLeft size={18} />
                 Back
@@ -113,7 +169,7 @@ export default function AppealReportPage() {
 
           <Card className={PANEL}>
             {/* Ticket Type Switcher */}
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#29263b] p-1 border border-[#55516c]">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#55516c] bg-[#29263b] p-1">
               <button
                 type="button"
                 onClick={() => {
@@ -127,7 +183,7 @@ export default function AppealReportPage() {
                 }`}
               >
                 <ShieldAlert className="size-4" />
-                Appeal Restriction
+                Appeal Sanction
               </button>
               <button
                 type="button"
@@ -151,9 +207,11 @@ export default function AppealReportPage() {
                 <div className="flex size-14 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
                   <Send className="size-7" />
                 </div>
-                <h2 className="text-xl font-semibold text-white">Ticket Submitted Successfully</h2>
+                <h2 className="text-xl font-semibold text-white">
+                  {type === "ban_appeal" ? "Appeal Submitted" : "Report Filed"}
+                </h2>
                 <p className="max-w-md text-xs text-[#b4aec7]">
-                  Our moderation team has received your submission and will review the details shortly.
+                  Your submission is now recorded under <code className="text-[#c2ade7]">Status: OPEN</code>. A moderator will review your case shortly.
                 </p>
                 <Button
                   onClick={() => navigate("/home")}
@@ -164,55 +222,87 @@ export default function AppealReportPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                {/* Target Username (Only for User Reports) */}
-                {type === "user_report" && (
-                  <div className="flex flex-col gap-2">
-                    <label className={LABEL}>Offending Player's Username</label>
-                    <Input
-                      type="text"
-                      placeholder="e.g. toxic_player123"
-                      value={targetUser}
-                      onChange={(e) => setTargetUser(e.target.value)}
-                      className={FIELD}
-                    />
-                  </div>
+                {type === "ban_appeal" ? (
+                  <>
+                    {/* Select Sanction to Appeal */}
+                    <div className="flex flex-col gap-2">
+                      <label className={LABEL}>Select Sanction</label>
+                      {loadingSanctions ? (
+                        <p className="text-xs text-[#8f899f]">Loading active sanctions...</p>
+                      ) : sanctions.length > 0 ? (
+                        <select
+                          value={selectedSanctionId}
+                          onChange={(e) => setSelectedSanctionId(e.target.value)}
+                          className={`h-11 rounded-lg border px-3 text-sm ${FIELD}`}
+                        >
+                          {sanctions.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              [{s.sanction_type.toUpperCase()}] {s.reason} ({new Date(s.created_at).toLocaleDateString()})
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="flex items-center gap-2 rounded-xl border border-[#55516c] bg-[#29263b] p-4 text-xs text-[#b4aec7]">
+                          <Gavel className="size-4 text-[#c2ade7] shrink-0" />
+                          <span>No active account sanctions found registered to your profile.</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Appeal Message */}
+                    <div className="flex flex-col gap-2">
+                      <label className={LABEL}>Appeal Explanation Message</label>
+                      <Textarea
+                        maxLength={1000}
+                        placeholder="State your reasons why this sanction should be reconsidered or overturned..."
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        className={`${FIELD} min-h-36 max-h-48 resize-y`}
+                      />
+                      <p className="text-right text-[11px] text-[#8f899f]">{message.length}/1000</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Target Player Username */}
+                    <div className="flex flex-col gap-2">
+                      <label className={LABEL}>Offending Player's Username</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. toxic_player123"
+                        value={targetUser}
+                        onChange={(e) => setTargetUser(e.target.value)}
+                        className={FIELD}
+                      />
+                    </div>
+
+                    {/* Brief Reason */}
+                    <div className="flex flex-col gap-2">
+                      <label className={LABEL}>Offense Category</label>
+                      <Input
+                        type="text"
+                        maxLength={100}
+                        placeholder="e.g. Harassment, Cheating/Exploiting, Offensive Content"
+                        value={reportReason}
+                        onChange={(e) => setReportReason(e.target.value)}
+                        className={FIELD}
+                      />
+                    </div>
+
+                    {/* Report Evidence Details */}
+                    <div className="flex flex-col gap-2">
+                      <label className={LABEL}>Detailed Context & Evidence</label>
+                      <Textarea
+                        maxLength={1000}
+                        placeholder="Provide details, dates, chat log excerpts, or links to evidence..."
+                        value={reportDetails}
+                        onChange={(e) => setReportDetails(e.target.value)}
+                        className={`${FIELD} min-h-32 max-h-48 resize-y`}
+                      />
+                      <p className="text-right text-[11px] text-[#8f899f]">{reportDetails.length}/1000</p>
+                    </div>
+                  </>
                 )}
-
-                {/* Brief Reason */}
-                <div className="flex flex-col gap-2">
-                  <label className={LABEL}>
-                    {type === "ban_appeal" ? "Reason for Appeal" : "Offense Category"}
-                  </label>
-                  <Input
-                    type="text"
-                    maxLength={100}
-                    placeholder={
-                      type === "ban_appeal"
-                        ? "e.g. Unfair account restriction, Account compromised"
-                        : "e.g. Harassment, Cheating/Exploiting, Offensive Content"
-                    }
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className={FIELD}
-                  />
-                </div>
-
-                {/* Detailed Description */}
-                <div className="flex flex-col gap-2">
-                  <label className={LABEL}>Detailed Context & Evidence</label>
-                  <Textarea
-                    maxLength={1000}
-                    placeholder={
-                      type === "ban_appeal"
-                        ? "Explain why your ban should be reconsidered or what happened..."
-                        : "Provide context, dates, playlist titles, or links to evidence..."
-                    }
-                    value={details}
-                    onChange={(e) => setDetails(e.target.value)}
-                    className={`${FIELD} min-h-32 max-h-48 resize-y`}
-                  />
-                  <p className="text-right text-[11px] text-[#8f899f]">{details.length}/1000</p>
-                </div>
 
                 {error && (
                   <div className="flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300">
@@ -239,7 +329,7 @@ export default function AppealReportPage() {
                         : "bg-[#a8454b] text-white hover:bg-[#923b40]"
                     }
                   >
-                    {submitting ? "Submitting Ticket..." : "Submit Ticket"}
+                    {submitting ? "Submitting..." : "Submit Appeal Ticket"}
                   </Button>
                 </div>
               </form>
