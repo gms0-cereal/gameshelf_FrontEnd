@@ -16,7 +16,10 @@ import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 import { getPlayersLikeYou, type PlayersLikeYouItem } from "@/services/playersLikeYouService";
-
+import {
+  getTasteRecommendations,
+  type TasteRecommendation,
+} from "@/services/tasteService";
 // RTK Query hooks from store
 import {
   useGetGameSummariesQuery,
@@ -77,13 +80,13 @@ function pickSummaries(
 }
 
 // Shape inferred from how it's used below. Replace with your real type if you have one.
-type TasteRecommendation = {
-  reason?: {
-    similar_to?: string;
-    matched_genres?: string[];
-    matched_tags?: string[];
-  };
-};
+// type TasteRecommendation = {
+//   reason?: {
+//     similar_to?: string;
+//     matched_genres?: string[];
+//     matched_tags?: string[];
+//   };
+// };
 
 function recommendationBio(reason?: TasteRecommendation["reason"]) {
   if (reason?.similar_to) return `Because you like ${reason.similar_to}.`;
@@ -98,6 +101,26 @@ function similarBio(result: SimilarGameResult, sourceTitle: string) {
   return shared.length > 0
     ? `Shares: ${shared.slice(0, 4).join(", ")}.`
     : `Similar to ${sourceTitle}.`;
+}
+
+function recommendationToSummary(rec: TasteRecommendation): GameSummary | null {
+  const appId = rec.game.appid;
+  if (!appId) return null;
+
+  return {
+    id: appId,
+    title: rec.game.title,
+    slug: String(appId),
+    cover:
+      rec.game.header_image ??
+      rec.game.cover_image_url ??
+      `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
+    genres: rec.game.genres?.length ? rec.game.genres : ["Steam Game"],
+    platforms: rec.game.platforms?.length ? rec.game.platforms : ["PC"],
+    statusLabel: STATUS_STYLES.unplayed.label,
+    statusClassName: STATUS_STYLES.unplayed.className,
+    bio: recommendationBio(rec.reason),
+  };
 }
 
 function playersLikeYouToSummary(item: PlayersLikeYouItem): GameSummary | null {
@@ -161,8 +184,41 @@ export default function Home() {
 
   // Recommended for You State
   const [recommendedGames, setRecommendedGames] = useState<GameSummary[]>([]);
-  const [recommendationsLoading, setRecommendationsLoading] = useState(false); // TODO: set true once the fetch effect is restored
+  const [recommendationsLoading, setRecommendationsLoading] = useState(true);
   const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
+
+  // Fetch taste-based recommendations
+  useEffect(() => {
+    if (!user) {
+      setRecommendedGames([]);
+      setRecommendationsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setRecommendationsLoading(true);
+    setRecommendationsError(null);
+
+    getTasteRecommendations()
+      .then((data) => {
+        if (cancelled) return;
+        setRecommendedGames(
+          (data.results ?? [])
+            .map(recommendationToSummary)
+            .filter((g): g is GameSummary => g !== null)
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setRecommendationsError("Failed to load recommendations.");
+      })
+      .finally(() => {
+        if (!cancelled) setRecommendationsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   // Fetch Players Like You
   useEffect(() => {
