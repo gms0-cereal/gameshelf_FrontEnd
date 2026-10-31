@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, memo } from "react";
 import {
   Ban,
   Flag,
@@ -40,18 +40,13 @@ import {
   type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 
-
-
-// type FavoriteGame = {
-//   id?: number;
-//   title: string;
-//   image?: string | null;
-// };
-
 type Player = SocialUser & {
   bio?: string | null;
   favorites?: UserFavoriteGameEntry[];
   banner_url?: string | null;
+  visibility?: "public" | "private";
+  is_friend?: boolean;
+  has_incoming_request?: boolean;
 };
 
 type Friendship = ServiceFriendship & {
@@ -408,7 +403,7 @@ export default function Friends() {
                         .map((request) => (
                           <PlayerCard
                             key={request.id}
-                            player={request.user}
+                            player={{ ...request.user, has_incoming_request: true }}
                             busy={busyUsername === request.user.username}
                             onAdd={() => void acceptRequest(request)}
                             onBlock={() => setModalConfig({ type: "block", player: request.user })}
@@ -471,7 +466,7 @@ export default function Friends() {
                     friends.map((player) => (
                       <PlayerCard
                         key={player.id}
-                        player={player}
+                        player={{ ...player, is_friend: true }}
                         busy={busyUsername === player.username}
                         onAdd={() => setModalConfig({ type: "unfriend", player })}
                         onBlock={() => setModalConfig({ type: "block", player })}
@@ -660,21 +655,25 @@ type PlayerCardProps = {
   isBlockedView?: boolean;
 };
 
-// type PlayerCardProps = {
-//   player: Player;
-//   busy: boolean;
-//   onAdd: () => void;
-//   onBlock: () => void;
-//   onReport: () => void;
-//   addLabel: string;
-//   addIcon?: React.ReactNode;
-//   secondaryAction?: {
-//     label: string;
-//     icon: React.ReactNode;
-//     onClick: () => void;
-//   };
-//   isBlockedView?: boolean;
-// };
+/** Optimized cover image handler */
+const FavoriteCover = memo(({ src, title }: { src?: string | null; title: string }) => {
+  const [failed, setFailed] = useState(false);
+  return src && !failed ? (
+    <img
+      src={src}
+      alt={title}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="h-full w-full object-cover"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center">
+      <Gamepad2 className="size-5 text-[#8870b6]" />
+    </div>
+  );
+});
+FavoriteCover.displayName = "FavoriteCover";
 
 function PlayerCard({
   player,
@@ -725,7 +724,11 @@ function PlayerCard({
                 onAddFriend={onAdd}
                 onBlock={onBlock}
                 onReport={onReport}
-                openUpward={openUpward}
+                position={
+                  openUpward
+                    ? { top: -330, left: 0 } 
+                    : undefined
+                }
               />
             )}
           </div>
@@ -754,13 +757,7 @@ function PlayerCard({
                   className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#514961] bg-[#2a2838]"
                   title={fav.title}
                 >
-                  {fav.cover_image_url ? (
-                    <img src={fav.cover_image_url} alt={fav.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Gamepad2 className="size-5 text-[#8870b6]" />
-                    </div>
-                  )}
+                  <FavoriteCover src={fav.cover_image_url} title={fav.title} />
                 </div>
               ))}
             </div>

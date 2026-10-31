@@ -6,6 +6,7 @@ import {
   PenLine,
   Play,
   Plus,
+  X,
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -37,6 +38,7 @@ import {
 import ThirdPartyReviews from "@/components/reviews/ThirdPartyReviews";
 import GameshelfReviewItem from "@/components/reviews/GameshelfReviewItem";
 import SimilarGames from "@/components/games/SimilarGames";
+
 const REVIEWS_PER_PAGE = 10;
 const DLC_LIMIT = 3;
 const SCREENSHOT_LIMIT = 6;
@@ -44,8 +46,6 @@ const SCREENSHOT_LIMIT = 6;
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
-// Steam returns HTML in some fields. Strip it to plain text instead of
-// injecting raw HTML into the page.
 function stripHtml(html: string | undefined) {
   if (!html) return "";
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -95,7 +95,6 @@ function AddToListMenu({ appId }: { appId: number }) {
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Is this game already in my list?
   useEffect(() => {
     let cancelled = false;
     setEntry(null);
@@ -104,9 +103,7 @@ function AddToListMenu({ appId }: { appId: number }) {
       .then((data) => {
         if (!cancelled && data.in_list) setEntry(data);
       })
-      .catch(() => {
-        /* not logged in or network error: just show "Add to My List" */
-      });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -248,7 +245,7 @@ function TrailerTile({
         src={movie.thumbnail}
         alt=""
         loading="lazy"
-        className="h-full w-full object-cover"
+        className="h-full w-full object-cover contrast-110 saturate-125"
       />
       <span className="absolute inset-0 flex items-center justify-center bg-black/30">
         <span className="flex size-14 items-center justify-center rounded-full bg-[#a8484c] text-[#e0deeb]">
@@ -261,7 +258,6 @@ function TrailerTile({
     </>
   );
 
-  // No direct video file from Steam: send the viewer to the store page.
   if (!source) {
     return (
       <a href={fallbackUrl} target="_blank" rel="noreferrer" className={frame}>
@@ -293,9 +289,10 @@ export default function GameDetails() {
   const [error, setError] = useState<string | null>(null);
 
   const [dlc, setDlc] = useState<SteamGameDetail[]>([]);
-
-  // Steam summary (only used for the score card)
   const [reviewData, setReviewData] = useState<SteamReviewsResponse | null>(null);
+
+  // Modal state for in-page screenshot lightbox
+  const [activeScreenshot, setActiveScreenshot] = useState<string | null>(null);
 
   // GameShelf reviews
   const [reviewTab, setReviewTab] = useState<"gameshelf" | "external">("gameshelf");
@@ -308,7 +305,6 @@ export default function GameDetails() {
   const [like, setLike] = useState<GameLikeStats>({ liked: false, like_count: 0 });
   const [likeBusy, setLikeBusy] = useState(false);
 
-  // Game details
   useEffect(() => {
     let cancelled = false;
 
@@ -388,7 +384,6 @@ export default function GameDetails() {
     if (game) document.title = `${game.name} | GameShelf`;
   }, [game]);
 
-  // A few DLC cards (Steam only gives us DLC app IDs, so look them up)
   useEffect(() => {
     if (!game?.dlc?.length) return;
     let cancelled = false;
@@ -412,7 +407,6 @@ export default function GameDetails() {
     };
   }, [game]);
 
-  // Steam summary only (for the score card). A failure here is harmless.
   useEffect(() => {
     if (!appid || !/^\d+$/.test(appid)) return;
     let cancelled = false;
@@ -429,7 +423,6 @@ export default function GameDetails() {
     };
   }, [appid]);
 
-  // GameShelf community reviews (first page)
   useEffect(() => {
     if (!appid || !/^\d+$/.test(appid)) return;
     let cancelled = false;
@@ -486,14 +479,12 @@ export default function GameDetails() {
   const removeReview = (id: number) =>
     setGsReviews((prev) => prev.filter((r) => r.id !== id));
 
-  // Derived values ----------------------------------------------------------
   const genres = game?.genres?.map((g) => g.description) ?? [];
   const platforms = platformLabel(game?.platforms);
   const heroImage =
     game?.screenshots?.[0]?.path_full ?? game?.background_raw ?? game?.header_image;
   const releaseYear = game?.release_date?.date.match(/\d{4}/)?.[0] ?? "—";
   const storeUrl = `https://store.steampowered.com/app/${appid}`;
-  // Rating and writing happen on the Community reviews page.
   const reviewsPath = `/gamedetails/${appid}/reviews?write=1`;
 
   const summary = reviewData?.summary;
@@ -560,9 +551,10 @@ export default function GameDetails() {
                   {heroImage && (
                     <img
                       src={heroImage}
-                      alt=""
+                      alt={game.name}
                       fetchPriority="high"
-                      className="h-full w-full object-cover object-center"
+                      loading="eager"
+                      className="h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
                     />
                   )}
                   <div
@@ -667,7 +659,7 @@ export default function GameDetails() {
                       {communityScore !== null
                         ? `${communityScore.toFixed(1)} / 10`
                         : "No score yet"}{" "}
-                      <span className="text-[#b4aec7]">• Community score</span>
+                      - <span className="text-[#b4aec7]">Community score</span>
                     </p>
 
                     <p className="text-xs text-[#b4aec7]">
@@ -734,9 +726,9 @@ export default function GameDetails() {
                       >
                         <img
                           src={item.header_image}
-                          alt=""
+                          alt={item.name}
                           loading="lazy"
-                          className="aspect-[460/215] w-full object-cover"
+                          className="aspect-[460/215] w-full object-cover contrast-110 saturate-125"
                         />
                         <div className="flex flex-col gap-1 p-4">
                           <p className="truncate text-sm font-medium group-hover:text-[#c2ade7]">
@@ -754,30 +746,29 @@ export default function GameDetails() {
                 </section>
               )}
 
-              {/* Screenshots */}
+              {/* Screenshots (In-page Modal Lightbox) */}
               {screenshots.length > 0 && (
                 <section className="flex flex-col gap-5">
                   <SectionHeading
                     title="Pictures from the game"
-                    note="In-game screenshots"
+                    note="Click any screenshot to view in full size"
                   />
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {screenshots.map((shot) => (
-                      <a
+                      <button
                         key={shot.id}
-                        href={shot.path_full}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="Open screenshot in a new tab"
-                        className="overflow-hidden rounded-xl border border-[#55516c] bg-black transition-colors hover:border-[#c2ade7]"
+                        type="button"
+                        onClick={() => setActiveScreenshot(shot.path_full)}
+                        aria-label="Enlarge screenshot"
+                        className="group relative cursor-pointer overflow-hidden rounded-xl border border-[#55516c] bg-black transition-colors hover:border-[#c2ade7]"
                       >
                         <img
                           src={shot.path_thumbnail}
-                          alt=""
+                          alt="Game screenshot"
                           loading="lazy"
-                          className="aspect-video w-full object-cover"
+                          className="aspect-video w-full object-cover contrast-110 saturate-125 transition-transform duration-300 group-hover:scale-105"
                         />
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </section>
@@ -880,6 +871,35 @@ export default function GameDetails() {
 
         <Footer />
       </div>
+
+      {/* Screenshot Lightbox Modal */}
+      {activeScreenshot && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in-0"
+          onClick={() => setActiveScreenshot(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-2xl border border-[#55516c] bg-[#2a2838] shadow-2xl animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveScreenshot(null)}
+              aria-label="Close screenshot"
+              className="absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black transition-colors cursor-pointer"
+            >
+              <X className="size-5" />
+            </button>
+            <img
+              src={activeScreenshot}
+              alt="Enlarged game screenshot"
+              className="max-h-[85vh] max-w-[85vw] object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

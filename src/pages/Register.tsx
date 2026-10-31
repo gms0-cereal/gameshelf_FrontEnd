@@ -1,5 +1,6 @@
 // ─── React & Router ───────────────────────────────────────────────────────────
 import {
+    useEffect,
     useState,
     type ChangeEvent,
     type ComponentProps,
@@ -20,7 +21,8 @@ import { toast } from 'sonner';
 // ─── Services ───────────────────────────────────────────────────────────────
 import { isAxiosError } from 'axios';
 import { register } from '../services/authService';
-// ─── Types & constants ────────────────────────────────────────────────────────
+import api from '../lib/api';
+
 type FormValues = {
     username: string;
     email: string;
@@ -38,23 +40,24 @@ const EMPTY_FORM: FormValues = {
     terms: false,
 };
 
-const API_BASE = String(import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
-const REGISTER_URL = `${API_BASE}/api/v1/auth/register/`;
-const HERO_IMAGE = '/signup-hero.jpg'; // put your artwork in /public
+const STORAGE_KEY_COVER_INDEX = 'gameshelf_signup_cover_idx';
+const FALLBACK_COVERS = [
+    'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1200&auto=format&fit=crop',
+];
 
 const inputClass =
     'h-11 rounded-lg border-[#3f3a5c] bg-[#2a2641] pr-11 text-[13px] text-[#f2f0f9] placeholder:text-[#a39fba] focus-visible:border-[#9188dc] focus-visible:ring-[#9188dc]/30 aria-invalid:border-[#f2848d] aria-invalid:ring-[#f2848d]/20';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-// Client-side checks are for convenience only. The backend must validate again.
 function validate(v: FormValues): FormErrors {
     const e: FormErrors = {};
     const username = v.username.trim();
     const email = v.email.trim();
 
     if (!username) e.username = 'Enter a username.';
-    else if (!/^[\w.@+-]{3,150}$/.test(username))
-        e.username = 'Use 3 or more letters, numbers or . @ + - _ with no spaces.';
+    else if (username.length > 20) e.username = 'Username cannot exceed 20 characters.';
+    else if (!/^[\w.@+-]{3,20}$/.test(username))
+        e.username = 'Use 3 to 20 letters, numbers or . @ + - _ with no spaces.';
 
     if (!email) e.email = 'Enter your email address.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -70,7 +73,6 @@ function validate(v: FormValues): FormErrors {
     return e;
 }
 
-// Turns a Django REST Framework error body ({ field: ["message"] }) into form errors.
 function fromApi(data: unknown): FormErrors {
     const out: FormErrors = {};
     if (data && typeof data === 'object') {
@@ -84,7 +86,6 @@ function fromApi(data: unknown): FormErrors {
     return out;
 }
 
-// ─── Form fields (module level, so inputs keep focus while typing) ────────────
 type FieldProps = Omit<ComponentProps<'input'>, 'id'> & {
     id: string;
     label: string;
@@ -142,13 +143,45 @@ function PasswordField(props: Omit<FieldProps, 'type' | 'trailing'>) {
     );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 function SignUp() {
     const navigate = useNavigate();
 
     const [values, setValues] = useState<FormValues>(EMPTY_FORM);
     const [errors, setErrors] = useState<FormErrors>({});
     const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+
+    // Dynamic Game Covers State
+    const [heroCovers, setHeroCovers] = useState<string[]>(FALLBACK_COVERS);
+    const [currentCover, setCurrentCover] = useState<string>(FALLBACK_COVERS[0]);
+
+    useEffect(() => {
+        async function fetchGameCovers() {
+            try {
+                const gameQueries = ['Silksong', 'Ultrakill', 'Ori', 'Nier', 'Counter-Strike', 'Castle Crashers'];
+                const promises = gameQueries.map(async (query) => {
+                    const { data } = await api.get('/games/', { params: { search: query, limit: 1 } });
+                    const results = Array.isArray(data) ? data : (data as { results?: any[] }).results;
+                    if (results && results.length > 0) {
+                        return results[0].cover_image_url || results[0].background_image || null;
+                    }
+                    return null;
+                });
+
+                const fetchedImages = (await Promise.all(promises)).filter(Boolean) as string[];
+                const coversToUse = fetchedImages.length > 0 ? fetchedImages : FALLBACK_COVERS;
+
+                setHeroCovers(coversToUse);
+
+                const storedIdx = localStorage.getItem(STORAGE_KEY_COVER_INDEX);
+                const nextIdx = storedIdx ? (parseInt(storedIdx, 10) + 1) % coversToUse.length : 0;
+                setCurrentCover(coversToUse[nextIdx]);
+            } catch {
+                setCurrentCover(FALLBACK_COVERS[0]);
+            }
+        }
+
+        fetchGameCovers();
+    }, []);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, type, value, checked } = e.target;
@@ -167,59 +200,66 @@ function SignUp() {
         setErrors(found);
         if (Object.keys(found).length > 0) return;
 
-          setStatus('submitting');
-            try {
-                await register({
-                    username: values.username.trim(),
-                    email: values.email.trim(),
-                    password: values.password,
-                });
-                setStatus('success');
-                return;
-            } catch (error) {
-                if (isAxiosError(error) && error.response) {
-                    setErrors(fromApi(error.response.data));
-                } else {
-                    toast.error("Can't reach the server. Check your connection and try again.");
-                }
+        setStatus('submitting');
+        try {
+            await register({
+                username: values.username.trim(),
+                email: values.email.trim(),
+                password: values.password,
+            });
+
+            // Rotate cover index forward upon successful registration sequence
+            if (heroCovers.length > 0) {
+                const storedIdx = localStorage.getItem(STORAGE_KEY_COVER_INDEX);
+                const nextIdx = storedIdx ? (parseInt(storedIdx, 10) + 1) % heroCovers.length : 0;
+                localStorage.setItem(STORAGE_KEY_COVER_INDEX, nextIdx.toString());
             }
-            setStatus('idle');
+
+            setStatus('success');
+            return;
+        } catch (error) {
+            if (isAxiosError(error) && error.response) {
+                setErrors(fromApi(error.response.data));
+            } else {
+                toast.error("Can't reach the server. Check your connection and try again.");
+            }
+        }
+        setStatus('idle');
     };
 
-    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="flex min-h-screen flex-col bg-[#1e1b2e] text-[#f2f0f9] antialiased">
             <Navbar />
 
-            <main className="mx-auto grid w-full max-w-[1100px] flex-1 grid-cols-1 items-start gap-8 px-6 pb-14 pt-7 lg:grid-cols-2 lg:gap-14 lg:pt-10">
-                {/* ── Hero ──────────────────────────────────────────────────── */}
-                <aside className="relative order-2 flex min-h-60 items-end overflow-hidden rounded-2xl bg-[linear-gradient(to_bottom,#1f7a6c,#123f43_55%,#1b1a2c)] lg:order-1 lg:min-h-[440px]">
+            <main className="mx-auto grid w-full max-w-[1200px] flex-1 items-center gap-10 px-4 py-10 sm:px-6 md:grid-cols-2 md:gap-14 lg:px-[52px] lg:py-[50px]">
+                {/* ── Hero Panel with Dynamic Covers & Matched Sizing ── */}
+                <section
+                    aria-label="GameShelf Featured Artwork"
+                    className="relative hidden min-h-[360px] overflow-hidden rounded-2xl bg-[#1d2b33] md:block md:h-full md:min-h-[550px] shadow-xl order-2 lg:order-1"
+                >
                     <img
-                        src={HERO_IMAGE}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover"
-                        onError={e => {
-                            e.currentTarget.style.display = 'none';
-                        }}
+                        src={currentCover}
+                        alt="Featured Game Artwork"
+                        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700"
                     />
-                    <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(20,18,32,0.88),rgba(20,18,32,0.35)_45%,transparent_70%)]" />
-                    <div className="relative p-6">
-                        <p className="mb-2 text-[11px] uppercase tracking-wider text-[#d9d6e8]">
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1b1a2a]/95 via-[#1b1a2a]/30 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-8 z-10">
+                        <p className="text-xs tracking-widest text-[#c9c6e0] font-semibold uppercase">
                             Your games. Your story.
                         </p>
-                        <h2 className="mb-2.5 max-w-[12ch] text-3xl font-semibold leading-tight">
+                        <h2 className="mt-3 max-w-[320px] text-[32px] font-semibold leading-[1.1] text-[#ecebf7]">
                             A home for every adventure.
                         </h2>
-                        <p className="text-xs text-[#d9d6e8]">
+                        <p className="mt-5 text-[13px] text-[#c9c6e0]">
                             Discover what&rsquo;s next. Keep the games you love close.
                         </p>
                     </div>
-                </aside>
+                </section>
 
                 {/* ── Form ──────────────────────────────────────────────────── */}
                 <section
                     aria-labelledby="signup-title"
-                    className="order-1 w-full lg:order-2 lg:max-w-[400px]"
+                    className="order-1 w-full md:max-w-[473px] md:justify-self-end lg:order-2"
                 >
                     {status === 'success' ? (
                         <div role="status">
@@ -253,6 +293,7 @@ function SignUp() {
                                     name="username"
                                     placeholder="Enter username"
                                     autoComplete="username"
+                                    maxLength={20}
                                     value={values.username}
                                     onChange={handleChange}
                                     error={errors.username}

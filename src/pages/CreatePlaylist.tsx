@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
@@ -11,6 +11,7 @@ import {
   Loader2,
   Plus,
   Search,
+  Shuffle,
   X,
 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
@@ -25,31 +26,70 @@ import {
 } from "../services/playlistService";
 
 const MAX_GAMES = 100;
-
-// Shown under "Suggestions for your playlist" before the user types anything.
-const SUGGESTIONS: PickerGame[] = [
-  {
-    appid: 387290,
-    title: "Ori and the Blind Forest",
-    cover: "/images/games/ori-and-the-blind-forest.png",
-    subtitle: "Adventure / Platformer",
-  },
-  {
-    appid: 774361,
-    title: "Blasphemous",
-    cover: "/images/games/blasphemous.png",
-    subtitle: "Action / Metroidvania",
-  },
-  {
-    appid: 1244090,
-    title: "Sea of Stars",
-    cover: "/images/games/sea-of-stars.png",
-    subtitle: "RPG",
-  },
-];
+const MAX_DESCRIPTION_WORDS = 500;
+const SUGGESTION_COUNT = 3;
 
 // Home shows the new playlist under "Community Playlists".
 const AFTER_CREATE_PATH = "/home";
+
+/* ───────────── Steam images ───────────── */
+
+const steamCover = (appid: number) =>
+  `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
+const steamCoverAlt = (appid: number) =>
+  `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
+
+/* ───────────── Random suggestions ───────────── */
+
+// Random keywords used to pull a different slice of the Steam catalogue each time.
+const SEARCH_TERMS = [
+  "adventure", "action", "puzzle", "racing", "survival", "farming", "horror",
+  "space", "dungeon", "tower", "city", "pixel", "story", "battle", "magic",
+  "robot", "zombie", "ninja", "cat", "dragon", "knight", "ocean", "train",
+  "detective", "cooking", "football", "card", "cyber", "ghost", "island",
+];
+
+// Used only if the search request fails or returns too few games.
+const FALLBACK_POOL: PickerGame[] = [
+  { appid: 387290, title: "Ori and the Blind Forest", subtitle: "Adventure / Platformer" },
+  { appid: 774361, title: "Blasphemous", subtitle: "Action / Metroidvania" },
+  { appid: 1244090, title: "Sea of Stars", subtitle: "RPG" },
+  { appid: 1145360, title: "Hades", subtitle: "Action / Roguelike" },
+  { appid: 367520, title: "Hollow Knight", subtitle: "Metroidvania" },
+  { appid: 504230, title: "Celeste", subtitle: "Platformer" },
+  { appid: 413150, title: "Stardew Valley", subtitle: "Simulation / RPG" },
+  { appid: 105600, title: "Terraria", subtitle: "Sandbox / Adventure" },
+  { appid: 620, title: "Portal 2", subtitle: "Puzzle" },
+  { appid: 391540, title: "Undertale", subtitle: "RPG" },
+  { appid: 268910, title: "Cuphead", subtitle: "Run and Gun" },
+  { appid: 588650, title: "Dead Cells", subtitle: "Roguelike / Metroidvania" },
+  { appid: 632470, title: "Disco Elysium", subtitle: "RPG" },
+  { appid: 646570, title: "Slay the Spire", subtitle: "Deckbuilder" },
+  { appid: 1794680, title: "Vampire Survivors", subtitle: "Roguelike" },
+].map((g) => ({ ...g, cover: steamCover(g.appid) }));
+
+function shuffle<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ───────────── Description word limit ───────────── */
+
+const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+
+/** Cuts text right after the 500th word, keeping line breaks. Handles big pastes too. */
+function limitWords(text: string, max: number) {
+  const words = [...text.matchAll(/\S+/g)];
+  if (words.length <= max) return text;
+  const last = words[max - 1];
+  return text.slice(0, (last.index ?? 0) + last[0].length);
+}
+
+/* ───────────── API error parsing ───────────── */
 
 type FieldErrors = Partial<Record<"title" | "description" | "games", string>>;
 
@@ -85,21 +125,36 @@ function parseApiError(err: unknown): { general?: string; fields: FieldErrors } 
 const inputBase =
   "w-full rounded-lg border border-[#4a4766] bg-[#1f1d2e] px-3 text-[13px] text-[#e6e3f5] placeholder:text-[#9a97b5] focus:outline-none focus:ring-2 focus:ring-[#8b6fd6]/60";
 
-/** Cover image, with a soft gradient if it fails to load or is missing. */
-function Cover({ src, className }: { src?: string | null; className: string }) {
-  const [failed, setFailed] = useState(false);
-  return src && !failed ? (
-    <img
-      src={src}
-      alt=""
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className={`object-cover ${className}`}
-    />
-  ) : (
-    <div className={`bg-gradient-to-br from-[#3b3560] to-[#1d2b33] ${className}`} aria-hidden="true" />
-  );
-}
+/**
+ * Cover image. Tries, in order: the given src, Steam's main CDN, Steam's backup CDN.
+ * Falls back to a gradient only if all of them fail.
+ */
+const Cover = memo(
+  ({ src, appid, className }: { src?: string | null; appid?: number; className: string }) => {
+    const sources = [src, appid ? steamCover(appid) : null, appid ? steamCoverAlt(appid) : null].filter(
+      (s, i, arr): s is string => !!s && arr.indexOf(s) === i
+    );
+    const [index, setIndex] = useState(0);
+
+    useEffect(() => setIndex(0), [src, appid]);
+
+    return index < sources.length ? (
+      <img
+        key={sources[index]}
+        src={sources[index]}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setIndex((i) => i + 1)}
+        className={`object-cover ${className}`}
+      />
+    ) : (
+      <div className={`bg-gradient-to-br from-[#3b3560] to-[#1d2b33] ${className}`} aria-hidden="true" />
+    );
+  }
+);
+Cover.displayName = "Cover";
 
 const CreatePlaylist = () => {
   const { user, loading: authLoading } = useAuth();
@@ -115,6 +170,10 @@ const CreatePlaylist = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PickerGame[]>([]);
 
+  const [suggestions, setSuggestions] = useState<PickerGame[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const suggestionRequest = useRef(0);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -127,6 +186,38 @@ const CreatePlaylist = () => {
       navigate("/login", { replace: true, state: { from: "/playlists/new" } });
     }
   }, [authLoading, user, navigate]);
+
+  // Picks 3 random Steam games. Uses the fallback pool if the search fails or is too small.
+  async function loadSuggestions() {
+    const requestId = ++suggestionRequest.current;
+    setSuggestionsLoading(true);
+
+    let picked: PickerGame[] = [];
+    try {
+      const term = SEARCH_TERMS[Math.floor(Math.random() * SEARCH_TERMS.length)];
+      const games = await searchSteamGames(term);
+      picked = shuffle(games).slice(0, SUGGESTION_COUNT);
+    } catch {
+      // handled by the fallback below
+    }
+
+    if (picked.length < SUGGESTION_COUNT) {
+      const taken = new Set(picked.map((g) => g.appid));
+      const extra = shuffle(FALLBACK_POOL).filter((g) => !taken.has(g.appid));
+      picked = [...picked, ...extra].slice(0, SUGGESTION_COUNT);
+    }
+
+    // Ignore the result if a newer request started meanwhile.
+    if (requestId === suggestionRequest.current) {
+      setSuggestions(picked);
+      setSuggestionsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Search Steam 300ms after typing stops. Under 2 characters shows suggestions.
   const trimmedQuery = query.trim();
@@ -192,6 +283,9 @@ const CreatePlaylist = () => {
     const errs: FieldErrors = {};
     if (!title.trim()) errs.title = "Give your playlist a name.";
     if (selected.length === 0) errs.games = "Add at least one game.";
+    if (countWords(description) > MAX_DESCRIPTION_WORDS) {
+      errs.description = `Keep the description under ${MAX_DESCRIPTION_WORDS} words.`;
+    }
     setFieldErrors(errs);
     setError(null);
     if (Object.keys(errs).length) return;
@@ -215,7 +309,9 @@ const CreatePlaylist = () => {
   };
 
   const ownerName = user?.nickname || user?.username || "You";
-  const visibleResults = isSearching ? results.slice(0, 6) : SUGGESTIONS;
+  const visibleResults = isSearching ? results.slice(0, 6) : suggestions;
+  const showSkeletons = !isSearching && suggestionsLoading;
+  const descriptionWords = countWords(description);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#282539] font-sans text-[#e6e3f5]">
@@ -269,13 +365,23 @@ const CreatePlaylist = () => {
                 id="playlist-description"
                 rows={4}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(limitWords(e.target.value, MAX_DESCRIPTION_WORDS));
+                  setFieldErrors((f) => ({ ...f, description: undefined }));
+                }}
                 placeholder="What ties these games together?"
                 className={`${inputBase} mt-2 resize-none py-2 ${fieldErrors.description ? "border-[#a8454b]" : ""}`}
               />
-              {fieldErrors.description && (
-                <p className="mt-1 text-xs text-[#f4b6ba]">{fieldErrors.description}</p>
-              )}
+              <div className="mt-1 flex items-start justify-between gap-3">
+                <p className="text-xs text-[#f4b6ba]">{fieldErrors.description}</p>
+                <p
+                  className={`shrink-0 text-[11px] ${
+                    descriptionWords >= MAX_DESCRIPTION_WORDS ? "text-[#f4b6ba]" : "text-[#a9a6c2]"
+                  }`}
+                >
+                  {descriptionWords} / {MAX_DESCRIPTION_WORDS} words
+                </p>
+              </div>
 
               <div className="mt-5 flex items-center justify-between gap-4">
                 <div>
@@ -328,48 +434,70 @@ const CreatePlaylist = () => {
               </div>
 
               <div className="mt-4 flex items-center justify-between text-xs text-[#a9a6c2]">
-                <span>{isSearching ? "Search results" : "Suggestions for your playlist"}</span>
-                <Link to="/explore" className="inline-flex items-center gap-1 hover:text-[#e6e3f5]">
+                <span className="inline-flex items-center gap-3">
+                  {isSearching ? "Search results" : "Suggestions for your playlist"}
+                  {!isSearching && (
+                    <button
+                      type="button"
+                      onClick={loadSuggestions}
+                      disabled={suggestionsLoading}
+                      className="inline-flex items-center gap-1 rounded text-[#c2ade7] hover:text-[#e6e3f5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6] disabled:opacity-50"
+                    >
+                      <Shuffle className="h-3 w-3" aria-hidden="true" /> Shuffle
+                    </button>
+                  )}
+                </span>
+                <Link to="/browse" className="inline-flex items-center gap-1 hover:text-[#e6e3f5]">
                   Browse all games <ArrowRight className="h-3 w-3" aria-hidden="true" />
                 </Link>
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {visibleResults.map((game) => {
-                  const added = selectedIds.has(game.appid);
-                  return (
-                    <button
-                      key={game.appid}
-                      type="button"
-                      onClick={() => toggleGame(game)}
-                      aria-pressed={added}
-                      className={`overflow-hidden rounded-xl border text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6] ${
-                        added ? "border-[#8b6fd6]" : "border-[#3a3754] hover:border-[#6b5fb0]"
-                      }`}
-                    >
-                      <div className="relative">
-                        <Cover src={game.cover} className="h-24 w-full" />
-                        <span
-                          className={`absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md ${
-                            added ? "bg-[#8b6fd6]" : "bg-black/50"
-                          }`}
-                        >
-                          {added ? (
-                            <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                          ) : (
-                            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                          )}
-                        </span>
-                      </div>
-                      <div className="p-2.5">
-                        <p className="truncate text-[13px] font-medium">{game.title}</p>
-                        <p className="mt-0.5 text-[11px] text-[#a9a6c2]">
-                          {added ? "Added to playlist" : "+ Add to playlist"}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                {showSkeletons &&
+                  Array.from({ length: SUGGESTION_COUNT }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[154px] animate-pulse rounded-xl border border-[#3a3754] bg-[#1f1d2e]"
+                      aria-hidden="true"
+                    />
+                  ))}
+
+                {!showSkeletons &&
+                  visibleResults.map((game) => {
+                    const added = selectedIds.has(game.appid);
+                    return (
+                      <button
+                        key={game.appid}
+                        type="button"
+                        onClick={() => toggleGame(game)}
+                        aria-pressed={added}
+                        className={`overflow-hidden rounded-xl border text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6] ${
+                          added ? "border-[#8b6fd6]" : "border-[#3a3754] hover:border-[#6b5fb0]"
+                        }`}
+                      >
+                        <div className="relative">
+                          <Cover src={game.cover} appid={game.appid} className="h-24 w-full" />
+                          <span
+                            className={`absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md ${
+                              added ? "bg-[#8b6fd6]" : "bg-black/50"
+                            }`}
+                          >
+                            {added ? (
+                              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                            ) : (
+                              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                            )}
+                          </span>
+                        </div>
+                        <div className="p-2.5">
+                          <p className="truncate text-[13px] font-medium">{game.title}</p>
+                          <p className="mt-0.5 text-[11px] text-[#a9a6c2]">
+                            {added ? "Added to playlist" : "+ Add to playlist"}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
               </div>
 
               {searching && (
@@ -414,7 +542,7 @@ const CreatePlaylist = () => {
                   >
                     <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-[#8f8ca9]" aria-hidden="true" />
                     <span className="w-5 text-xs text-[#8f8ca9]">{String(i + 1).padStart(2, "0")}</span>
-                    <Cover src={game.cover} className="h-10 w-16 shrink-0 rounded-md" />
+                    <Cover src={game.cover} appid={game.appid} className="h-10 w-16 shrink-0 rounded-md" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-medium">{game.title}</p>
                       {game.subtitle && (
@@ -508,12 +636,14 @@ const CreatePlaylist = () => {
             </div>
 
             <div className="mt-5 flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold overflow-hidden">
                 {user?.avatar_url ? (
                   <img
                     src={user.avatar_url}
                     alt={user.username}
-                    className="h-full w-full rounded-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
                   user?.username.slice(0, 2).toUpperCase()
@@ -523,7 +653,7 @@ const CreatePlaylist = () => {
             </div>
 
             <h3 className="mt-2 text-2xl font-semibold">{title.trim() || "Untitled playlist"}</h3>
-            <p className="mt-3 whitespace-pre-line text-[13px] text-[#c9c6e0]">
+            <p className="mt-3 whitespace-pre-line break-words text-[13px] text-[#c9c6e0]">
               {description.trim() || "Your description will appear here."}
             </p>
 
@@ -536,7 +666,7 @@ const CreatePlaylist = () => {
               {selected.map((game, i) => (
                 <div key={game.appid}>
                   <div className="relative">
-                    <Cover src={game.cover} className="h-24 w-full rounded-lg" />
+                    <Cover src={game.cover} appid={game.appid} className="h-24 w-full rounded-lg" />
                     <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded bg-black/60 text-[10px]">
                       {i + 1}
                     </span>

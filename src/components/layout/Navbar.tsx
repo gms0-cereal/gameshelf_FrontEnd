@@ -258,7 +258,8 @@ export default function Navbar() {
           />
 
           <kbd className="shrink-0 whitespace-nowrap text-[11px] leading-[13px] text-[#b4aec7]">
-            ⌘ K
+            
+            
           </kbd>
 
           {searchQuery.trim().length >= 2 && (

@@ -1,15 +1,21 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { Eye, EyeOff, Loader2, LogIn, User } from "lucide-react";
+import { Eye, EyeOff, Loader2, LogIn, User, ShieldAlert } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import { useAuth } from "../context/AuthContext";
 import { login } from "../services/authService";
+import api from "../lib/api";
 
+const STORAGE_KEY_COVER_INDEX = "gameshelf_login_cover_idx";
+const STORAGE_KEY_ATTEMPTS = "gameshelf_login_attempts";
+const STORAGE_KEY_LOCKOUT = "gameshelf_login_lockout_until";
 
-// Replace with your own asset path (the forest artwork from the reference).
-const HERO_IMAGE = "/images/login-hero.jpg";
+// Fallback covers in case the API call is still loading or offline
+const FALLBACK_COVERS = [
+  "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1200&auto=format&fit=crop",
+];
 
 type FieldErrors = Partial<Record<"username" | "password", string>>;
 
@@ -19,9 +25,6 @@ function toText(value: unknown): string | undefined {
   return undefined;
 }
 
-
-
-/** Handles DRF-style payloads: { detail }, { non_field_errors }, { username: [...] }. */
 function parseApiError(err: unknown): { general?: string; fields: FieldErrors } {
   if (isAxiosError(err)) {
     if (!err.response) {
@@ -64,14 +67,92 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  // Redirect once authenticated (covers both a fresh login and an existing session).
+  const [lockoutTimeLeft, setLockoutTimeLeft] = useState<number>(0);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  
+  // Dynamic Game Covers State
+  const [heroCovers, setHeroCovers] = useState<string[]>(FALLBACK_COVERS);
+  const [currentCover, setCurrentCover] = useState<string>(FALLBACK_COVERS[0]);
+
+  // Fetch actual game covers from the backend game service on mount
   useEffect(() => {
-    if (!authLoading && user) navigate(redirectTo, { replace: true });
-  }, [authLoading, user, navigate, redirectTo]);
+    async function fetchGameCovers() {
+      try {
+        const gameQueries = ["Silksong", "Ultrakill", "Ori", "Nier", "Counter-Strike", "Castle Crashers"];
+        const promises = gameQueries.map(async (query) => {
+          const { data } = await api.get("/games/", { params: { search: query, limit: 1 } });
+          const results = Array.isArray(data) ? data : (data as { results?: any[] }).results;
+          if (results && results.length > 0) {
+            return results[0].cover_image_url || results[0].background_image || null;
+          }
+          return null;
+        });
+
+        const fetchedImages = (await Promise.all(promises)).filter(Boolean) as string[];
+        const coversToUse = fetchedImages.length > 0 ? fetchedImages : FALLBACK_COVERS;
+
+        setHeroCovers(coversToUse);
+
+        // Rotate index using localStorage sequence
+        const storedIdx = localStorage.getItem(STORAGE_KEY_COVER_INDEX);
+        const nextIdx = storedIdx ? (parseInt(storedIdx, 10) + 1) % coversToUse.length : 0;
+        setCurrentCover(coversToUse[nextIdx]);
+      } catch {
+        // Fallback gracefully if game service fails
+        setCurrentCover(FALLBACK_COVERS[0]);
+      }
+    }
+
+    fetchGameCovers();
+
+    // Check Lockout Timer
+    const lockoutTimestamp = localStorage.getItem(STORAGE_KEY_LOCKOUT);
+    if (lockoutTimestamp) {
+      const remaining = parseInt(lockoutTimestamp, 10) - Date.now();
+      if (remaining > 0) {
+        setLockoutTimeLeft(Math.ceil(remaining / 1000));
+      } else {
+        localStorage.removeItem(STORAGE_KEY_LOCKOUT);
+        localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (lockoutTimeLeft <= 0) return;
+    const interval = setInterval(() => {
+      const lockoutTimestamp = localStorage.getItem(STORAGE_KEY_LOCKOUT);
+      if (lockoutTimestamp) {
+        const remaining = parseInt(lockoutTimestamp, 10) - Date.now();
+        if (remaining <= 0) {
+          setLockoutTimeLeft(0);
+          localStorage.removeItem(STORAGE_KEY_LOCKOUT);
+          localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+          setWarningMessage(null);
+        } else {
+          setLockoutTimeLeft(Math.ceil(remaining / 1000));
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutTimeLeft]);
+
+  useEffect(() => {
+    if (!authLoading && user && heroCovers.length > 0) {
+      const storedIdx = localStorage.getItem(STORAGE_KEY_COVER_INDEX);
+      const nextIdx = storedIdx ? (parseInt(storedIdx, 10) + 1) % heroCovers.length : 0;
+      localStorage.setItem(STORAGE_KEY_COVER_INDEX, nextIdx.toString());
+
+      localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+      localStorage.removeItem(STORAGE_KEY_LOCKOUT);
+
+      navigate(redirectTo, { replace: true });
+    }
+  }, [authLoading, user, navigate, redirectTo, heroCovers]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || lockoutTimeLeft > 0) return;
 
     const errs: FieldErrors = {};
     if (!username.trim()) errs.username = "Enter your username.";
@@ -83,7 +164,6 @@ const Login = () => {
     setSubmitting(true);
     try {
       await login({ username: username.trim(), password });
-      // Updates shared state so the navbar switches immediately.
       const current = await refreshUser();
       if (!current) {
         setError("Logged in, but your session couldn't be verified. Please try again.");
@@ -92,9 +172,27 @@ const Login = () => {
       const parsed = parseApiError(err);
       setError(parsed.general ?? null);
       setFieldErrors(parsed.fields);
+
+      const currentAttempts = parseInt(localStorage.getItem(STORAGE_KEY_ATTEMPTS) || "0", 10) + 1;
+      localStorage.setItem(STORAGE_KEY_ATTEMPTS, currentAttempts.toString());
+
+      if (currentAttempts === 2) {
+        setWarningMessage("Warning: 2 failed attempts. If you fail 1 more time, you will be locked out for an hour.");
+      } else if (currentAttempts >= 3) {
+        const lockoutEnd = Date.now() + 3600 * 1000;
+        localStorage.setItem(STORAGE_KEY_LOCKOUT, lockoutEnd.toString());
+        setLockoutTimeLeft(3600);
+        setWarningMessage("Too many failed login attempts. Locked out for 1 hour.");
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
   return (
@@ -102,16 +200,20 @@ const Login = () => {
       <Navbar />
 
       <main className="mx-auto grid w-full max-w-[1200px] flex-1 items-center gap-10 px-4 py-10 sm:px-6 md:grid-cols-2 md:gap-14 lg:px-[52px] lg:py-[50px]">
-        {/* Hero panel */}
+        {/* Hero panel with dynamic game covers */}
         <section
-          aria-label="GameShelf"
-          className="relative hidden min-h-[360px] overflow-hidden rounded-2xl bg-[#1d2b33] bg-cover bg-center md:block md:h-full md:min-h-[550px]"
-          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
+          aria-label="GameShelf Featured Artwork"
+          className="relative hidden min-h-[360px] overflow-hidden rounded-2xl bg-[#1d2b33] md:block md:h-full md:min-h-[550px] shadow-xl"
         >
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1b1a2a]/90 via-[#1b1a2a]/20 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-8">
-            <p className="text-xs text-[#c9c6e0]">YOUR GAMES. YOUR STORY.</p>
-            <h2 className="mt-3 max-w-[300px] text-[32px] font-semibold leading-[1.1] text-[#ecebf7]">
+          <img
+            src={currentCover}
+            alt="Featured Game Artwork"
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1b1a2a]/95 via-[#1b1a2a]/30 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-8 z-10">
+            <p className="text-xs tracking-widest text-[#c9c6e0] font-semibold">FEATURED ADVENTURE</p>
+            <h2 className="mt-3 max-w-[320px] text-[32px] font-semibold leading-[1.1] text-[#ecebf7]">
               A home for every adventure.
             </h2>
             <p className="mt-5 text-[13px] text-[#c9c6e0]">
@@ -134,6 +236,18 @@ const Login = () => {
                   {error}
                 </p>
               )}
+              {warningMessage && lockoutTimeLeft === 0 && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#e5a942] bg-[#e5a942]/15 px-3 py-2 text-[13px] text-[#fce8b2]">
+                  <ShieldAlert className="h-4 w-4 shrink-0 text-[#e5a942]" />
+                  <span>{warningMessage}</span>
+                </div>
+              )}
+              {lockoutTimeLeft > 0 && (
+                <div className="mb-4 rounded-lg border border-[#a8454b] bg-[#a8454b]/20 p-4 text-center text-[13px] text-[#f4b6ba]">
+                  <p className="font-semibold">Too many failed attempts.</p>
+                  <p className="mt-1">Account login locked. Try again in <span className="font-mono text-white font-bold">{formatTime(lockoutTimeLeft)}</span>.</p>
+                </div>
+              )}
             </div>
 
             <label htmlFor="username" className="block text-xs font-medium text-[#e6e3f5]">
@@ -147,9 +261,10 @@ const Login = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter username"
+                disabled={lockoutTimeLeft > 0}
                 aria-invalid={!!fieldErrors.username}
                 aria-describedby={fieldErrors.username ? "username-error" : undefined}
-                className={`${inputBase} ${fieldErrors.username ? "border-[#a8454b]" : "border-[#4a4766]"}`}
+                className={`${inputBase} ${fieldErrors.username ? "border-[#a8454b]" : "border-[#4a4766]"} disabled:opacity-50`}
               />
               <User
                 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f8ca9]"
@@ -171,15 +286,17 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
+                disabled={lockoutTimeLeft > 0}
                 aria-invalid={!!fieldErrors.password}
                 aria-describedby={fieldErrors.password ? "password-error" : undefined}
-                className={`${inputBase} ${fieldErrors.password ? "border-[#a8454b]" : "border-[#4a4766]"}`}
+                className={`${inputBase} ${fieldErrors.password ? "border-[#a8454b]" : "border-[#4a4766]"} disabled:opacity-50`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 aria-pressed={showPassword}
+                disabled={lockoutTimeLeft > 0}
                 className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-[#8f8ca9] hover:text-[#e6e3f5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
               >
                 {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -195,7 +312,7 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || lockoutTimeLeft > 0}
               className="mt-6 inline-flex h-[34px] min-w-[82px] items-center justify-center gap-2 rounded-md bg-[#a8454b] px-5 text-[13px] font-medium text-white transition-colors hover:bg-[#b9525a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e6e3f5] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? (

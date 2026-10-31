@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, memo, useRef} from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Heart, LayoutGrid, List, Loader2 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import { timeAgo } from "../components/playlists/PlaylistCards";
-import { getPlaylist, type Playlist, type PlaylistGame } from "../services/playlistService";
+import { getPlaylist, toggleLikePlaylist, type Playlist, type PlaylistGame } from "../services/playlistService";
+import MiniProfileCard from "@/components/social/MiniProfileCard";
+import { getUserProfile, type UserProfile } from "../services/Userservice";
 
 const steamCover = (appid: number) =>
   `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
@@ -22,14 +24,51 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]["value"];
 
-function Cover({ src, className }: { src?: string | null; className: string }) {
+/** Cover image, with a soft gradient if it fails to load or is missing. */
+const Cover = memo(({ src, className }: { src?: string | null; className: string }) => {
   const [failed, setFailed] = useState(false);
   return src && !failed ? (
-    <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={`object-cover ${className}`} />
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className={`object-cover ${className}`}
+    />
   ) : (
     <div className={`bg-gradient-to-br from-[#3b3560] to-[#1d2b33] ${className}`} aria-hidden="true" />
   );
-}
+});
+Cover.displayName = "Cover";
+
+const getFullUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
+/** Owner Avatar with automatic error fallback to gradient and initials. */
+const OwnerAvatar = memo(({ src, name }: { src?: string | null; name: string }) => {
+  const [failed, setFailed] = useState(false);
+  const initials = name ? name.slice(0, 2).toUpperCase() : "U";
+
+  return src && !failed ? (
+    <img
+      src={src}
+      alt={name}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="h-full w-full object-cover"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#3b3560] to-[#1d2b33] text-[11px] font-semibold text-[#c2ade7]" aria-hidden="true">
+      {initials}
+    </div>
+  );
+});
+OwnerAvatar.displayName = "OwnerAvatar";
 
 /** Wraps a game in a link to its details page when it has a Steam id. */
 function GameLink({ game, className, children }: { game: PlaylistGame; className: string; children: React.ReactNode }) {
@@ -46,16 +85,57 @@ function GameLink({ game, className, children }: { game: PlaylistGame; className
 }
 
 const PlaylistDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, username } = useParams<{ id: string; username?: string }>();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [liking, setLiking] = useState(false);
 
   const [sort, setSort] = useState<Sort>("order");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [genreFilter, setGenreFilter] = useState<string | null>(null);
   const [showAllGenres, setShowAllGenres] = useState(false);
 
+  const [showMiniProfile, setShowMiniProfile] = useState(false);
+  const profileCardRef = useRef<HTMLDivElement>(null);
+
+  // Close mini profile when clicking outside of it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileCardRef.current && !profileCardRef.current.contains(event.target as Node)) {
+        setShowMiniProfile(false);
+      }
+    }
+    if (showMiniProfile) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMiniProfile]);
+  const [miniProfileUser, setMiniProfileUser] = useState<UserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const handleAvatarClick = async () => {
+    if (showMiniProfile) {
+      setShowMiniProfile(false);
+      return;
+    }
+
+    setShowMiniProfile(true);
+
+    if (playlist?.owner?.username && !miniProfileUser) {
+      setLoadingProfile(true);
+      try {
+        const data = await getUserProfile(playlist.owner.username);
+        setMiniProfileUser(data);
+      } catch {
+        // Gracefully fall back to owner basic info on network error
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+  };
   useEffect(() => {
     const playlistId = Number(id);
     if (!Number.isInteger(playlistId)) {
@@ -85,7 +165,38 @@ const PlaylistDetail = () => {
     };
   }, [id]);
 
-  // Genres compiled from every game in the playlist: [["Action", 16], ...]
+  // Handle like toggle functionality
+  const handleLikeToggle = async () => {
+    if (!playlist || liking) return;
+    const playlistId = Number(id);
+    if (!Number.isInteger(playlistId)) return;
+
+    setLiking(true);
+    const previousIsLiked = (playlist as any).is_liked;
+    const previousLikeCount = playlist.like_count;
+
+    // Optimistic UI Update
+    const nextIsLiked = !previousIsLiked;
+    setPlaylist({
+      ...playlist,
+      is_liked: nextIsLiked,
+      like_count: nextIsLiked ? previousLikeCount + 1 : Math.max(0, previousLikeCount - 1),
+    } as any);
+
+    try {
+      const res = await toggleLikePlaylist(playlistId);
+      if (res && typeof res.like_count === "number") {
+        setPlaylist((prev) => prev ? { ...prev, like_count: res.like_count, is_liked: res.is_liked ?? nextIsLiked } : null);
+      }
+    } catch {
+      // Rollback on error
+      setPlaylist((prev) => prev ? { ...prev, is_liked: previousIsLiked, like_count: previousLikeCount } : null);
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  // Genres compiled from every game in the playlist
   const genreCounts = useMemo(() => {
     const counts = new Map<string, number>();
     playlist?.games.forEach((g) =>
@@ -102,10 +213,23 @@ const PlaylistDetail = () => {
     return games;
   }, [playlist, sort, genreFilter]);
 
-  const ownerName = playlist?.owner.nickname || playlist?.owner.username || "";
+  const ownerUsername = playlist?.owner?.username;
+  const ownerName = playlist?.owner?.nickname || ownerUsername || "Player";
+  const ownerAvatar = playlist?.owner?.avatar_url;
   const total = playlist?.games.length ?? 0;
   const shownGenres = showAllGenres ? genreCounts : genreCounts.slice(0, TOP_GENRES_SHOWN);
   const hiddenGenres = genreCounts.length - TOP_GENRES_SHOWN;
+  const isLiked = Boolean((playlist as any)?.is_liked);
+
+  // Canonical URL: /playlists/:ownerUsername/:id
+  // Redirects old /playlists/:id links and fixes a wrong username in the URL.
+  if (
+    playlist &&
+    ownerUsername &&
+    username?.toLowerCase() !== ownerUsername.toLowerCase()
+  ) {
+    return <Navigate to={`/playlists/${encodeURIComponent(ownerUsername)}/${playlist.id}`} replace />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-[#282539] font-sans text-[#e6e3f5]">
@@ -135,33 +259,61 @@ const PlaylistDetail = () => {
         {playlist && (
           <>
             {/* Header: details left, compiled genres right */}
-            <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold">
-                    {ownerName.slice(0, 2).toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold">{ownerName}</p>
-                    <p className="font-mono text-[11px] text-[#8f8ca9]">
-                      <span className="capitalize">{playlist.visibility}</span> · {total}{" "}
-                      {total === 1 ? "title" : "titles"} · Created {timeAgo(playlist.created_at)} · Updated{" "}
-                      {timeAgo(playlist.updated_at)}
-                    </p>
-                  </div>
-                </div>
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
+            <div>
+              <div className="flex items-center gap-3">
 
-                <h1 className="mt-4 text-[32px] font-semibold leading-tight">{playlist.title}</h1>
+          <div className="relative inline-block" ref={profileCardRef}>
+            <button
+              type="button"
+              onClick={handleAvatarClick} // <--- Use the proper handler function here!
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold overflow-hidden border border-[#8b6fd6]/30 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
+              aria-label={`View ${ownerName}'s profile card`}
+            >
+              <OwnerAvatar src={getFullUrl(ownerAvatar)} name={ownerName} />
+            </button>
 
-                {playlist.description && (
-                  <p className="mt-3 max-w-2xl whitespace-pre-line text-[14px] leading-6 text-[#b4aec7]">
-                    {playlist.description}
-                  </p>
-                )}
+            {showMiniProfile && playlist.owner && (
+              <div className="absolute left-0 top-full z-50">
+                <MiniProfileCard
+                  user={{
+                    ...playlist.owner,
+                    ...(miniProfileUser ?? {}), // <--- Pulls in the full profile data (banner, bio, favorites)
+                    avatar_url: getFullUrl(miniProfileUser?.avatar_url || playlist.owner.avatar_url),
+                    banner_url: getFullUrl(miniProfileUser?.banner_url || playlist.owner.banner_url),
+                  }}
+                  side="bottom"
+                />
+              </div>
+            )}  
+          </div>
 
-                <div className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#312e45] px-4 py-2.5 text-[13px]">
-                  <Heart className="size-4" aria-hidden="true" /> {playlist.like_count}
-                </div>
+      <div className="min-w-0">
+        <p className="truncate text-[14px] font-semibold">{ownerName}</p>
+        <p className="font-mono text-[11px] text-[#8f8ca9]">
+          <span className="capitalize">{playlist.visibility}</span> · {total}{" "}
+          {total === 1 ? "title" : "titles"} · Created {timeAgo(playlist.created_at)} · Updated{" "}
+          {timeAgo(playlist.updated_at)}
+        </p>
+      </div>
+    </div>
+
+    <h1 className="mt-4 text-[32px] font-semibold leading-tight">{playlist.title}</h1>
+                {/* Interactive Like Button */}
+                <button
+                  type="button"
+                  onClick={handleLikeToggle}
+                  disabled={liking}
+                  aria-label={isLiked ? "Unlike playlist" : "Like playlist"}
+                  className={`mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] transition-colors border ${
+                    isLiked
+                      ? "border-[#a8454b] bg-[#a8454b]/20 text-[#f4b6ba] hover:bg-[#a8454b]/30"
+                      : "border-[#3a3754] bg-[#312e45] text-[#e6e3f5] hover:border-[#8b6fd6]"
+                  }`}
+                >
+                  <Heart className={`size-4 ${isLiked ? "fill-[#f4b6ba] text-[#f4b6ba]" : ""}`} aria-hidden="true" />
+                  <span>{playlist.like_count}</span>
+                </button>
               </div>
 
               <aside aria-label="Top genres">

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Gamepad2, Save, Calendar, Globe } from "lucide-react";
+import { ArrowLeft, Gamepad2, Save, Calendar, Globe, Lock, Eye, UserCheck, AlertCircle } from "lucide-react";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -42,6 +42,8 @@ type ProfileForm = {
   pronouns: string;
   library_visibility: string;
   friends_visibility: string;
+  birth_day?: string; // Updated to birth_day to match backend
+  age?: number | null;
 };
 
 export default function EditProfile() {
@@ -57,6 +59,8 @@ export default function EditProfile() {
     pronouns: "",
     library_visibility: "public",
     friends_visibility: "public",
+    birth_day: "",
+    age: null,
   });
 
   const [saving, setSaving] = useState(false);
@@ -76,6 +80,11 @@ export default function EditProfile() {
   const [steamMessage, setSteamMessage] = useState<string | null>(null);
   const [steamError, setSteamError] = useState<string | null>(null);
 
+  // Birthday Modal States
+  const [showBirthdayModal, setShowBirthdayModal] = useState(false);
+  const [tempBirthDate, setTempBirthDate] = useState("");
+  const [confirmBirthdayStep, setConfirmBirthdayStep] = useState(false);
+
   useEffect(() => {
     if (!user) return;
 
@@ -88,13 +97,15 @@ export default function EditProfile() {
       pronouns: user.pronouns ?? "",
       library_visibility: user.library_visibility ?? "public",
       friends_visibility: user.friends_visibility ?? "public",
+      birth_day: (user as any).birth_day ?? "",
+      age: user.age ?? null,
     });
 
     setAvatarPreview(user.avatar_url ?? "");
     setBannerPreview(user.banner_url ?? "");
   }, [user]);
 
-  function updateField(field: keyof ProfileForm, value: string) {
+  function updateField(field: keyof ProfileForm, value: any) {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -159,6 +170,27 @@ export default function EditProfile() {
     setCropTarget(null);
   }
 
+  function calculateAge(dateString: string): number {
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  function handleBirthdayConfirm() {
+    if (!tempBirthDate) return;
+    const calculated = calculateAge(tempBirthDate);
+    updateField("birth_day", tempBirthDate); // Synced with birth_day
+    updateField("age", calculated);
+    setShowBirthdayModal(false);
+    setConfirmBirthdayStep(false);
+    setTempBirthDate("");
+  }
+
   async function handleSteamImport(e: React.FormEvent) {
     e.preventDefault();
     if (!steamUrl.trim()) return;
@@ -197,6 +229,13 @@ export default function EditProfile() {
       payload.append("pronouns", form.pronouns.trim());
       payload.append("library_visibility", form.library_visibility);
       payload.append("friends_visibility", form.friends_visibility);
+      
+      if (form.birth_day) {
+        payload.append("birth_day", form.birth_day); // Sending birth_day to backend
+      }
+      if (form.age !== null && form.age !== undefined) {
+        payload.append("age", String(form.age));
+      }
 
       if (avatarUpload) {
         payload.append("avatar_file", avatarUpload);
@@ -288,7 +327,7 @@ export default function EditProfile() {
                   <AvatarImage
                     src={avatarPreview || undefined}
                     alt={user?.nickname || user?.username || "Player"}
-                    className="object-cover"
+                    className="object-cover contrast-110 saturate-125"
                   />
                   <AvatarFallback className="bg-[#4d3e68]">
                     <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
@@ -374,37 +413,43 @@ export default function EditProfile() {
                 />
               </div>
 
-              {/* Age / Birthday Section Redirecting to Dedicated Page */}
+              {/* Age & Birthday Section with Inline Modal */}
               <div className="flex flex-col gap-3 rounded-xl border border-[#55516c] bg-[#29263b] p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Calendar className="size-5 text-[#c2ade7]" />
                     <h3 className="text-sm font-semibold text-[#e0deeb]">Age & Birthday</h3>
                   </div>
-                  <Button
-                    asChild
-                    className="bg-[#8870b6] hover:bg-[#76609f] text-white text-xs h-9 px-4"
-                  >
-                    <Link to="/profile/set-birthday">
-                      {user.age ? "Update Birthday" : "Set Birthday"}
-                    </Link>
-                  </Button>
+                  {/* Hide button if birth_day is already set (one-time lock rule) */}
+                  {!form.birth_day && !(user as any)?.birth_day && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setTempBirthDate(form.birth_day || "");
+                        setConfirmBirthdayStep(false);
+                        setShowBirthdayModal(true);
+                      }}
+                      className="bg-[#8870b6] hover:bg-[#76609f] text-white text-xs h-9 px-4"
+                    >
+                      Set Birthday
+                    </Button>
+                  )}
                 </div>
                 <p className="text-xs text-[#b4aec7]">
-                  {user.age
-                    ? `Current age: ${user.age} years old (exact birthday is kept private)`
-                    : "No birthday set. Click to go to the birthday calculation page."}
+                  {form.birth_day || (user as any)?.birth_day
+                    ? `Current age: ${form.age ?? calculateAge(form.birth_day || (user as any).birth_day)} years old (exact birthday is kept private, locked 🔒)`
+                    : "No birthday set. Click to select your birthday."}
                 </p>
               </div>
 
-              {/* Bio */}
+              {/* Bio with height constraints */}
               <div className="flex flex-col gap-2">
                 <label className={LABEL} htmlFor="bio">
                   Bio
                 </label>
                 <Textarea
                   id="bio"
-                  className={`${FIELD} min-h-28`}
+                  className={`${FIELD} min-h-24 max-h-36 resize-y`}
                   maxLength={300}
                   placeholder="Tell other players a little about yourself..."
                   value={form.bio}
@@ -464,7 +509,8 @@ export default function EditProfile() {
                   <img
                     src={bannerPreview}
                     alt="Banner preview"
-                    className="mt-2 h-32 w-full rounded-xl border border-[#55516c] object-cover"
+                    loading="lazy"
+                    className="mt-2 h-32 w-full rounded-xl border border-[#55516c] object-cover contrast-110 saturate-125"
                   />
                 )}
               </div>
@@ -494,10 +540,15 @@ export default function EditProfile() {
                   onClick={handleSteamImport}
                   className="h-11 bg-[#8870b6] text-white hover:bg-[#76609f]"
                 >
-                  {steamLoading ? "Syncing..." : "Sync Steam Library"}
+                  {steamLoading ? "Syncing Steam..." : "Sync Steam Library"}
                 </Button>
               </div>
 
+              {steamLoading && (
+                <p className="text-xs text-[#c2ade7] animate-pulse">
+                  ⏳ Syncing Steam library and achievements... This may take up to a minute for large public libraries. Please keep this page open.
+                </p>
+              )}
               {steamMessage && <p className="text-sm text-emerald-400">{steamMessage}</p>}
               {steamError && <p className="text-sm text-rose-400">{steamError}</p>}
             </Card>
@@ -534,7 +585,6 @@ export default function EditProfile() {
                   onChange={(e) => updateField("friends_visibility", e.target.value)}
                 >
                   <option value="public">Public</option>
-                  <option value="friends">Friends only</option>
                   <option value="private">Private</option>
                 </select>
               </div>
@@ -570,6 +620,120 @@ export default function EditProfile() {
 
         <Footer />
       </div>
+
+    {/* Birthday Modal Dialog */}
+      {showBirthdayModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-in fade-in-0"
+          onClick={() => setShowBirthdayModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-[#55516c] bg-[#2a2838] p-6 text-[#e0deeb] shadow-2xl animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-white">
+              {confirmBirthdayStep ? "Confirm Your Birthday" : "Set Your Birthday"}
+            </h3>
+
+            {/* Check if the user already set their birthday (One-time lock) */}
+            {user?.birth_day ? (
+              <div className="mt-4 flex flex-col gap-4">
+                <p className="text-sm text-[#b4aec7]">
+                  Your birthday has already been set and cannot be changed. If you need assistance, please contact support.
+                </p>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={() => setShowBirthdayModal(false)}
+                    className="bg-[#8870b6] text-white hover:bg-[#76609f]"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : !confirmBirthdayStep ? (
+              <div className="mt-4 flex flex-col gap-4">
+                <p className="text-xs text-[#b4aec7]">
+                  Select your date of birth using the calendar below. Your exact birthday remains private, and your age is calculated automatically. Note: This can only be set once.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <label className={LABEL}>Date of Birth</label>
+                  <input
+                    type="date"
+                    value={tempBirthDate}
+                    max={new Date(Date.now() - 86400000).toISOString().split("T")[0]}
+                    onChange={(e) => setTempBirthDate(e.target.value)}
+                    className="h-11 rounded-lg border border-[#55516c] bg-[#201e2f] px-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
+                  />
+                </div>
+
+                {/* Validation error if under 5 years old */}
+                {tempBirthDate && calculateAge(tempBirthDate) < 5 && (
+                  <p className="text-xs text-[#f4b6ba]">
+                    You must be at least 5 years old to set a birthday.
+                  </p>
+                )}
+
+                <div className="mt-4 flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowBirthdayModal(false)}
+                    className="border-[#55516c] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={!tempBirthDate || calculateAge(tempBirthDate) < 5}
+                    onClick={() => setConfirmBirthdayStep(true)}
+                    className="bg-[#8870b6] text-white hover:bg-[#76609f]"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="flex items-start gap-3 rounded-xl border border-[#8870b6]/40 bg-[#373646]/50 p-4">
+                  <AlertCircle className="size-5 text-[#c2ade7] shrink-0 mt-0.5" />
+                  <div className="text-sm text-[#e0deeb]">
+                    <p className="font-medium text-white">Are you sure this is your correct birthday?</p>
+                    <p className="mt-1 text-xs text-[#f4b6ba] font-medium">
+                      ⚠️ Note: This can only be set once and cannot be changed later.
+                    </p>
+                    <p className="mt-1 text-xs text-[#b4aec7]">
+                      Selected Date: <strong className="text-white">{tempBirthDate}</strong>
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#b4aec7]">
+                      Calculated Age: <strong className="text-white">{calculateAge(tempBirthDate)} years old</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirmBirthdayStep(false)}
+                    className="border-[#55516c] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleBirthdayConfirm}
+                    className="bg-[#8870b6] text-white hover:bg-[#76609f]"
+                  >
+                    Confirm & Save
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Image Crop Dialog */}
       {cropSource && cropTarget && (

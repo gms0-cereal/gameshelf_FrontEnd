@@ -3,15 +3,14 @@ import { Link } from "react-router-dom";
 import { Calendar, ChevronDown, Gamepad2, Search, Star } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import {
-  browseSteamGames,
-  type BrowseGame,
-  type BrowseResponse,
-} from "@/services/Gameservice";
+import { type BrowseGame } from "@/services/Gameservice";
 import { Card, CardContent } from "@/components/ui/card";
+
+// Import RTK Query hook
+import { useBrowseGamesQuery } from "@/store/apiSlice";
+
 type Option = { value: string; label: string };
 
-// Slugs must match GENRE_TAGS in the backend.
 const GENRES: Option[] = [
   { value: "", label: "All genres" },
   { value: "action", label: "Action" },
@@ -29,7 +28,6 @@ const GENRES: Option[] = [
   { value: "horror", label: "Horror" },
 ];
 
-// Slugs must match PLATFORM_OS in the backend.
 const PLATFORMS: Option[] = [
   { value: "", label: "All" },
   { value: "windows", label: "PC" },
@@ -37,7 +35,6 @@ const PLATFORMS: Option[] = [
   { value: "linux", label: "Linux" },
 ];
 
-// Slugs must match SORT_BY in the backend.
 const SORTS: Option[] = [
   { value: "rated", label: "Highest rated" },
   { value: "relevance", label: "Most relevant" },
@@ -47,9 +44,6 @@ const SORTS: Option[] = [
   { value: "name", label: "Name (A–Z)" },
 ];
 
-// ---------------------------------------------------------------------------
-// small components
-// ---------------------------------------------------------------------------
 function FilterSelect({
   label,
   value,
@@ -94,16 +88,11 @@ function GameCard({ game }: { game: BrowseGame }) {
     },
     {
       icon: Calendar,
-      text: game.release_year
-        ? `Released ${game.release_year}`
-        : "Release date unknown",
+      text: game.release_year ? `Released ${game.release_year}` : "Release date unknown",
     },
     {
       icon: Star,
-      text:
-        game.score !== null
-          ? `Score ${game.score.toFixed(1)}/10`
-          : "No score yet",
+      text: game.score !== null ? `Score ${game.score.toFixed(1)}/10` : "No score yet",
     },
   ];
 
@@ -112,9 +101,9 @@ function GameCard({ game }: { game: BrowseGame }) {
       <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden bg-[#2a2838]">
         <img
           src={game.header_image}
-          alt=""
+          alt={game.name}
           loading="lazy"
-          className="block h-full w-full object-cover object-center"
+          className="block h-full w-full object-cover object-center contrast-110 saturate-125"
         />
 
         {game.price && (
@@ -141,15 +130,8 @@ function GameCard({ game }: { game: BrowseGame }) {
 
         <ul className="mt-2.5 flex flex-col gap-1.5">
           {details.map(({ icon: Icon, text }, i) => (
-            <li
-              key={i}
-              className="flex items-center gap-2.5 text-[13px] leading-5 text-[#b4aec7]"
-            >
-              <Icon
-                className="size-4 shrink-0 text-[#8b86a3]"
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
+            <li key={i} className="flex items-center gap-2.5 text-[13px] leading-5 text-[#b4aec7]">
+              <Icon className="size-4 shrink-0 text-[#8b86a3]" strokeWidth={1.7} aria-hidden="true" />
               <span className="min-w-0 truncate">{text}</span>
             </li>
           ))}
@@ -225,9 +207,6 @@ function Pagination({
   );
 }
 
-// ---------------------------------------------------------------------------
-// page
-// ---------------------------------------------------------------------------
 export default function Browse() {
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
@@ -235,10 +214,6 @@ export default function Browse() {
   const [platform, setPlatform] = useState("");
   const [sort, setSort] = useState("rated");
   const [page, setPage] = useState(1);
-
-  const [data, setData] = useState<BrowseResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
     document.title = "Browse Games | GameShelf";
@@ -253,27 +228,14 @@ export default function Browse() {
     return () => clearTimeout(timer);
   }, [input]);
 
-  // Fetch whenever a filter or the page changes
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-
-    browseSteamGames({ q, genre, platform, sort, page })
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [q, genre, platform, sort, page]);
+  // RTK Query hook with automatic client-side & server-side Redis caching
+  const { data, isLoading: loading, isError: error, isFetching } = useBrowseGamesQuery({
+    q,
+    genre,
+    platform,
+    sort,
+    page,
+  });
 
   function changeFilter(setter: (value: string) => void, value: string) {
     setter(value);
@@ -295,10 +257,7 @@ export default function Browse() {
   }
 
   const results = data?.results ?? [];
-
-  const summary = data
-    ? `Showing ${data.count.toLocaleString()} games`
-    : "Loading games…";
+  const summary = data ? `Showing ${data.count.toLocaleString()} games` : "Loading games…";
 
   return (
     <div className="min-h-screen bg-[#201e2f]">
@@ -309,11 +268,8 @@ export default function Browse() {
         <Navbar />
 
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-8 md:px-8 xl:px-16">
-          {/* Heading */}
           <header className="flex flex-col gap-3">
-            <h1 className="text-[32px] font-semibold leading-10 tracking-[-0.5px]">
-              Browse Games
-            </h1>
+            <h1 className="text-[32px] font-semibold leading-10 tracking-[-0.5px]">Browse Games</h1>
             <p className="text-[13px] text-[#b4aec7]">
               A whole world of games. Find the one that stays with you.
             </p>
@@ -344,33 +300,14 @@ export default function Browse() {
                 </span>
               </label>
 
-              <FilterSelect
-                label="Genre"
-                value={genre}
-                onChange={(v) => changeFilter(setGenre, v)}
-                options={GENRES}
-              />
-              <FilterSelect
-                label="Platform"
-                value={platform}
-                onChange={(v) => changeFilter(setPlatform, v)}
-                options={PLATFORMS}
-              />
-              <FilterSelect
-                label="Sort"
-                value={sort}
-                onChange={(v) => changeFilter(setSort, v)}
-                options={SORTS}
-              />
+              <FilterSelect label="Genre" value={genre} onChange={(v) => changeFilter(setGenre, v)} options={GENRES} />
+              <FilterSelect label="Platform" value={platform} onChange={(v) => changeFilter(setPlatform, v)} options={PLATFORMS} />
+              <FilterSelect label="Sort" value={sort} onChange={(v) => changeFilter(setSort, v)} options={SORTS} />
             </div>
 
             <div className="flex items-center justify-between gap-3 text-[11px] text-[#b4aec7]">
               <span role="status">{summary}</span>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="cursor-pointer text-[#c2ade7] hover:text-[#e0deeb]"
-              >
+              <button type="button" onClick={clearFilters} className="cursor-pointer text-[#c2ade7] hover:text-[#e0deeb]">
                 Clear filters
               </button>
             </div>
@@ -396,16 +333,10 @@ export default function Browse() {
 
           {/* Results */}
           {!error && results.length > 0 && (
-            <section
-              className={`flex flex-col gap-5 transition-opacity ${
-                loading ? "opacity-60" : ""
-              }`}
-            >
+            <section className={`flex flex-col gap-5 transition-opacity ${isFetching ? "opacity-60" : ""}`}>
               <div className="flex items-end justify-between gap-3">
                 <h2 className="text-[20px] font-semibold leading-6">Results</h2>
-                <p className="text-[11px] text-[#b4aec7]">
-                  {results.length} games
-                </p>
+                <p className="text-[11px] text-[#b4aec7]">{results.length} games on this page</p>
               </div>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 {results.map((game) => (
@@ -416,11 +347,7 @@ export default function Browse() {
           )}
 
           {!error && data && (
-            <Pagination
-              page={page}
-              totalPages={data.total_pages}
-              onChange={changePage}
-            />
+            <Pagination page={page} totalPages={data.total_pages} onChange={changePage} />
           )}
         </main>
 

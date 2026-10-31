@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, LayoutGrid, List, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, LayoutGrid, List, Search, X, ChevronLeft, ChevronRight, ListMusic } from "lucide-react";
 import { IoPencilSharp } from "react-icons/io5";
 import { FaTrashAlt, FaHeart } from "react-icons/fa";
 import { CiHeart } from "react-icons/ci";
@@ -18,8 +18,9 @@ import {
   type UserGameEntry,
   type UserGameListResponse,
 } from "@/services/Gameservice";
-import { getPlaylists, type Playlist } from "@/services/playlistService";
-import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/UserService";
+import { getMyPlaylists, getPlaylists, type Playlist} from "@/services/playlistService";
+import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
+import { getFavoriteGames, addFavoriteGame, removeFavoriteGame } from "@/services/Userservice";
 
 type Filter = "all" | ListStatus;
 type View = "rows" | "grid";
@@ -75,9 +76,9 @@ function Cover({ entry, className }: { entry: UserGameEntry; className: string }
   return entry.cover_image_url ? (
     <img
       src={entry.cover_image_url}
-      alt=""
+      alt={entry.title || "Game cover"}
       loading="lazy"
-      className={`${className} object-cover`}
+      className={`${className} object-cover contrast-110 saturate-125`}
     />
   ) : (
     <div className={`${className} bg-[#2a2838]`} />
@@ -106,16 +107,21 @@ export default function MyLibrary() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(true);
 
+  // Carousel ref for My Playlists
+  const playlistCarouselRef = useRef<HTMLDivElement>(null);
+  const scrollPlaylistCarousel = (dir: 1 | -1) =>
+    playlistCarouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
-      setPage(1); // Reset to page 1 on new search
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
   useEffect(() => {
-    setPage(1); // Reset to page 1 on filter change
+    setPage(1);
   }, [filter]);
 
   useEffect(() => {
@@ -125,7 +131,7 @@ export default function MyLibrary() {
 
     Promise.all([
       getMyGameList({ status: filter, search: debouncedSearch }),
-      getPlaylists(),
+      getMyPlaylists().catch(() => ({ count: 0, results: [] as Playlist[] })),
       getFavoriteGames(),
     ])
       .then(([listData, playlistData, favoriteData]) => {
@@ -164,7 +170,6 @@ export default function MyLibrary() {
     };
   }, [filter, debouncedSearch, reloadKey]);
 
-  // Pagination Slice (Limit 10 per page)
   const totalPages = Math.ceil(entries.length / PAGE_SIZE) || 1;
   const paginatedEntries = entries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -590,50 +595,66 @@ export default function MyLibrary() {
             </section>
           )}
 
-          {/* My Playlists Bottom Section */}
-          <section className="mt-8 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">My Playlists</h2>
-                <p className="mt-1 text-xs text-[#b4aec7]">
-                  Manage your personal collections and custom playlists.
-                </p>
+          {/* My Playlists Carousel Section (Matched to Home page style) */}
+          <section id="my-playlists" aria-labelledby="my-playlists-title" className="mt-8 flex flex-col gap-5">
+            <div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 id="my-playlists-title" className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">
+                    My Playlists
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">Manage your personal collections and custom playlists</p>
+                  <Link to="/playlists" className="text-[13px] text-[#b4aec7] hover:text-[#e0deeb]">
+                    View more →
+                  </Link>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/playlists/new"
+                    className="mr-2 rounded-lg bg-[#9f4044] px-4 py-2.5 text-[13px] font-medium hover:bg-[#ae494e]"
+                  >
+                    Create playlist
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlaylistCarousel(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollPlaylistCarousel(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
               </div>
-              <Button
-                asChild
-                className="bg-[#8063a8] text-white hover:bg-[#9274bb] h-9 px-4 text-xs font-semibold"
-              >
-                <Link to="/playlists/new">+ Create Playlist</Link>
-              </Button>
             </div>
 
-            {playlistsLoading ? (
-              <p className="text-xs text-[#b4aec7]">Loading your playlists...</p>
-            ) : playlists.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {playlists.map((playlist) => (
-                  <div
-                    key={playlist.id}
-                    className="overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] p-4 flex flex-col justify-between"
-                  >
-                    <div>
-                      <h3 className="truncate font-semibold text-white">{playlist.title}</h3>
-                      <p className="mt-1 text-xs text-[#b4aec7] line-clamp-2">
-                        {playlist.description || "No description provided."}
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between text-xs text-[#8b86a3]">
-                      <span>{playlist.game_count} {playlist.game_count === 1 ? "game" : "games"}</span>
-                      <span className="capitalize px-2 py-0.5 rounded bg-[#2a2838] text-[#c2ade7] text-[10px] border border-[#55516c]">
-                        {playlist.visibility}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+            {playlistsLoading && <p role="status" className="text-sm text-[#b4aec7]">Loading your playlists…</p>}
+
+            {!playlistsLoading && playlists.length === 0 && (
+              <div className="rounded-xl border border-dashed border-[#55516c] px-6 py-10 text-center">
+                <ListMusic className="mx-auto size-8 text-[#8b86a3]" strokeWidth={1.5} />
+                <p className="mt-3 text-sm text-[#b4aec7]">You haven't created any playlists yet.</p>
               </div>
-            ) : (
-              <div className="rounded-xl border border-[#55516c] bg-[#373646] p-8 text-center">
-                <p className="text-xs text-[#b4aec7]">You haven't created any playlists yet.</p>
+            )}
+
+            {!playlistsLoading && playlists.length > 0 && (
+              <div
+                ref={playlistCarouselRef}
+                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {playlists.map((playlist) => (
+                  <PlaylistCarouselCard key={playlist.id} playlist={playlist} />
+                ))}
               </div>
             )}
           </section>

@@ -19,6 +19,7 @@ export interface User {
   library_visibility: Visibility;
   friends_visibility: Visibility;
   created_at: string;
+  birth_day: string | null; // Fixed from Date
 }
 
 export interface UserProfile {
@@ -37,6 +38,7 @@ export interface UserProfile {
   ratings_count: number;
   favorites?: UserFavoriteGameEntry[];
   reviews_count: number;
+  birth_day: string | null; // Fixed from Date
 }
 
 export type UpdateMeBody = Partial<
@@ -51,6 +53,7 @@ export type UpdateMeBody = Partial<
     | "pronouns"
     | "library_visibility"
     | "friends_visibility"
+    | "birth_day" // Added so updateMe can send birth_day
   >
 >;
 
@@ -60,6 +63,7 @@ export interface SocialUser {
   nickname: string | null;
   avatar_url: string | null;
   banner_url?: string | null; 
+  birth_day: string | null; // Fixed from Date
   bio?: string | null;
   favorites?: UserFavoriteGameEntry[];
 }
@@ -171,21 +175,21 @@ export async function cancelFriendRequest(id: number): Promise<void> {
 }
 
 export async function getBlockedUsers(search = ""): Promise<SocialUser[]> {
-  const { data } = await api.get("/users/blocks/", { params: { search } });
+  const { data } = await api.get("/blocks/", { params: { search } });
   return extractResults<SocialUser>(data);
 }
 
 export async function blockUser(username: string): Promise<unknown> {
-  const { data } = await api.post("/users/blocks/", { username });
+  const { data } = await api.post("/blocks/", { username });
   return data;
 }
 
 export async function unblockUser(username: string): Promise<void> {
-  await api.delete(`/users/blocks/${encodeURIComponent(username)}/`);
+  await api.delete(`/blocks/${encodeURIComponent(username)}/`);
 }
 
 export async function reportUser(username: string, reason: string, details?: string): Promise<unknown> {
-  const { data } = await api.post("/users/reports/", { username, reason, details });
+  const { data } = await api.post("/reports/", { username, reason, details });
   return data;
 }
 
