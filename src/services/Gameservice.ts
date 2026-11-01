@@ -63,6 +63,7 @@ export interface SteamGameCard {
   rating_count: number;
   // the logged-in user's own rating, null if not rated
   my_score: number | null;
+  bayesian_score?: number;
 }
 
 
@@ -448,4 +449,16 @@ export async function browseSteamGames(
     `/games/steam/browse/?${query}`
   );
   return data;
+}
+
+// GET /games/steam/top-rated/
+export async function getTopRatedGames(
+  limit = 20,
+  signal?: AbortSignal
+): Promise<SteamGameCard[]> {
+  const { data } = await api.get<{ results: SteamGameCard[] }>(
+    "/games/steam/top-rated/",
+    { params: { limit }, signal }
+  );
+  return data.results;
 }
