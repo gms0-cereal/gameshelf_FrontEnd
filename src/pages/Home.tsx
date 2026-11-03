@@ -5,6 +5,7 @@ import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
 import {
   getMyGameList,
+  getTopRatedGames,
   type SimilarGameResult,
   type SteamGameCard,
   type UserGameEntry,
@@ -182,6 +183,17 @@ export default function Home() {
   const [playersLoading, setPlayersLoading] = useState(true);
   const [playersError, setPlayersError] = useState<string | null>(null);
 
+  const topRatedRef = useRef<HTMLDivElement>(null);
+  const scrollTopRated = (dir: 1 | -1) =>
+    topRatedRef.current?.scrollBy({
+      left: dir * (topRatedRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
+  const [topRatedCards, setTopRatedCards] = useState<SteamGameCard[]>([]);
+  const [topRatedLoading, setTopRatedLoading] = useState(true);
+  const [topRatedError, setTopRatedError] = useState<string | null>(null);
+
   // Recommended for You State
   const [recommendedGames, setRecommendedGames] = useState<GameSummary[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(true);
@@ -250,6 +262,24 @@ export default function Home() {
       })
       .finally(() => {
         if (!controller.signal.aborted) setPlayersLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [user?.id]);
+
+  // Fetch top rated games (GameShelf ratings, Bayesian average)
+  useEffect(() => {
+    const controller = new AbortController();
+    setTopRatedLoading(true);
+    setTopRatedError(null);
+
+    getTopRatedGames(20, controller.signal)
+      .then(setTopRatedCards)
+      .catch(() => {
+        if (!controller.signal.aborted) setTopRatedError("Failed to load top rated games.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTopRatedLoading(false);
       });
 
     return () => controller.abort();
@@ -329,6 +359,24 @@ export default function Home() {
   const steamSummaries = useMemo(
     () => catalogGames.map((card) => toGameSummary(card, userListMap.get(String(card.appid)))),
     [catalogGames, userListMap]
+  );
+
+  const topRatedGames = useMemo(
+    () =>
+      topRatedCards.map((card) => {
+        const summary = toGameSummary(card, userListMap.get(String(card.appid)));
+        return {
+          ...summary,
+          score: card.bayesian_score ?? card.community_rating ?? null,
+          bio:
+            card.rating_count > 0
+              ? `${card.community_rating?.toFixed(1)} average from ${card.rating_count} ${
+                  card.rating_count === 1 ? "rating" : "ratings"
+                }.`
+              : summary.bio,
+        };
+      }),
+    [topRatedCards, userListMap]
   );
 
   function goToNextPage() {
@@ -429,6 +477,62 @@ export default function Home() {
             </div>
             <GameGrid games={rpgGames} loading={rpgGames.length === 0} />
           </section>
+
+          {/* Top Rated */}
+          {(topRatedLoading || topRatedError || topRatedGames.length > 0) && (
+            <section aria-labelledby="top-rated-title" className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <h2
+                    id="top-rated-title"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+                  >
+                    Top Rated on GameShelf Players
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+                    Highest-rated games based on ratings from GameShelf players.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollTopRated(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollTopRated(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#55516c] bg-[#373646]/80 text-[#e0deeb] hover:bg-[#454256]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {topRatedError && <p role="alert" className="text-sm text-[#e58d91]">{topRatedError}</p>}
+              {topRatedLoading && <p role="status" className="text-sm text-[#b4aec7]">Loading top rated games…</p>}
+
+              {!topRatedLoading && !topRatedError && topRatedGames.length > 0 && (
+                <div
+                  ref={topRatedRef}
+                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {topRatedGames.map((game) => (
+                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Recommended for You */}
           <section aria-labelledby="taste-recommendations-title" className="flex flex-col gap-5">
