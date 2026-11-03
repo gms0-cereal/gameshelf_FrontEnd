@@ -31,7 +31,7 @@ const menuItems = [
 ];
 
 const menuItemClass =
-  "block w-full px-4 py-2.5 text-left text-sm text-[#d9d6ee] hover:bg-[#373646] focus:bg-[#373646] focus:outline-none";
+  "block w-full px-4 py-2.5 text-left text-sm text-[#F0EEF5] hover:bg-[#383044] focus:bg-[#383044] focus:outline-none transition-colors";
 
 export default function Navbar() {
   const { user, loading, logoutUser } = useAuth();
@@ -185,7 +185,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-[#55516c] bg-[#201e2f]">
+    <header className="border-b border-[#38363F] bg-[#1B1A20]">
       <nav
         aria-label="Main navigation"
         className="mx-auto flex min-h-[88px] w-full max-w-[1440px] flex-wrap items-center gap-5 px-5 py-4 md:px-8 xl:h-[88px] xl:flex-nowrap xl:gap-[34px] xl:px-16 xl:py-0"
@@ -194,15 +194,15 @@ export default function Navbar() {
         <Link
           to="/home"
           aria-label="GameShelf home"
-          className="flex w-[163px] shrink-0 items-center gap-2.5 text-[#e0deeb]"
+          className="flex w-[163px] shrink-0 items-center gap-2.5 text-[#F0EEF5]"
         >
           <Library
-            className="size-[26px] shrink-0 text-[#8870b6]"
+            className="size-[26px] shrink-0 text-[#8870B6]"
             strokeWidth={1.7}
             aria-hidden="true"
           />
 
-          <span className="text-[21px] leading-[25px] tracking-[-0.6px]">
+          <span className="text-[21px] font-bold leading-[25px] tracking-[-0.6px] text-[#F0EEF5]">
             GAMESHELF
           </span>
         </Link>
@@ -217,8 +217,8 @@ export default function Navbar() {
                 className={({ isActive }) =>
                   `whitespace-nowrap transition-colors ${
                     isActive
-                      ? "font-semibold text-[#c2ade7]"
-                      : "text-[#b4aec7] hover:text-[#e0deeb]"
+                      ? "font-semibold text-[#C2ADE7]"
+                      : "text-[#AAA6B5] hover:text-[#F0EEF5]"
                   }`
                 }
               >
@@ -232,10 +232,10 @@ export default function Navbar() {
         <form
           role="search"
           onSubmit={handleSearch}
-          className="relative order-last flex h-10 w-full min-w-0 items-center gap-2.5 rounded-lg bg-[#373646] px-[14px] focus-within:ring-2 focus-within:ring-[#c2ade7] xl:order-none xl:w-auto xl:flex-1"
+          className="relative order-last flex h-10 w-full min-w-0 items-center gap-2.5 rounded-lg bg-[#383044]/40 px-[14px] border border-[#38363F] focus-within:border-[#C2ADE7] focus-within:ring-2 focus-within:ring-[#C2ADE7]/20 xl:order-none xl:w-auto xl:flex-1"
         >
           <Search
-            className="size-[18px] shrink-0 text-[#8f8ca9]"
+            className="size-[18px] shrink-0 text-[#AAA6B5]"
             strokeWidth={1.7}
             aria-hidden="true"
           />
@@ -254,34 +254,32 @@ export default function Navbar() {
             }}
             aria-label="Search games"
             placeholder="Search games..."
-            className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13px] leading-4 text-[#e0deeb] shadow-none placeholder:text-[#b4aec7] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+            className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13px] leading-4 text-[#F0EEF5] shadow-none placeholder:text-[#AAA6B5] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
           />
 
-          <kbd className="shrink-0 whitespace-nowrap text-[11px] leading-[13px] text-[#b4aec7]">
-            
-            
+          <kbd className="shrink-0 whitespace-nowrap text-[11px] leading-[13px] text-[#AAA6B5]">
           </kbd>
 
           {searchQuery.trim().length >= 2 && (
             <div
               role="listbox"
               aria-label="Game search results"
-              className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-lg border border-[#55516c] bg-[#2c2a40] shadow-xl"
+              className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-lg border border-[#38363F] bg-[#1B1A20] shadow-xl"
             >
               {searchLoading && (
-                <p role="status" className="px-4 py-3 text-xs text-[#b4aec7]">
+                <p role="status" className="px-4 py-3 text-xs text-[#AAA6B5]">
                   Searching games…
                 </p>
               )}
 
               {searchError && (
-                <p role="alert" className="px-4 py-3 text-xs text-[#f4b6ba]">
+                <p role="alert" className="px-4 py-3 text-xs text-[#EDB1B4]">
                   {searchError}
                 </p>
               )}
 
               {!searchLoading && !searchError && searchResults.length === 0 && (
-                <p className="px-4 py-3 text-xs text-[#b4aec7]">
+                <p className="px-4 py-3 text-xs text-[#AAA6B5]">
                   No games found.
                 </p>
               )}
@@ -295,7 +293,7 @@ export default function Navbar() {
                     role="option"
                     aria-label={`Open ${game.title}`}
                     onClick={() => handleGameSelect(game)}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#373646] focus:bg-[#373646] focus:outline-none"
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#383044] focus:bg-[#383044] focus:outline-none"
                   >
                     <img
                       src={game.cover}
@@ -304,11 +302,11 @@ export default function Navbar() {
                       loading="lazy"
                     />
                     <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-medium text-[#e0deeb]">
+                      <span className="block truncate text-[13px] font-medium text-[#F0EEF5]">
                         {game.title}
                       </span>
                       {game.subtitle && (
-                        <span className="mt-0.5 block truncate text-[11px] text-[#b4aec7]">
+                        <span className="mt-0.5 block truncate text-[11px] text-[#AAA6B5]">
                           {game.subtitle}
                         </span>
                       )}
@@ -323,14 +321,14 @@ export default function Navbar() {
         <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5 xl:ml-0">
           {loading ? (
             <div
-              className="h-9 w-9 animate-pulse rounded-full bg-[#373646]"
+              className="h-9 w-9 animate-pulse rounded-full bg-[#383044]"
               aria-hidden="true"
             />
           ) : user ? (
             <>
               <Link
                 to="/profile"
-                className="hidden text-sm leading-[17px] text-[#b4aec7] hover:text-[#e0deeb] sm:block"
+                className="hidden text-sm leading-[17px] text-[#AAA6B5] hover:text-[#F0EEF5] sm:block"
               >
                 Profile
               </Link>
@@ -342,21 +340,21 @@ export default function Navbar() {
                   aria-expanded={open}
                   aria-label="Open profile menu"
                   onClick={() => setOpen((v) => !v)}
-                  className="flex shrink-0 items-center gap-2.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c2ade7]"
+                  className="flex shrink-0 items-center gap-2.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE7]"
                 >
-<Avatar className="size-11 shrink-0 overflow-hidden border-2 border-[#8870b6] bg-[#4d3e68] after:hidden">
-  <AvatarImage
-    src={user?.avatar_url || undefined}
-    alt={user?.nickname || user?.username || "Player"}
-    className="object-cover"
-  />
-  <AvatarFallback className="bg-[#4d3e68]">
-    <Gamepad2 className="size-11 text-[#c2ade7]" strokeWidth={1.7} />
-  </AvatarFallback>
-</Avatar>
+                  <Avatar className="size-11 shrink-0 overflow-hidden border-2 border-[#8870B6] bg-[#383044] after:hidden">
+                    <AvatarImage
+                      src={user?.avatar_url || undefined}
+                      alt={user?.nickname || user?.username || "Player"}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-[#383044]">
+                      <Gamepad2 className="size-11 text-[#C2ADE7]" strokeWidth={1.7} />
+                    </AvatarFallback>
+                  </Avatar>
 
                   <ChevronDown
-                    className={`size-[14px] text-[#8f8ca9] transition-transform ${
+                    className={`size-[14px] text-[#AAA6B5] transition-transform ${
                       open ? "rotate-180" : ""
                     }`}
                     strokeWidth={1.7}
@@ -370,7 +368,7 @@ export default function Navbar() {
                     role="menu"
                     aria-label="Profile menu"
                     onKeyDown={onMenuKeyDown}
-                    className="absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-lg border border-[#55516c] bg-[#2c2a40] py-1 shadow-xl"
+                    className="absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-lg border border-[#38363F] bg-[#1B1A20] py-1 shadow-xl"
                   >
                     {menuItems.map((item) => (
                       <Link
@@ -389,7 +387,7 @@ export default function Navbar() {
                       role="menuitem"
                       onClick={handleLogout}
                       disabled={loggingOut}
-                      className={`${menuItemClass} border-t border-[#55516c] disabled:opacity-60`}
+                      className={`${menuItemClass} border-t border-[#38363F] text-[#EDB1B4] hover:bg-[#3A272D] focus:bg-[#3A272D] disabled:opacity-60`}
                     >
                       {loggingOut ? "Logging out…" : "Logout"}
                     </button>
@@ -397,7 +395,7 @@ export default function Navbar() {
                     {logoutError && (
                       <p
                         role="alert"
-                        className="px-4 py-2 text-xs text-[#f0a0a5]"
+                        className="px-4 py-2 text-xs text-[#EDB1B4]"
                       >
                         {logoutError}
                       </p>
@@ -410,14 +408,14 @@ export default function Navbar() {
             <>
               <Link
                 to="/login"
-                className="whitespace-nowrap text-sm text-[#b4aec7] hover:text-[#e0deeb]"
+                className="whitespace-nowrap text-sm text-[#AAA6B5] hover:text-[#F0EEF5]"
               >
                 Log In
               </Link>
 
               <Link
                 to="/register"
-                className="whitespace-nowrap rounded-lg bg-[#4d3e68] px-4 py-2.5 text-sm font-medium text-[#e0deeb] transition-colors hover:bg-[#5b497b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c2ade7]"
+                className="whitespace-nowrap rounded-lg bg-[#BDA6E4] px-4 py-2.5 text-sm font-semibold text-[#1B1A20] transition-colors hover:bg-[#C2ADE7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE7]"
               >
                 Sign Up
               </Link>
