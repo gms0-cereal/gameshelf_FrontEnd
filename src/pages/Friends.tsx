@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, memo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Ban,
   Flag,
@@ -10,6 +11,8 @@ import {
   UserPlus,
   Users,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
@@ -63,8 +66,10 @@ type ModalConfig =
   | null;
 
 const CARD =
-  "rounded-2xl border border-[#514961] bg-[#373646] " +
-  "text-[#e0deeb] shadow-none";
+  "rounded-2xl border border-[#38363F] bg-[#383044] " +
+  "text-[#F0EEF5] shadow-none";
+
+const PAGE_SIZE = 15;
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   const err = error as {
@@ -91,6 +96,7 @@ const getDisplayName = (player: Player) =>
 export default function Friends() {
   const [activeTab, setActiveTab] = useState<Tab>("suggested");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const [suggested, setSuggested] = useState<Player[]>([]);
   const [incoming, setIncoming] = useState<Friendship[]>([]);
@@ -107,6 +113,18 @@ export default function Friends() {
   const [modalConfig, setModalConfig] = useState<ModalConfig>(null);
   const [reportReason, setReportReason] = useState("harassment");
   const [reportDetails, setReportDetails] = useState("");
+
+  // Fetch incoming request count on mount so badge is always live across tabs
+  useEffect(() => {
+    getFriendRequests("incoming")
+      .then((res) => setIncoming((res.results ?? []) as Friendship[]))
+      .catch(() => {});
+  }, []);
+
+  // Reset page when switching tabs or searching
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, search]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -254,15 +272,31 @@ export default function Friends() {
           ? friends.length
           : blocked.length;
 
+  const totalPages = Math.ceil(currentCount / PAGE_SIZE) || 1;
+
+  // Safety check to clamp page if items are removed/blocked and page goes out of bounds
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  // Sliced lists for pagination
+  const paginatedSuggested = suggested.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginatedIncoming = incoming.filter((r) => matchesSearch(r.user, search)).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginatedOutgoing = outgoing.filter((r) => matchesSearch(r.friend || r.user, search)).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginatedFriends = friends.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginatedBlocked = blocked.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
-    <div className="min-h-screen bg-[#201e2f] text-[#e0deeb]">
+    <div className="min-h-screen bg-[#1B1A20] text-[#F0EEF5]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col">
         <Navbar />
 
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-10 md:px-8 xl:px-16">
           <section className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight text-[#F0EEF5] md:text-4xl">
                 {activeTab === "suggested"
                   ? "Discover Players"
                   : activeTab === "requests"
@@ -272,7 +306,7 @@ export default function Friends() {
                       : "Blocked Users"}
               </h1>
 
-              <p className="mt-2 text-sm text-[#b4aec7] md:text-base">
+              <p className="mt-2 text-sm text-[#AAA6B5] md:text-base">
                 {activeTab === "suggested"
                   ? "Find players who share your taste in games."
                   : activeTab === "requests"
@@ -283,25 +317,25 @@ export default function Friends() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-[#b4aec7]">
-              <Users className="size-5 text-[#c2ade7]" />
+            <div className="flex items-center gap-2 text-sm text-[#AAA6B5]">
+              <Users className="size-5 text-[#C2ADE7]" />
               <span>{currentCount} players</span>
             </div>
           </section>
 
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#b4aec7]" />
+            <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#AAA6B5]" />
 
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by username or nickname..."
               aria-label="Search players"
-              className="h-12 rounded-xl border-[#514961] bg-[#373646] pl-12 text-[#e0deeb] placeholder:text-[#928ba7] focus-visible:ring-[#8870b6]"
+              className="h-12 rounded-xl border-[#38363F] bg-[#383044] pl-12 text-[#F0EEF5] placeholder:text-[#AAA6B5] focus-visible:ring-[#C2ADE7]"
             />
           </div>
 
-          <div className="flex gap-2 overflow-x-auto border-b border-[#514961] pb-3">
+          <div className="flex gap-2 overflow-x-auto border-b border-[#38363F] pb-3">
             {[
               { id: "suggested", label: "Suggested" },
               { id: "requests", label: "Requests" },
@@ -313,13 +347,13 @@ export default function Friends() {
                 onClick={() => setActiveTab(tab.id as Tab)}
                 className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? "bg-[#8063a8] text-white"
-                    : "bg-[#373646] text-[#b4aec7] hover:bg-[#454256] hover:text-white"
+                    ? "bg-[#C2ADE7] text-[#1B1A20] font-semibold"
+                    : "bg-[#383044] text-[#AAA6B5] hover:bg-[#383044]/80 hover:text-[#F0EEF5]"
                 }`}
               >
                 {tab.label}
                 {tab.id === "requests" && incoming.length > 0 && (
-                  <span className="ml-2 rounded-full bg-[#c2ade7] px-2 py-0.5 text-xs text-[#201e2f]">
+                  <span className="ml-2 rounded-full bg-[#C2ADE7] px-2 py-0.5 text-xs text-[#1B1A20]">
                     {incoming.length}
                   </span>
                 )}
@@ -330,7 +364,7 @@ export default function Friends() {
           {notice && (
             <div
               role="status"
-              className="rounded-xl border border-[#75618e] bg-[#373646] px-4 py-3 text-sm text-[#c2ade7]"
+              className="rounded-xl border border-[#38363F] bg-[#383044] px-4 py-3 text-sm text-[#C2ADE7] animate-in fade-in duration-200"
             >
               {notice}
             </div>
@@ -339,179 +373,217 @@ export default function Friends() {
           {error && (
             <div
               role="alert"
-              className="flex items-center justify-between gap-3 rounded-xl border border-[#a65e72] bg-[#4a303d] px-4 py-3 text-sm text-[#f1b9c4]"
+              className="flex items-center justify-between gap-3 rounded-xl border border-[#3A272D] bg-[#3A272D]/50 px-4 py-3 text-sm text-[#EDB1B4]"
             >
               <span>{error}</span>
               <Button
                 variant="outline"
                 onClick={() => void loadData()}
-                className="border-[#a65e72] bg-transparent text-[#f1b9c4]"
+                className="border-[#EDB1B4]/40 bg-transparent text-[#EDB1B4] hover:bg-[#3A272D]"
               >
                 Retry
               </Button>
             </div>
           )}
 
-          {loading ? (
-            <div className="flex flex-col items-center gap-3 py-20 text-[#b4aec7]">
-              <Loader2 className="size-8 animate-spin text-[#c2ade7]" />
-              <p>Loading players...</p>
-            </div>
-          ) : (
-            <>
-              {activeTab === "suggested" && (
-                <section className="flex flex-col gap-4">
-                  <h2 className="text-xl font-semibold">Suggested players</h2>
+          {/* Locked minimum height container */}
+          <div className="min-h-[650px] flex flex-col justify-between">
+            {loading ? (
+              <div className="flex flex-col items-center gap-3 py-20 text-[#AAA6B5]">
+                <Loader2 className="size-8 animate-spin text-[#C2ADE7]" />
+                <p>Loading players...</p>
+              </div>
+            ) : (
+              <div key={activeTab} className="flex flex-col gap-6 animate-in fade-in-50 duration-200">
+                {activeTab === "suggested" && (
+                  <section className="flex flex-col gap-4">
+                    <h2 className="text-xl font-semibold text-[#F0EEF5]">Suggested players</h2>
 
-                  {suggested.length ? (
-                    suggested.map((player) => (
-                      <PlayerCard
-                        key={player.id}
-                        player={player}
-                        busy={busyUsername === player.username}
-                        onAdd={() => void sendRequest(player)}
-                        onBlock={() => setModalConfig({ type: "block", player })}
-                        onReport={() => setModalConfig({ type: "report", player })}
-                        addLabel="Add friend"
-                      />
-                    ))
-                  ) : (
-                    <EmptyState
-                      title="No players found"
-                      description={
-                        search.trim()
-                          ? "Try another username or search term."
-                          : "There are no new players to suggest right now."
-                      }
-                    />
-                  )}
-                </section>
-              )}
-
-              {activeTab === "requests" && (
-                <section className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-4">
-                    <h2 className="text-xl font-semibold">Incoming requests</h2>
-
-                    {incoming.filter((request) =>
-                      matchesSearch(request.user, search),
-                    ).length ? (
-                      incoming
-                        .filter((request) =>
-                          matchesSearch(request.user, search),
-                        )
-                        .map((request) => (
-                          <PlayerCard
-                            key={request.id}
-                            player={{ ...request.user, has_incoming_request: true }}
-                            busy={busyUsername === request.user.username}
-                            onAdd={() => void acceptRequest(request)}
-                            onBlock={() => setModalConfig({ type: "block", player: request.user })}
-                            onReport={() => setModalConfig({ type: "report", player: request.user })}
-                            addLabel="Accept"
-                            secondaryAction={{
-                              label: "Decline",
-                              icon: <X className="size-4" />,
-                              onClick: () => void declineRequest(request),
-                            }}
-                          />
-                        ))
+                    {paginatedSuggested.length ? (
+                      <div key={`suggested-page-${page}`} className="flex flex-col gap-4">
+                        <AnimatePresence mode="popLayout">
+                          {paginatedSuggested.map((player) => (
+                            <PlayerCard
+                              key={player.id}
+                              player={player}
+                              busy={busyUsername === player.username}
+                              onAdd={() => void sendRequest(player)}
+                              onBlock={() => setModalConfig({ type: "block", player })}
+                              onReport={() => setModalConfig({ type: "report", player })}
+                              addLabel="Add friend"
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
                     ) : (
                       <EmptyState
-                        title="No incoming requests"
-                        description="When someone sends you a friend request, it'll appear here."
+                        title="No players found"
+                        description={
+                          search.trim()
+                            ? "Try another username or search term."
+                            : "There are no new players to suggest right now."
+                        }
                       />
                     )}
-                  </div>
+                  </section>
+                )}
 
-                  <div className="flex flex-col gap-4">
-                    <h2 className="text-xl font-semibold">Sent requests</h2>
+                {activeTab === "requests" && (
+                  <section className="flex flex-col gap-8">
+                    <div className="flex flex-col gap-4">
+                      <h2 className="text-xl font-semibold text-[#F0EEF5]">Incoming requests</h2>
 
-                    {outgoing.filter((request) =>
-                      matchesSearch(request.friend || request.user, search),
-                    ).length ? (
-                      outgoing
-                        .filter((request) =>
-                          matchesSearch(request.friend || request.user, search),
-                        )
-                        .map((request) => {
-                          const targetPlayer = request.friend || request.user;
-                          return (
+                      {paginatedIncoming.length ? (
+                        <div key={`incoming-page-${page}`} className="flex flex-col gap-4">
+                          <AnimatePresence mode="popLayout">
+                            {paginatedIncoming.map((request) => (
+                              <PlayerCard
+                                key={request.id}
+                                player={{ ...request.user, has_incoming_request: true }}
+                                busy={busyUsername === request.user.username}
+                                onAdd={() => void acceptRequest(request)}
+                                onBlock={() => setModalConfig({ type: "block", player: request.user })}
+                                onReport={() => setModalConfig({ type: "report", player: request.user })}
+                                addLabel="Accept"
+                                secondaryAction={{
+                                  label: "Decline",
+                                  icon: <X className="size-4" />,
+                                  onClick: () => void declineRequest(request),
+                                }}
+                              />
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      ) : (
+                        <EmptyState
+                          title="No incoming requests"
+                          description="When someone sends you a friend request, it'll appear here."
+                        />
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      <h2 className="text-xl font-semibold text-[#F0EEF5]">Sent requests</h2>
+
+                      {paginatedOutgoing.length ? (
+                        <div key={`outgoing-page-${page}`} className="flex flex-col gap-4">
+                          <AnimatePresence mode="popLayout">
+                            {paginatedOutgoing.map((request) => {
+                              const targetPlayer = request.friend || request.user;
+                              return (
+                                <PlayerCard
+                                  key={request.id}
+                                  player={targetPlayer}
+                                  busy={busyUsername === targetPlayer.username}
+                                  onAdd={() => void cancelRequest(request)}
+                                  onBlock={() => setModalConfig({ type: "block", player: targetPlayer })}
+                                  onReport={() => setModalConfig({ type: "report", player: targetPlayer })}
+                                  addLabel="Cancel request"
+                                  addIcon={<X className="size-4" />}
+                                />
+                              );
+                            })}
+                          </AnimatePresence>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[#AAA6B5]">
+                          You haven't sent any pending requests.
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {activeTab === "friends" && (
+                  <section className="flex flex-col gap-4">
+                    <h2 className="text-xl font-semibold text-[#F0EEF5]">My Friends</h2>
+
+                    {paginatedFriends.length ? (
+                      <div key={`friends-page-${page}`} className="flex flex-col gap-4">
+                        <AnimatePresence mode="popLayout">
+                          {paginatedFriends.map((player) => (
                             <PlayerCard
-                              key={request.id}
-                              player={targetPlayer}
-                              busy={busyUsername === targetPlayer.username}
-                              onAdd={() => void cancelRequest(request)}
-                              onBlock={() => setModalConfig({ type: "block", player: targetPlayer })}
-                              onReport={() => setModalConfig({ type: "report", player: targetPlayer })}
-                              addLabel="Cancel request"
-                              addIcon={<X className="size-4" />}
+                              key={player.id}
+                              player={{ ...player, is_friend: true }}
+                              busy={busyUsername === player.username}
+                              onAdd={() => setModalConfig({ type: "unfriend", player })}
+                              onBlock={() => setModalConfig({ type: "block", player })}
+                              onReport={() => setModalConfig({ type: "report", player })}
+                              addLabel="Unfriend"
+                              addIcon={<UserMinus className="size-4" />}
                             />
-                          );
-                        })
+                          ))}
+                        </AnimatePresence>
+                      </div>
                     ) : (
-                      <p className="text-sm text-[#b4aec7]">
-                        You haven't sent any pending requests.
-                      </p>
+                      <EmptyState
+                        title="No friends yet"
+                        description="Discover players and send a friend request to start building your gaming circle."
+                      />
                     )}
-                  </div>
-                </section>
-              )}
+                  </section>
+                )}
 
-              {activeTab === "friends" && (
-                <section className="flex flex-col gap-4">
-                  <h2 className="text-xl font-semibold">My Friends</h2>
+                {activeTab === "blocked" && (
+                  <section className="flex flex-col gap-4">
+                    <h2 className="text-xl font-semibold text-[#F0EEF5]">Blocked Users</h2>
 
-                  {friends.length ? (
-                    friends.map((player) => (
-                      <PlayerCard
-                        key={player.id}
-                        player={{ ...player, is_friend: true }}
-                        busy={busyUsername === player.username}
-                        onAdd={() => setModalConfig({ type: "unfriend", player })}
-                        onBlock={() => setModalConfig({ type: "block", player })}
-                        onReport={() => setModalConfig({ type: "report", player })}
-                        addLabel="Unfriend"
-                        addIcon={<UserMinus className="size-4" />}
+                    {paginatedBlocked.length ? (
+                      <div key={`blocked-page-${page}`} className="flex flex-col gap-4">
+                        <AnimatePresence mode="popLayout">
+                          {paginatedBlocked.map((player) => (
+                            <PlayerCard
+                              key={player.id}
+                              player={player}
+                              busy={busyUsername === player.username}
+                              onAdd={() => void handleUnblock(player)}
+                              onBlock={() => setModalConfig({ type: "report", player })}
+                              onReport={() => setModalConfig({ type: "report", player })}
+                              addLabel="Unblock"
+                              addIcon={<Unlock className="size-4" />}
+                              isBlockedView
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    ) : (
+                      <EmptyState
+                        title="No blocked users"
+                        description="Users you block will appear here."
                       />
-                    ))
-                  ) : (
-                    <EmptyState
-                      title="No friends yet"
-                      description="Discover players and send a friend request to start building your gaming circle."
-                    />
-                  )}
-                </section>
-              )}
+                    )}
+                  </section>
+                )}
+              </div>
+            )}
 
-              {activeTab === "blocked" && (
-                <section className="flex flex-col gap-4">
-                  <h2 className="text-xl font-semibold">Blocked Users</h2>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-[#38363F] pt-6 mt-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  className="border-[#38363F] bg-[#383044] text-[#F0EEF5] hover:bg-[#383044]/80 disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-4 mr-1.5" /> Previous
+                </Button>
 
-                  {blocked.length ? (
-                    blocked.map((player) => (
-                      <PlayerCard
-                        key={player.id}
-                        player={player}
-                        busy={busyUsername === player.username}
-                        onAdd={() => void handleUnblock(player)}
-                        onBlock={() => setModalConfig({ type: "report", player })}
-                        onReport={() => setModalConfig({ type: "report", player })}
-                        addLabel="Unblock"
-                        addIcon={<Unlock className="size-4" />}
-                        isBlockedView
-                      />
-                    ))
-                  ) : (
-                    <EmptyState
-                      title="No blocked users"
-                      description="Users you block will appear here."
-                    />
-                  )}
-                </section>
-              )}
-            </>
-          )}
+                <span className="text-sm text-[#AAA6B5]">
+                  Page <strong className="text-[#F0EEF5]">{page}</strong> of <strong className="text-[#F0EEF5]">{totalPages}</strong>
+                </span>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="border-[#38363F] bg-[#383044] text-[#F0EEF5] hover:bg-[#383044]/80 disabled:opacity-40"
+                >
+                  Next <ChevronRight className="size-4 ml-1.5" />
+                </Button>
+              </div>
+            )}
+          </div>
         </main>
 
         <Footer />
@@ -520,24 +592,24 @@ export default function Friends() {
       {/* CUSTOM CONFIRMATION & ACTION MODALS */}
       {modalConfig && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0">
-          <div className="w-full max-w-md rounded-2xl border border-[#514961] bg-[#2a2838] p-6 text-[#e0deeb] shadow-2xl animate-in zoom-in-95">
+          <div className="w-full max-w-md rounded-2xl border border-[#38363F] bg-[#1B1A20] p-6 text-[#F0EEF5] shadow-2xl animate-in zoom-in-95">
             {modalConfig.type === "block" && (
               <>
-                <h3 className="text-lg font-semibold text-white">Block Player</h3>
-                <p className="mt-2 text-sm text-[#b4aec7]">
-                  Are you sure you want to block <span className="text-white font-medium">{getDisplayName(modalConfig.player)}</span>? They will no longer be able to interact with you or appear in your suggestions.
+                <h3 className="text-lg font-semibold text-[#F0EEF5]">Block Player</h3>
+                <p className="mt-2 text-sm text-[#AAA6B5]">
+                  Are you sure you want to block <span className="text-[#F0EEF5] font-medium">{getDisplayName(modalConfig.player)}</span>? They will no longer be able to interact with you or appear in your suggestions.
                 </p>
                 <div className="mt-6 flex justify-end gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setModalConfig(null)}
-                    className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                    className="border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5]"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleBlockConfirm}
-                    className="bg-[#a65e72] text-white hover:bg-[#b86d81]"
+                    className="bg-[#3A272D] text-[#EDB1B4] border border-[#EDB1B4]/40 hover:bg-[#4d323a]"
                   >
                     Block User
                   </Button>
@@ -547,21 +619,21 @@ export default function Friends() {
 
             {modalConfig.type === "unfriend" && (
               <>
-                <h3 className="text-lg font-semibold text-white">Remove Friend</h3>
-                <p className="mt-2 text-sm text-[#b4aec7]">
-                  Are you sure you want to remove <span className="text-white font-medium">{getDisplayName(modalConfig.player)}</span> from your friends list?
+                <h3 className="text-lg font-semibold text-[#F0EEF5]">Remove Friend</h3>
+                <p className="mt-2 text-sm text-[#AAA6B5]">
+                  Are you sure you want to remove <span className="text-[#F0EEF5] font-medium">{getDisplayName(modalConfig.player)}</span> from your friends list?
                 </p>
                 <div className="mt-6 flex justify-end gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setModalConfig(null)}
-                    className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                    className="border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5]"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleUnfriendConfirm}
-                    className="bg-[#a65e72] text-white hover:bg-[#b86d81]"
+                    className="bg-[#3A272D] text-[#EDB1B4] border border-[#EDB1B4]/40 hover:bg-[#4d323a]"
                   >
                     Unfriend
                   </Button>
@@ -571,18 +643,18 @@ export default function Friends() {
 
             {modalConfig.type === "report" && (
               <>
-                <h3 className="text-lg font-semibold text-white">Report Player</h3>
-                <p className="mt-2 text-sm text-[#b4aec7]">
-                  Report <span className="text-white font-medium">{getDisplayName(modalConfig.player)}</span> for inappropriate behavior.
+                <h3 className="text-lg font-semibold text-[#F0EEF5]">Report Player</h3>
+                <p className="mt-2 text-sm text-[#AAA6B5]">
+                  Report <span className="text-[#F0EEF5] font-medium">{getDisplayName(modalConfig.player)}</span> for inappropriate behavior.
                 </p>
 
                 <div className="mt-4 flex flex-col gap-3">
                   <div>
-                    <label className="text-xs font-medium text-[#b4aec7]">Reason</label>
+                    <label className="text-xs font-medium text-[#AAA6B5]">Reason</label>
                     <select
                       value={reportReason}
                       onChange={(e) => setReportReason(e.target.value)}
-                      className="mt-1 h-10 w-full rounded-lg border border-[#514961] bg-[#373646] px-3 text-xs text-[#e0deeb] outline-none focus:border-[#8870b6]"
+                      className="mt-1 h-10 w-full rounded-lg border border-[#38363F] bg-[#383044] px-3 text-xs text-[#F0EEF5] outline-none focus:border-[#C2ADE7]"
                     >
                       <option value="harassment">Harassment or Bullying</option>
                       <option value="spam">Spam or Scams</option>
@@ -593,13 +665,13 @@ export default function Friends() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-[#b4aec7]">Additional Details (Optional)</label>
+                    <label className="text-xs font-medium text-[#AAA6B5]">Additional Details (Optional)</label>
                     <textarea
                       value={reportDetails}
                       onChange={(e) => setReportDetails(e.target.value)}
                       placeholder="Provide context or links..."
                       rows={3}
-                      className="mt-1 w-full rounded-lg border border-[#514961] bg-[#373646] p-3 text-xs text-[#e0deeb] outline-none placeholder:text-[#928ba7] focus:border-[#8870b6]"
+                      className="mt-1 w-full rounded-lg border border-[#38363F] bg-[#383044] p-3 text-xs text-[#F0EEF5] outline-none placeholder:text-[#AAA6B5] focus:border-[#C2ADE7]"
                     />
                   </div>
                 </div>
@@ -608,13 +680,13 @@ export default function Friends() {
                   <Button
                     variant="outline"
                     onClick={() => setModalConfig(null)}
-                    className="border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#373646]"
+                    className="border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5]"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleReportConfirm}
-                    className="bg-[#8063a8] text-white hover:bg-[#9274bb]"
+                    className="bg-[#C2ADE7] text-[#1B1A20] font-semibold hover:bg-[#b098db]"
                   >
                     Submit Report
                   </Button>
@@ -669,7 +741,7 @@ const FavoriteCover = memo(({ src, title }: { src?: string | null; title: string
     />
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Gamepad2 className="size-5 text-[#8870b6]" />
+      <Gamepad2 className="size-5 text-[#8870B6]" />
     </div>
   );
 });
@@ -693,15 +765,23 @@ function PlayerCard({
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    
-    // If less than 320px space below, render popover ABOVE the avatar
-    setOpenUpward(spaceBelow < 320);
+    const cardHeight = 340;
+    const spacing = 8;
+    const overflowsBottom = rect.bottom + spacing + cardHeight > window.innerHeight;
+
+    setOpenUpward(overflowsBottom);
     setShowMiniProfile(true);
   };
 
   return (
-    <article className={`${CARD} p-4 md:p-5 relative`}>
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.25, ease: "easeInOut" }}
+      className={`${CARD} p-4 md:p-5 relative`}
+    >
       <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[minmax(0,1fr)_250px_120px] md:gap-6">
         <div className="flex min-w-0 items-center gap-4">
           
@@ -711,34 +791,31 @@ function PlayerCard({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={() => setShowMiniProfile(false)}
           >
-            <Avatar className="size-[76px] shrink-0 border-2 border-[#8870b6] bg-[#4d3e68] md:size-[88px] cursor-pointer">
+            <Avatar className="size-[76px] shrink-0 border-2 border-[#8870B6] bg-[#383044] md:size-[88px] cursor-pointer">
               <AvatarImage src={player.avatar_url || undefined} alt={displayName} />
-              <AvatarFallback className="bg-[#4d3e68]">
-                <Gamepad2 className="size-9 text-[#c2ade7]" />
+              <AvatarFallback className="bg-[#383044]">
+                <Gamepad2 className="size-9 text-[#C2ADE7]" />
               </AvatarFallback>
             </Avatar>
 
             {showMiniProfile && (
-              <MiniProfileCard
-                user={player}
-                onAddFriend={onAdd}
-                onBlock={onBlock}
-                onReport={onReport}
-                position={
-                  openUpward
-                    ? { top: -330, left: 0 } 
-                    : undefined
-                }
-              />
+              <div className={`absolute left-0 z-50 ${openUpward ? "bottom-full mb-2" : "top-full mt-2"}`}>
+                <MiniProfileCard
+                  user={player}
+                  onAddFriend={onAdd}
+                  onBlock={onBlock}
+                  onReport={onReport}
+                />
+              </div>
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg font-semibold text-white md:text-xl">
+            <h3 className="truncate text-lg font-semibold text-[#F0EEF5] md:text-xl">
               {displayName}
             </h3>
-            <p className="mb-2 text-sm text-[#b4aec7]">@{player.username}</p>
-            <p className="line-clamp-3 break-words text-sm leading-relaxed text-[#d0ccdc]">
+            <p className="mb-2 text-sm text-[#AAA6B5]">@{player.username}</p>
+            <p className="line-clamp-3 break-words text-sm leading-relaxed text-[#AAA6B5]">
               {player.bio?.trim() || "No bio yet."}
             </p>
           </div>
@@ -746,7 +823,7 @@ function PlayerCard({
 
         {/* Middle Column: Favorite Games Preview */}
         <div className="hidden md:flex flex-col gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#b4aec7]">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#AAA6B5]">
             Favorites
           </span>
           {favorites.length > 0 ? (
@@ -754,7 +831,7 @@ function PlayerCard({
               {favorites.slice(0, 3).map((fav, index) => (
                 <div
                   key={fav.id || index}
-                  className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#514961] bg-[#2a2838]"
+                  className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#38363F] bg-[#1B1A20]"
                   title={fav.title}
                 >
                   <FavoriteCover src={fav.cover_image_url} title={fav.title} />
@@ -762,7 +839,7 @@ function PlayerCard({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#b4aec7]">No favorite games listed.</p>
+            <p className="text-xs text-[#AAA6B5]">No favorite games listed.</p>
           )}
         </div>
 
@@ -771,7 +848,7 @@ function PlayerCard({
           <Button
             onClick={onAdd}
             disabled={busy}
-            className="w-full bg-[#8063a8] text-white hover:bg-[#9274bb] md:w-auto text-xs font-semibold h-9"
+            className="w-full bg-[#C2ADE7] text-[#1B1A20] font-semibold hover:bg-[#b098db] md:w-auto text-xs h-9"
           >
             {addIcon}
             <span className={addIcon ? "ml-1.5" : ""}>{addLabel}</span>
@@ -782,7 +859,7 @@ function PlayerCard({
               variant="outline"
               onClick={secondaryAction.onClick}
               disabled={busy}
-              className="w-full border-[#514961] bg-transparent text-[#d0ccdc] hover:bg-[#454256] hover:text-white md:w-auto text-xs h-9"
+              className="w-full border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5] md:w-auto text-xs h-9"
             >
               {secondaryAction.icon}
               <span className="ml-1.5">{secondaryAction.label}</span>
@@ -794,15 +871,15 @@ function PlayerCard({
               <button
                 type="button"
                 onClick={onBlock}
-                className="text-[11px] text-[#b4aec7] hover:text-[#f1b9c4] transition-colors"
+                className="text-[11px] text-[#AAA6B5] hover:text-[#EDB1B4] transition-colors"
               >
                 Block
               </button>
-              <span className="text-[#514961]">•</span>
+              <span className="text-[#38363F]">•</span>
               <button
                 type="button"
                 onClick={onReport}
-                className="text-[11px] text-[#b4aec7] hover:text-[#f1b9c4] transition-colors"
+                className="text-[11px] text-[#AAA6B5] hover:text-[#EDB1B4] transition-colors"
               >
                 Report
               </button>
@@ -810,7 +887,7 @@ function PlayerCard({
           )}
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }
 
@@ -825,11 +902,11 @@ function EmptyState({
     <div
       className={`${CARD} flex flex-col items-center gap-3 px-5 py-14 text-center`}
     >
-      <Users className="size-10 text-[#8870b6]" />
+      <Users className="size-10 text-[#8870B6]" />
 
-      <h3 className="text-lg font-semibold">{title}</h3>
+      <h3 className="text-lg font-semibold text-[#F0EEF5]">{title}</h3>
 
-      <p className="max-w-sm text-sm text-[#b4aec7]">{description}</p>
+      <p className="max-w-sm text-sm text-[#AAA6B5]">{description}</p>
     </div>
   );
 }

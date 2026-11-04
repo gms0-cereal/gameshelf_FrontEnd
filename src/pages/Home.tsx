@@ -41,12 +41,12 @@ const CURATED_IDS_STRING = Array.from(
 ).join(",");
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  playing: { label: "Playing", className: "bg-[#383044] text-[#C2ADE7]" },
+  playing: { label: "Playing", className: "bg-[#393229] text-[#DFC192]" },
   completed: { label: "Completed", className: "bg-[#1E3A2B] text-[#9EE8B8]" },
   on_hold: { label: "On Hold", className: "bg-[#393229] text-[#DFC192]" },
-  plan_to_play: { label: "Plan to Play", className: "bg-[#383044]/60 text-[#C2ADE7]" },
+  plan_to_play: { label: "Plan to Play", className: "bg-[#2B2A33] text-[#C2ADE7]" },
   dropped: { label: "Dropped", className: "bg-[#3A272D] text-[#EDB1B4]" },
-  unplayed: { label: "Unplayed", className: "bg-[#1B1A20] text-[#AAA6B5] border border-[#38363F]" },
+  unplayed: { label: "Unplayed", className: "bg-[#1A1A20] text-[#76717F] border border-[#38363F]" },
 };
 
 function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSummary {
@@ -129,7 +129,7 @@ function playersLikeYouToSummary(item: PlayersLikeYouItem): GameSummary | null {
 
 export default function Home() {
   const [heroIndex, setHeroIndex] = useState(0);
-  const [userListMap, setUserListMap] = useState<Map<string, UserGameEntry>>(new Map());
+  const [userListMap, setUserListMap] = useState<Map<any, any>>(new Map());
 
   const { user } = useAuth();
 
@@ -192,6 +192,8 @@ export default function Home() {
   const [recommendedGames, setRecommendedGames] = useState<GameSummary[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(true);
   const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
 
   // Fetch taste-based recommendations
   useEffect(() => {
@@ -441,12 +443,21 @@ export default function Home() {
       setCursors((previous) => previous.slice(0, -1));
     }
   }
+  useEffect(() => {
+  if (heroGames.length <= 1 || isHovered) return;
+
+  const timer = setInterval(() => {
+    setHeroIndex((prev) => (prev < heroGames.length - 1 ? prev + 1 : 0));
+  }, 7000); // 7 seconds
+
+  return () => clearInterval(timer);
+  }, [heroGames.length, isHovered]);
 
   const currentHero = heroGames[heroIndex] || null;
 
   return (
-    <div className="min-h-screen bg-[#1B1A20]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#1B1A20] text-[#F0EEF5] antialiased">
+    <div className="min-h-screen bg-[#141417]">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#141417] text-[#F0EEF5] antialiased">
         <Navbar />
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           {/* Welcome header */}
@@ -460,64 +471,89 @@ export default function Home() {
           </div>
 
           {/* Hero Banner */}
-          <section className="relative flex min-h-[420px] items-end overflow-hidden rounded-2xl bg-[#1B1A20] px-6 py-10 border border-[#38363F] md:px-11 xl:h-[440px]">
-            {currentHero && (
-              <img
-                src={currentHero.cover || ""}
-                alt={currentHero.title}
-                fetchPriority="high"
-                loading="eager"
-                className="absolute inset-0 h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#1B1A20] via-[#1B1A20]/60 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#1B1A20]/90 via-transparent to-transparent" />
+<section
+  onMouseEnter={() => setIsHovered(true)}
+  onMouseLeave={() => setIsHovered(false)}
+  className="relative min-h-[420px] w-full overflow-hidden rounded-2xl bg-[#1B1A20] border border-[#38363F] xl:h-[440px]"
+>
+  {/* Horizontal Sliding Track */}
+  <div
+    className="flex h-full w-full transition-transform duration-700 ease-in-out"
+    style={{ transform: `translateX(-${heroIndex * 100}%)` }}
+  >
+    {heroGames.map((hero) => (
+      <div
+        key={hero.id}
+        className="relative flex min-h-[420px] w-full flex-shrink-0 items-end px-6 py-10 md:px-11 xl:h-[440px]"
+      >
+        <img
+          src={hero.cover || ""}
+          alt={hero.title}
+          fetchPriority="high"
+          loading="eager"
+          className="absolute inset-0 h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
+        />
+        {/* Gradient overlays for contrast */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1B1A20] via-[#1B1A20]/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1B1A20]/90 via-transparent to-transparent" />
 
-            <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
-              <span className="text-xs font-medium text-[#F0EEF5]">
-                {heroIndex + 1} / {Math.max(heroGames.length, 1)}
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setHeroIndex((prev) => (prev > 0 ? prev - 1 : heroGames.length - 1))}
-                  className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20]/80 text-[#F0EEF5] hover:bg-[#383044]"
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setHeroIndex((prev) => (prev < heroGames.length - 1 ? prev + 1 : 0))}
-                  className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20]/80 text-[#F0EEF5] hover:bg-[#383044]"
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
-              </div>
-            </div>
+        {/* Hero Card Text Content */}
+        <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[#C2ADE7]">
+            TOP RATED THIS MONTH
+          </p>
+          <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] text-[#F0EEF5] drop-shadow-md md:text-[46px]">
+            {hero.title}
+          </h2>
+          <p className="line-clamp-2 text-[14px] leading-relaxed text-[#AAA6B5] drop-shadow">
+            {hero.bio}
+          </p>
+          <div className="flex items-center gap-4 pt-2">
+            <Button
+              asChild
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#BDA6E4] px-6 text-[14px] font-semibold text-[#1B1A20] hover:bg-[#C2ADE7]"
+            >
+              <Link to={`/gamedetails/${hero.slug}`}>
+                <Info className="size-4" /> Details
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
 
-            <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
-              <p className="text-[11px] leading-[13px] tracking-[2px] text-[#C2ADE7] font-semibold uppercase">
-                TOP RATED THIS MONTH
-              </p>
-              <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] md:text-[46px] text-[#F0EEF5] drop-shadow-md">
-                {currentHero ? currentHero.title : "Loading featured games..."}
-              </h2>
-              <p className="line-clamp-2 text-[14px] leading-relaxed text-[#AAA6B5] drop-shadow">
-                {currentHero ? currentHero.bio : "Explore top-tier titles trending across the community."}
-              </p>
-              {currentHero && (
-                <div className="flex items-center gap-4 pt-2">
-                  <Button asChild className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#BDA6E4] px-6 text-[14px] font-semibold text-[#1B1A20] hover:bg-[#C2ADE7]">
-                    <Link to={`/gamedetails/${currentHero.slug}`}>
-                      <Info className="size-4" /> Details
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </section>
+  {/* Top Right Controls & Slide Indicators */}
+  <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
+    <span className="text-xs font-medium text-[#F0EEF5]">
+      {heroIndex + 1} / {Math.max(heroGames.length, 1)}
+    </span>
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() =>
+          setHeroIndex((prev) => (prev > 0 ? prev - 1 : heroGames.length - 1))
+        }
+        className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20]/80 text-[#F0EEF5] hover:bg-[#383044]"
+      >
+        <ChevronLeft className="size-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() =>
+          setHeroIndex((prev) =>
+            prev < heroGames.length - 1 ? prev + 1 : 0
+          )
+        }
+        className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20]/80 text-[#F0EEF5] hover:bg-[#383044]"
+      >
+        <ChevronRight className="size-4" />
+      </Button>
+    </div>
+  </div>
+</section>
 
           {/* RPGs Section */}
           <section className="flex flex-col gap-8">
@@ -550,7 +586,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollTopRated(-1)}
                     aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
@@ -559,7 +595,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollTopRated(1)}
                     aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                   >
                     <ChevronRight className="size-4" />
                   </Button>
@@ -611,7 +647,7 @@ export default function Home() {
                   size="icon"
                   onClick={() => scrollRecommended(-1)}
                   aria-label="Scroll left"
-                  className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                  className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                 >
                   <ChevronLeft className="size-4" />
                 </Button>
@@ -620,7 +656,7 @@ export default function Home() {
                   size="icon"
                   onClick={() => scrollRecommended(1)}
                   aria-label="Scroll right"
-                  className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                  className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                 >
                   <ChevronRight className="size-4" />
                 </Button>
@@ -678,7 +714,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollPlayers(-1)}
                     aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
@@ -687,7 +723,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollPlayers(1)}
                     aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                   >
                     <ChevronRight className="size-4" />
                   </Button>
@@ -734,7 +770,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollFriendsPlay(-1)}
                     aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
@@ -743,7 +779,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollFriendsPlay(1)}
                     aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]"
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
                   >
                     <ChevronRight className="size-4" />
                   </Button>
@@ -774,11 +810,11 @@ export default function Home() {
             {catalogError && <p className="text-sm text-[#EDB1B4]">Failed to load catalog games.</p>}
             <GameGrid games={steamSummaries} loading={catalogLoading} />
             <nav className="flex items-center justify-center gap-4 pt-4">
-              <Button onClick={goToPreviousPage} disabled={pageNumber === 1 || catalogLoading} className="h-10 rounded-lg border border-[#38363F] bg-[#1B1A20] px-5 text-sm font-semibold text-[#F0EEF5] hover:bg-[#383044] disabled:opacity-50">
+              <Button onClick={goToPreviousPage} disabled={pageNumber === 1 || catalogLoading} className="h-10 rounded-lg border border-[#38363F] bg-[#1A1A20] px-5 text-sm font-semibold text-[#F0EEF5] hover:bg-[#2B2A33] disabled:opacity-50">
                 Previous
               </Button>
               <span className="text-[13px] text-[#AAA6B5]">Page {pageNumber}</span>
-              <Button onClick={goToNextPage} disabled={!hasMore || catalogLoading} className="h-10 rounded-lg border-0 bg-[#BDA6E4] px-5 text-sm font-semibold text-[#1B1A20] hover:bg-[#C2ADE7] disabled:opacity-50">
+              <Button onClick={goToNextPage} disabled={!hasMore || catalogLoading} className="h-10 rounded-lg border-0 bg-[#C2ADE7] px-5 text-sm font-bold text-[#141417] hover:bg-[#b098db] disabled:opacity-50">
                 Next
               </Button>
             </nav>
@@ -801,16 +837,16 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <Link
                     to="/playlists/new"
-                    className="mr-2 rounded-lg bg-[#BDA6E4] px-4 py-2.5 text-[13px] font-semibold text-[#1B1A20] hover:bg-[#C2ADE7]"
+                    className="mr-2 rounded-lg bg-[#C2ADE7] px-4 py-2.5 text-[13px] font-bold text-[#141417] hover:bg-[#b098db]"
                   >
                     Create playlist
                   </Link>
                   <Button variant="outline" size="icon" onClick={() => scrollCarousel(-1)} aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]">
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]">
                     <ChevronLeft className="size-4" />
                   </Button>
                   <Button variant="outline" size="icon" onClick={() => scrollCarousel(1)} aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20] text-[#F0EEF5] hover:bg-[#383044]">
+                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]">
                     <ChevronRight className="size-4" />
                   </Button>
                 </div>
@@ -821,8 +857,8 @@ export default function Home() {
             {playlistsError && <p role="alert" className="text-sm text-[#EDB1B4]">{playlistsError}</p>}
 
             {!playlistsLoading && !playlistsError && communityPlaylists.length === 0 && (
-              <div className="rounded-xl border border-dashed border-[#38363F] bg-[#1B1A20] px-6 py-10 text-center">
-                <ListMusic className="mx-auto size-8 text-[#AAA6B5]" strokeWidth={1.5} />
+              <div className="rounded-xl border border-dashed border-[#38363F] bg-[#1A1A20] px-6 py-10 text-center">
+                <ListMusic className="mx-auto size-8 text-[#76717F]" strokeWidth={1.5} />
                 <p className="mt-3 text-sm text-[#AAA6B5]">No public playlists yet. Be the first to share one.</p>
               </div>
             )}
