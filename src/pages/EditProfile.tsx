@@ -1,4 +1,3 @@
-
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -299,7 +298,7 @@ export default function EditProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#09090B] p-8 text-[#F2F0F7]">
+      <div className="flex min-h-screen items-center justify-center bg-[#09090B] text-[#F2F0F7]">
         Loading profile...
       </div>
     );
@@ -307,9 +306,9 @@ export default function EditProfile() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#09090B] p-8 text-[#F2F0F7]">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#09090B] text-[#F2F0F7]">
         <p>You need to log in to edit your profile.</p>
-        <Link to="/login" className="mt-4 inline-block text-[#B8A2DC]">
+        <Link to="/login" className="mt-2 text-[#B8A2DC] hover:underline">
           Go to login
         </Link>
       </div>
@@ -317,12 +316,14 @@ export default function EditProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-[#F2F0F7]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col">
+    <div className="min-h-screen w-full bg-[#09090B]">
+      <div
+        className="flex min-h-screen w-full flex-col bg-[#09090B] text-[#F2F0F7] antialiased"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
         <Navbar />
 
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
-
           {/* Page Header */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -348,7 +349,6 @@ export default function EditProfile() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-7">
-
             {/* Public Profile */}
             <Card className={PANEL}>
               <h2 className="text-xl font-semibold">Public profile</h2>

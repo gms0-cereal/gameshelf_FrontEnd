@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { Heart, ListMusic } from "lucide-react";
 import type { Playlist, PlaylistGame } from "@/services/playlistService";
@@ -27,13 +27,41 @@ function coverFor(game?: PlaylistGame): string | null {
   return game.cover_url ?? (game.steam_appid ? steamCover(game.steam_appid) : null);
 }
 
+const getFullUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
+/** Owner Avatar component matching PlaylistDetail design system */
+const OwnerAvatar = memo(({ src, name }: { src?: string | null; name: string }) => {
+  const [failed, setFailed] = useState(false);
+  const initials = name ? name.slice(0, 2).toUpperCase() : "U";
+
+  return src && !failed ? (
+    <img
+      src={src}
+      alt={name}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="h-full w-full object-cover"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#302438] to-[#17191E] text-[11px] font-semibold text-[#B39ACF]" aria-hidden="true">
+      {initials}
+    </div>
+  );
+});
+OwnerAvatar.displayName = "OwnerAvatar";
+
 function Cover({ src, className }: { src: string | null; className: string }) {
   const [failed, setFailed] = useState(false);
   return src && !failed ? (
     <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={`object-cover ${className}`} />
   ) : (
-    <div className={`flex items-center justify-center bg-gradient-to-br from-[#3b3560] to-[#1d2b33] ${className}`} aria-hidden="true">
-      <ListMusic className="size-5 text-[#8b86a3]" />
+    <div className={`flex items-center justify-center bg-gradient-to-br from-[#302438] to-[#17191E] ${className}`} aria-hidden="true">
+      <ListMusic className="size-5 text-[#77717F]" />
     </div>
   );
 }
@@ -52,9 +80,9 @@ export function PlaylistCarouselCard({ playlist }: { playlist: Playlist }) {
   return (
     <Link
       to={`/playlists/${playlist.owner.username}/${playlist.id}`}
-      className="group block w-[300px] shrink-0 snap-start focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6] sm:w-[360px] rounded-xl"
+      className="group block w-[300px] shrink-0 snap-start focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] sm:w-[360px] rounded-2xl"
     >
-      <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-[#2a2838]">
+      <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] transition-colors group-hover:border-[#B39ACF]/60">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
@@ -64,13 +92,13 @@ export function PlaylistCarouselCard({ playlist }: { playlist: Playlist }) {
             <Cover src={coverFor(playlist.games[i])} className="h-full w-full" />
           </div>
         ))}
-        <span className="absolute left-3 top-3 z-10 rounded bg-black/60 px-2 py-1 font-mono text-[11px] text-[#e0deeb] backdrop-blur">
+        <span className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 font-mono text-[11px] text-[#B39ACF] backdrop-blur border border-[#302438]">
           {ownerOf(playlist)}
         </span>
       </div>
-      <h3 className="mt-3 truncate text-[15px] font-semibold group-hover:text-[#c2ade7]">{playlist.title}</h3>
-      <p className="mt-1 font-mono text-[11px] text-[#8b86a3]">
-        {titlesLabel(playlist.game_count)} {timeAgo(playlist.updated_at)}
+      <h3 className="mt-3 truncate text-[15px] font-semibold text-[#E6E1EA] group-hover:text-[#B39ACF] transition-colors">{playlist.title}</h3>
+      <p className="mt-1 font-mono text-[11px] text-[#77717F]">
+        {titlesLabel(playlist.game_count)} · <span className="text-[#34D399]">{timeAgo(playlist.updated_at)}</span>
       </p>
     </Link>
   );
@@ -79,38 +107,39 @@ export function PlaylistCarouselCard({ playlist }: { playlist: Playlist }) {
 /** Browse page card: owner row, meta line, 4 covers, "View all". */
 export function PlaylistListCard({ playlist }: { playlist: Playlist }) {
   const name = ownerOf(playlist);
+  const avatarUrl = getFullUrl(playlist.owner.avatar_url);
 
   return (
     <Link
       to={`/playlists/${playlist.owner.username}/${playlist.id}`}
-      className="block rounded-xl border border-[#2f2d40] bg-[#262436] p-5 transition-colors hover:border-[#8b6fd6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
+      className="group block rounded-2xl border border-[#302438] bg-[#17191E] p-5 transition-all hover:border-[#B39ACF]/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
     >
       <div className="flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold">
-          {name.slice(0, 1).toUpperCase()}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium">{name}</p>
-          <p className="truncate font-mono text-[11px] text-[#8b86a3]">
-            <span className="capitalize">{playlist.visibility}</span> · {titlesLabel(playlist.game_count)} ·{" "}
-            <Heart className="inline size-3 -translate-y-px" aria-hidden="true" /> {playlist.like_count} · Created{" "}
-            {timeAgo(playlist.created_at)} · Updated {timeAgo(playlist.updated_at)}
+        <div className="size-9 shrink-0 overflow-hidden rounded-full border border-[#554363] bg-[#302438]">
+          <OwnerAvatar src={avatarUrl} name={name} />
+        </div>
+<div className="min-w-0">
+          <p className="truncate text-[13px] font-medium text-[#E6E1EA] group-hover:text-[#B39ACF] transition-colors">{name}</p>
+          <p className="truncate font-mono text-[11px] text-[#77717F]">
+            <span className="capitalize text-[#B39ACF]">{playlist.visibility}</span> · <span className="text-[#22D3EE]">{titlesLabel(playlist.game_count)}</span> ·{" "}
+            <Heart className="inline size-3 -translate-y-px text-[#E58B91] fill-[#E58B91]" aria-hidden="true" /> {playlist.like_count} · Created{" "}
+            {timeAgo(playlist.created_at)} · Updated <span className="text-[#34D399]">{timeAgo(playlist.updated_at)}</span>
           </p>
         </div>
       </div>
 
-      <h3 className="mt-4 truncate text-[17px] font-semibold">{playlist.title}</h3>
+      <h3 className="mt-4 truncate text-[17px] font-semibold text-[#E6E1EA] group-hover:text-[#B39ACF] transition-colors">{playlist.title}</h3>
       {playlist.description && (
-        <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-[#b4aec7]">{playlist.description}</p>
+        <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-[#A0A0A8]">{playlist.description}</p>
       )}
 
       <div className="mt-4 grid grid-cols-4 gap-2">
         {[0, 1, 2, 3].map((i) => (
-          <Cover key={i} src={coverFor(playlist.games[i])} className="aspect-[2/3] w-full rounded-md" />
+          <Cover key={i} src={coverFor(playlist.games[i])} className="aspect-[2/3] w-full rounded-xl border border-[#302438]" />
         ))}
       </div>
 
-      <p className="mt-4 text-[13px] font-medium text-[#c2ade7]">
+      <p className="mt-4 text-[13px] font-medium text-[#B39ACF] group-hover:translate-x-1 transition-transform inline-block">
         View all {titlesLabel(playlist.game_count)} →
       </p>
     </Link>

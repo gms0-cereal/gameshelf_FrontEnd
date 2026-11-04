@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, memo, useRef} from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { Heart, LayoutGrid, List, Loader2 } from "lucide-react";
@@ -37,7 +37,7 @@ const Cover = memo(({ src, className }: { src?: string | null; className: string
       className={`object-cover ${className}`}
     />
   ) : (
-    <div className={`bg-gradient-to-br from-[#3b3560] to-[#1d2b33] ${className}`} aria-hidden="true" />
+    <div className={`bg-gradient-to-br from-[#302438] to-[#17191E] ${className}`} aria-hidden="true" />
   );
 });
 Cover.displayName = "Cover";
@@ -63,7 +63,7 @@ const OwnerAvatar = memo(({ src, name }: { src?: string | null; name: string }) 
       className="h-full w-full object-cover"
     />
   ) : (
-    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#3b3560] to-[#1d2b33] text-[11px] font-semibold text-[#c2ade7]" aria-hidden="true">
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#302438] to-[#17191E] text-[11px] font-semibold text-[#B39ACF]" aria-hidden="true">
       {initials}
     </div>
   );
@@ -75,7 +75,7 @@ function GameLink({ game, className, children }: { game: PlaylistGame; className
   return game.steam_appid ? (
     <Link
       to={`/gamedetails/${game.steam_appid}`}
-      className={`${className} transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]`}
+      className={`${className} transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]`}
     >
       {children}
     </Link>
@@ -114,7 +114,7 @@ const PlaylistDetail = () => {
     };
   }, [showMiniProfile]);
   const [miniProfileUser, setMiniProfileUser] = useState<UserProfile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [, setLoadingProfile] = useState(false);
 
   const handleAvatarClick = async () => {
     if (showMiniProfile) {
@@ -136,6 +136,7 @@ const PlaylistDetail = () => {
       }
     }
   };
+
   useEffect(() => {
     const playlistId = Number(id);
     if (!Number.isInteger(playlistId)) {
@@ -221,8 +222,6 @@ const PlaylistDetail = () => {
   const hiddenGenres = genreCounts.length - TOP_GENRES_SHOWN;
   const isLiked = Boolean((playlist as any)?.is_liked);
 
-  // Canonical URL: /playlists/:ownerUsername/:id
-  // Redirects old /playlists/:id links and fixes a wrong username in the URL.
   if (
     playlist &&
     ownerUsername &&
@@ -232,26 +231,19 @@ const PlaylistDetail = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#282539] font-sans text-[#e6e3f5]">
+    <div className="flex min-h-screen flex-col bg-[#000000] font-sans text-[#E6E1EA]">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-8 sm:px-6 lg:px-[52px]">
-        <nav className="font-mono text-[11px] uppercase tracking-widest text-[#8f8ca9]" aria-label="Breadcrumb">
-          <Link to="/home" className="hover:text-[#e6e3f5]">Home</Link>
-          <span className="mx-2">/</span>
-          <Link to="/playlists" className="hover:text-[#e6e3f5]">Community playlists</Link>
-          <span className="mx-2">/</span>
-          <span className="text-[#e6e3f5]">{playlist?.title ?? "Playlist"}</span>
-        </nav>
-
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 py-8 md:px-8 xl:px-16">
         {loading && (
-          <p className="mt-10 flex items-center gap-2 text-sm text-[#a9a6c2]">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading…
-          </p>
+          <div className="flex flex-col items-center justify-center py-24 text-[#A0A0A8]">
+            <Loader2 className="size-6 animate-spin text-[#B39ACF]" aria-hidden="true" />
+            <p className="mt-2 text-sm">Loading playlist...</p>
+          </div>
         )}
 
         {error && (
-          <p role="alert" className="mt-10 rounded-lg border border-[#a8454b] bg-[#a8454b]/15 px-3 py-2 text-[13px] text-[#f4b6ba]">
+          <p role="alert" className="rounded-xl border border-[#E58B91] bg-[#E58B91]/15 px-4 py-3 text-sm text-[#E58B91]">
             {error}
           </p>
         )}
@@ -259,67 +251,69 @@ const PlaylistDetail = () => {
         {playlist && (
           <>
             {/* Header: details left, compiled genres right */}
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
-            <div>
-              <div className="flex items-center gap-3">
+            <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="relative inline-block" ref={profileCardRef}>
+                    <button
+                      type="button"
+                      onClick={handleAvatarClick}
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#B39ACF]/20 text-xs font-semibold overflow-hidden border border-[#554363] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
+                      aria-label={`View ${ownerName}'s profile card`}
+                    >
+                      <OwnerAvatar src={getFullUrl(ownerAvatar)} name={ownerName} />
+                    </button>
 
-          <div className="relative inline-block" ref={profileCardRef}>
-            <button
-              type="button"
-              onClick={handleAvatarClick} // <--- Use the proper handler function here!
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#8b6fd6]/40 text-xs font-semibold overflow-hidden border border-[#8b6fd6]/30 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
-              aria-label={`View ${ownerName}'s profile card`}
-            >
-              <OwnerAvatar src={getFullUrl(ownerAvatar)} name={ownerName} />
-            </button>
+                    {showMiniProfile && playlist.owner && (
+                      <div className="absolute left-0 top-full z-50 mt-2">
+                        <MiniProfileCard
+                          user={{
+                            ...playlist.owner,
+                            ...(miniProfileUser ?? {}),
+                            avatar_url: getFullUrl(miniProfileUser?.avatar_url || playlist.owner.avatar_url),
+                            banner_url: getFullUrl(miniProfileUser?.banner_url || playlist.owner.banner_url),
+                          }}
+                          side="bottom"
+                        />
+                      </div>
+                    )}
+                  </div>
 
-            {showMiniProfile && playlist.owner && (
-              <div className="absolute left-0 top-full z-50">
-                <MiniProfileCard
-                  user={{
-                    ...playlist.owner,
-                    ...(miniProfileUser ?? {}), // <--- Pulls in the full profile data (banner, bio, favorites)
-                    avatar_url: getFullUrl(miniProfileUser?.avatar_url || playlist.owner.avatar_url),
-                    banner_url: getFullUrl(miniProfileUser?.banner_url || playlist.owner.banner_url),
-                  }}
-                  side="bottom"
-                />
-              </div>
-            )}  
-          </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold text-[#E6E1EA]">{ownerName}</p>
+                    <p className="text-[11px] text-[#A0A0A8]">
+                      <span className="capitalize">{playlist.visibility}</span> · {total}{" "}
+                      {total === 1 ? "title" : "titles"} · Created {timeAgo(playlist.created_at)} · Updated{" "}
+                      {timeAgo(playlist.updated_at)}
+                    </p>
+                  </div>
+                </div>
 
-      <div className="min-w-0">
-        <p className="truncate text-[14px] font-semibold">{ownerName}</p>
-        <p className="font-mono text-[11px] text-[#8f8ca9]">
-          <span className="capitalize">{playlist.visibility}</span> · {total}{" "}
-          {total === 1 ? "title" : "titles"} · Created {timeAgo(playlist.created_at)} · Updated{" "}
-          {timeAgo(playlist.updated_at)}
-        </p>
-      </div>
-    </div>
+                <h1 className="mt-4 text-[32px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
+                  {playlist.title}
+                </h1>
 
-    <h1 className="mt-4 text-[32px] font-semibold leading-tight">{playlist.title}</h1>
                 {/* Interactive Like Button */}
                 <button
                   type="button"
                   onClick={handleLikeToggle}
                   disabled={liking}
                   aria-label={isLiked ? "Unlike playlist" : "Like playlist"}
-                  className={`mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] transition-colors border ${
+                  className={`mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-colors border ${
                     isLiked
-                      ? "border-[#a8454b] bg-[#a8454b]/20 text-[#f4b6ba] hover:bg-[#a8454b]/30"
-                      : "border-[#3a3754] bg-[#312e45] text-[#e6e3f5] hover:border-[#8b6fd6]"
+                      ? "border-[#E58B91] bg-[#E58B91]/20 text-[#E58B91] hover:bg-[#E58B91]/30"
+                      : "border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:border-[#554363]"
                   }`}
                 >
-                  <Heart className={`size-4 ${isLiked ? "fill-[#f4b6ba] text-[#f4b6ba]" : ""}`} aria-hidden="true" />
+                  <Heart className={`size-4 ${isLiked ? "fill-[#E58B91] text-[#E58B91]" : "text-[#B39ACF]"}`} aria-hidden="true" />
                   <span>{playlist.like_count}</span>
                 </button>
               </div>
 
-              <aside aria-label="Top genres">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-[#8f8ca9]">Top genres</p>
+              <aside aria-label="Top genres" className="rounded-2xl border border-[#302438] bg-[#17191E] p-6 shadow-none">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-[#77717F]">Top genres</p>
                 {genreCounts.length === 0 ? (
-                  <p className="mt-3 text-xs text-[#a9a6c2]">No genre info for these games yet.</p>
+                  <p className="mt-3 text-xs text-[#A0A0A8]">No genre info for these games yet.</p>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {shownGenres.map(([name, n]) => {
@@ -330,13 +324,13 @@ const PlaylistDetail = () => {
                           type="button"
                           onClick={() => setGenreFilter(active ? null : name)}
                           aria-pressed={active}
-                          className={`rounded-md border px-2.5 py-1 text-[12px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6] ${
+                          className={`rounded-xl border px-3 py-1.5 text-[12px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] ${
                             active
-                              ? "border-[#8b6fd6] bg-[#8b6fd6]/25"
-                              : "border-[#3a3754] bg-[#312e45] hover:border-[#6b5fb0]"
+                              ? "border-[#B39ACF] bg-[#B39ACF] font-semibold text-[#17191E]"
+                              : "border-[#302438] bg-[#000000] text-[#E6E1EA] hover:border-[#554363]"
                           }`}
                         >
-                          {name} <span className="ml-1 font-mono text-[11px] text-[#8f8ca9]">{n}</span>
+                          {name} <span className="ml-1 text-[11px] text-[#A0A0A8]">{n}</span>
                         </button>
                       );
                     })}
@@ -344,7 +338,7 @@ const PlaylistDetail = () => {
                       <button
                         type="button"
                         onClick={() => setShowAllGenres((v) => !v)}
-                        className="px-1 text-[12px] text-[#8f8ca9] hover:text-[#e6e3f5]"
+                        className="px-1 text-[12px] text-[#B39ACF] hover:underline"
                       >
                         {showAllGenres ? "Show less" : `+${hiddenGenres} more`}
                       </button>
@@ -356,15 +350,15 @@ const PlaylistDetail = () => {
 
             {/* Toolbar */}
             <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
-              <p className="font-mono text-[12px] text-[#8f8ca9]" aria-live="polite">
-                <span className="font-semibold text-[#e6e3f5]">{visibleGames.length}</span> items
+              <p className="text-[12px] text-[#A0A0A8]" aria-live="polite">
+                <span className="font-semibold text-[#E6E1EA]">{visibleGames.length}</span> items
                 {genreFilter && (
                   <>
-                    {" "}in <span className="text-[#c2ade7]">{genreFilter}</span> ·{" "}
+                    {" "}in <span className="text-[#B39ACF]">{genreFilter}</span> ·{" "}
                     <button
                       type="button"
                       onClick={() => setGenreFilter(null)}
-                      className="underline hover:text-[#e6e3f5]"
+                      className="underline hover:text-[#E6E1EA]"
                     >
                       clear
                     </button>
@@ -377,14 +371,14 @@ const PlaylistDetail = () => {
                   value={sort}
                   onChange={(e) => setSort(e.target.value as Sort)}
                   aria-label="Sort games"
-                  className="h-10 rounded-lg border border-[#3a3754] bg-[#312e45] px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#8b6fd6]/60"
+                  className="h-10 rounded-xl border border-[#302438] bg-[#17191E] px-3 text-[13px] text-[#E6E1EA] focus:outline-none focus:ring-2 focus:ring-[#B39ACF]/60"
                 >
                   {SORTS.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
 
-                <div className="flex rounded-lg bg-[#312e45] p-1" role="group" aria-label="View">
+                <div className="flex rounded-xl border border-[#302438] bg-[#17191E] p-1" role="group" aria-label="View">
                   {([["list", List], ["grid", LayoutGrid]] as const).map(([mode, Icon]) => (
                     <button
                       key={mode}
@@ -392,8 +386,8 @@ const PlaylistDetail = () => {
                       onClick={() => setView(mode)}
                       aria-pressed={view === mode}
                       aria-label={`${mode} view`}
-                      className={`flex size-8 items-center justify-center rounded-md ${
-                        view === mode ? "bg-[#463f66]" : "text-[#a9a6c2] hover:text-[#e6e3f5]"
+                      className={`flex size-8 items-center justify-center rounded-lg transition-colors ${
+                        view === mode ? "bg-[#B39ACF] text-[#17191E]" : "text-[#A0A0A8] hover:text-[#E6E1EA]"
                       }`}
                     >
                       <Icon className="size-4" />
@@ -411,13 +405,13 @@ const PlaylistDetail = () => {
                     <GameLink game={game} className="group block">
                       <Cover
                         src={coverFor(game)}
-                        className="aspect-[16/9] w-full rounded-xl border border-[#3a3754] group-hover:border-[#8b6fd6]"
+                        className="aspect-[16/9] w-full rounded-2xl border border-[#302438] bg-[#17191E] group-hover:border-[#554363]"
                       />
-                      <p className="mt-3 truncate text-center text-[14px] font-semibold group-hover:text-[#c2ade7]">
+                      <p className="mt-3 truncate text-center text-[14px] font-semibold text-[#E6E1EA] group-hover:text-[#B39ACF]">
                         {game.title}
                       </p>
                       {game.genres.length > 0 && (
-                        <p className="mt-0.5 truncate text-center font-mono text-[11px] text-[#8f8ca9]">
+                        <p className="mt-0.5 truncate text-center text-[11px] text-[#A0A0A8]">
                           {game.genres.slice(0, 3).join(" · ")}
                         </p>
                       )}
@@ -426,21 +420,21 @@ const PlaylistDetail = () => {
                 ))}
               </ul>
             ) : (
-              <ol className="mt-6 space-y-2">
+              <ol className="mt-6 space-y-3">
                 {visibleGames.map((game, i) => (
                   <li key={game.id}>
                     <GameLink
                       game={game}
-                      className="flex items-center gap-4 rounded-xl border border-[#3a3754] bg-[#312e45] p-3 hover:border-[#8b6fd6]"
+                      className="flex items-center gap-4 rounded-2xl border border-[#302438] bg-[#17191E] p-4 hover:border-[#554363]"
                     >
-                      <span className="w-6 text-xs text-[#8f8ca9]">{String(i + 1).padStart(2, "0")}</span>
-                      <Cover src={coverFor(game)} className="h-14 w-24 shrink-0 rounded-md" />
+                      <span className="w-6 text-xs text-[#77717F] font-mono">{String(i + 1).padStart(2, "0")}</span>
+                      <Cover src={coverFor(game)} className="h-14 w-24 shrink-0 rounded-xl border border-[#302438]" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{game.title}</p>
+                        <p className="truncate text-sm font-semibold text-[#E6E1EA]">{game.title}</p>
                         {game.genres.length > 0 && (
-                          <p className="truncate text-xs text-[#a9a6c2]">{game.genres.join(" / ")}</p>
+                          <p className="truncate text-xs text-[#A0A0A8]">{game.genres.join(" / ")}</p>
                         )}
-                        {game.note && <p className="mt-1 text-xs text-[#c9c6e0]">{game.note}</p>}
+                        {game.note && <p className="mt-1 text-xs text-[#E6E1EA]/80">{game.note}</p>}
                       </div>
                     </GameLink>
                   </li>
@@ -449,7 +443,7 @@ const PlaylistDetail = () => {
             )}
 
             {visibleGames.length === 0 && (
-              <p className="mt-6 rounded-xl border border-dashed border-[#4a4766] p-6 text-center text-xs text-[#a9a6c2]">
+              <p className="mt-6 rounded-2xl border border-dashed border-[#302438] p-10 text-center text-xs text-[#A0A0A8]">
                 {total === 0 ? "This playlist has no games yet." : "No games match this genre."}
               </p>
             )}

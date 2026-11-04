@@ -258,9 +258,16 @@ export default function MyLibrary() {
           {/* Header section matching Home precisely */}
           <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
             <div className="flex flex-col gap-2">
+          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">
+                UNE COLLECTION DE SOUVENIRS
+              </p>
               <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
-                My List
+                My Library
               </h1>
+            </div>
+          </div>
             </div>
           </div>
 
@@ -268,7 +275,7 @@ export default function MyLibrary() {
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label htmlFor="list-search" className="text-xs font-semibold text-[#E6E1EA]">
-                Search your list
+                Search your library
               </label>
 
               <div className="relative w-full max-w-[360px]">

@@ -427,7 +427,7 @@ export default function Home() {
           {/* Welcome header */}
           <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
             <div className="flex flex-col gap-2">
-              <p className="text-[13px] leading-4 text-[#A0A0A8] uppercase tracking-wider">
+              <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">
                 WELCOME BACK, {user?.nickname || user?.username || "Player"}
               </p>
               <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">Home</h1>

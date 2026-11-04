@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Gamepad2, RotateCcw, Search } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, Gamepad2, RotateCcw, Search } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { PlaylistListCard } from "@/components/playlists/PlaylistCards";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
-import { getMe, type User } from "@/services/Userservice";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/context/AuthContext";
 
 const PAGE_SIZE = 12;
 
@@ -35,13 +35,80 @@ const PLATFORMS: Option[] = [
   { value: "linux", label: "Linux" },
 ];
 
-const SORTS = [
+const SORTS: Option[] = [
   { value: "newest", label: "Newest" },
   { value: "updated", label: "Recently updated" },
   { value: "oldest", label: "Oldest" },
   { value: "title", label: "Title (A–Z)" },
-] as const;
-type Sort = (typeof SORTS)[number]["value"];
+];
+
+const getFullUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
+/** Owner Avatar component with error fallback to gradient and initials, matching PlaylistDetail */
+const OwnerAvatar = memo(({ src, name }: { src?: string | null; name: string }) => {
+  const [failed, setFailed] = useState(false);
+  const initials = name ? name.slice(0, 2).toUpperCase() : "U";
+
+  return src && !failed ? (
+    <img
+      src={src}
+      alt={name}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="h-full w-full object-cover"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#302438] to-[#17191E] text-[11px] font-semibold text-[#B39ACF]" aria-hidden="true">
+      {initials}
+    </div>
+  );
+});
+OwnerAvatar.displayName = "OwnerAvatar";
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Option[];
+}) {
+  return (
+    <label className="flex flex-col gap-2 text-[11px] font-semibold text-[#E6E1EA]">
+      {label}
+      <span className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-full cursor-pointer appearance-none rounded-xl border border-[#302438] bg-[#17191E] px-3 pr-9 text-xs font-normal text-[#E6E1EA] outline-none transition-colors hover:border-[#554363] focus:border-[#B39ACF] focus:ring-1 focus:ring-[#B39ACF]/20"
+        >
+          {options.map((o) => (
+            <option
+              key={o.value}
+              value={o.value}
+              className="bg-[#17191E] text-[#E6E1EA]"
+            >
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#B39ACF]"
+          strokeWidth={1.7}
+          aria-hidden="true"
+        />
+      </span>
+    </label>
+  );
+}
 
 function generatePageList(current: number, total: number): (number | "…")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -57,37 +124,22 @@ function generatePageList(current: number, total: number): (number | "…")[] {
 
 export default function CommunityPlaylists() {
   const [params, setParams] = useSearchParams();
+  const { user: currentUser } = useAuth();
+
   const q = params.get("q") ?? "";
   const genre = params.get("genre") ?? "";
   const platform = params.get("platform") ?? "";
-  const sort = (params.get("sort") as Sort) || "newest";
+  const sort = params.get("sort") || "newest";
   const page = Math.max(1, Number(params.get("page")) || 1);
 
   const [searchText, setSearchText] = useState(q);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
-  // Sync current user avatar profile safely mapped to UserProfile
-  useEffect(() => {
-    let isMounted = true;
-    getMe()
-      .then((meData: User) => {
-        if (isMounted && meData) {
-          setCurrentUser(meData);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Sync search input box if URL param 'q' changes externally
   useEffect(() => {
     setSearchText(q);
   }, [q]);
@@ -98,7 +150,6 @@ export default function CommunityPlaylists() {
     setParams(p, { replace: true });
   };
 
-  // Typing updates the URL 300ms after you stop
   useEffect(() => {
     if (searchText.trim() === q) return;
     const t = setTimeout(() => {
@@ -134,15 +185,25 @@ export default function CommunityPlaylists() {
     };
   }, [q, genre, platform, sort, page]);
 
-  const goTo = (n: number) => update({ page: n > 1 ? String(n) : null });
+  function changeFilter(setter: (value: string) => void, value: string) {
+    setter(value);
+    update({ page: null });
+  }
 
-  const visiblePages = useMemo(() => generatePageList(page, totalPages), [page, totalPages]);
+  function changePage(next: number) {
+    update({ page: next > 1 ? String(next) : null });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-  const field =
-    "h-10 w-full rounded-xl border border-[#302438] bg-[#17191E] px-3 text-[13px] text-[#E6E1EA] placeholder:text-[#77717F] focus:outline-none focus:ring-2 focus:ring-[#B39ACF]/60";
-  const label = "mb-2 block font-mono text-[10px] uppercase tracking-widest text-[#77717F]";
+  function clearFilters() {
+    setSearchText("");
+    setParams({}, { replace: true });
+  }
 
   const userDisplayName = currentUser?.nickname?.trim() || currentUser?.username || "Player";
+  const userAvatarUrl = getFullUrl(currentUser?.avatar_url);
+  const visiblePages = useMemo(() => generatePageList(page, totalPages), [page, totalPages]);
+  const summary = `Showing ${count.toLocaleString()} playlists`;
 
   return (
     <div className="min-h-screen w-full bg-[#000000]">
@@ -152,33 +213,23 @@ export default function CommunityPlaylists() {
       >
         <Navbar />
 
-        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-5 pb-16 pt-8 md:px-8 xl:px-16">
-          <nav className="font-mono text-[11px] uppercase tracking-widest text-[#77717F]" aria-label="Breadcrumb">
-            <Link to="/home" className="hover:text-[#E6E1EA]">Home</Link>
-            <span className="mx-2">/</span>
-            <span className="text-[#E6E1EA]">Community playlists</span>
-          </nav>
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-[32px] font-semibold">Community Playlists</h1>
-              <p className="mt-2 text-[14px] text-[#A0A0A8]">
-                Curated lists made by players. Discover new games or share your own.
+        <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16 overflow-x-hidden">
+          {/* Header */}
+          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">
+                PLAYER CURATED COLLECTIONS
               </p>
+              <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
+                Community Playlists
+              </h1>
             </div>
 
-            {/* User Profile Avatar Bar & Create Link */}
-            <div className="flex items-center gap-3 rounded-2xl border border-[#302438] bg-[#17191E] p-2.5 px-4">
-              <Avatar className="size-10 shrink-0 overflow-hidden border border-[#554363] bg-[#302438]">
-                <AvatarImage
-                  src={currentUser?.avatar_url || undefined}
-                  alt={userDisplayName}
-                  className="object-cover contrast-110 saturate-125"
-                />
-                <AvatarFallback className="bg-[#302438]">
-                  <Gamepad2 className="size-5 text-[#B39ACF]" />
-                </AvatarFallback>
-              </Avatar>
+            {/* Current Logged-in User Profile Bar */}
+            <div className="flex items-center gap-3 rounded-2xl border border-[#302438] bg-[#17191E] p-2.5 px-4 shadow-none">
+              <div className="size-10 shrink-0 overflow-hidden rounded-full border border-[#554363] bg-[#B39ACF]/20">
+                <OwnerAvatar src={userAvatarUrl} name={userDisplayName} />
+              </div>
               <div className="flex flex-col text-xs">
                 <span className="font-medium text-[#E6E1EA]">{userDisplayName}</span>
                 <Link to="/playlists/new" className="text-[11px] font-semibold text-[#B39ACF] hover:underline">
@@ -188,139 +239,157 @@ export default function CommunityPlaylists() {
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_200px_120px]">
-            <div className="sm:col-span-2 lg:col-span-1">
-              <label htmlFor="pl-search" className={label}>Search</label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" aria-hidden="true" />
-                <input
-                  id="pl-search"
-                  type="search"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Search playlists…"
-                  className={`${field} pl-9`}
-                />
+          {/* Filters section */}
+          <section
+            aria-label="Search and filters"
+            className="flex flex-col gap-5 rounded-2xl border border-[#302438] bg-[#17191E] p-6 shadow-none"
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr_120px]">
+              <label className="flex flex-col gap-2 text-[11px] font-semibold text-[#E6E1EA]">
+                Search
+                <span className="relative">
+                  <input
+                    type="search"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    placeholder="Search playlists…"
+                    maxLength={100}
+                    className="h-10 w-full rounded-xl border border-[#302438] bg-[#000000] pl-3 pr-9 text-xs font-normal text-[#E6E1EA] outline-none placeholder:text-[#77717F] transition-colors hover:border-[#554363] focus:border-[#B39ACF] focus:ring-1 focus:ring-[#B39ACF]/20"
+                  />
+                  <Search
+                    className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#B39ACF]"
+                    strokeWidth={1.7}
+                    aria-hidden="true"
+                  />
+                </span>
+              </label>
+
+              <FilterSelect
+                label="Genre"
+                value={genre}
+                onChange={(v) => changeFilter((val) => update({ genre: val || null }), v)}
+                options={GENRES}
+              />
+
+              <FilterSelect
+                label="Platform"
+                value={platform}
+                onChange={(v) => changeFilter((val) => update({ platform: val || null }), v)}
+                options={PLATFORMS}
+              />
+
+              <FilterSelect
+                label="Sort by"
+                value={sort}
+                onChange={(v) => changeFilter((val) => update({ sort: val === "newest" ? null : val }), v)}
+                options={SORTS}
+              />
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#302438] bg-[#000000] text-xs font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+                >
+                  <RotateCcw className="size-3.5" aria-hidden="true" /> Reset
+                </button>
               </div>
             </div>
 
-            <div>
-              <label htmlFor="pl-genre" className={label}>Genre</label>
-              <select
-                id="pl-genre"
-                value={genre}
-                onChange={(e) => update({ genre: e.target.value || null, page: null })}
-                className={field}
-              >
-                {GENRES.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+            <div className="flex items-center justify-between gap-3 text-[11px] text-[#A0A0A8]">
+              <span role="status">{summary}</span>
             </div>
+          </section>
 
-            <div>
-              <label htmlFor="pl-platform" className={label}>Platform</label>
-              <select
-                id="pl-platform"
-                value={platform}
-                onChange={(e) => update({ platform: e.target.value || null, page: null })}
-                className={field}
-              >
-                {PLATFORMS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="pl-sort" className={label}>Sort by</label>
-              <select
-                id="pl-sort"
-                value={sort}
-                onChange={(e) => update({ sort: e.target.value === "newest" ? null : e.target.value, page: null })}
-                className={field}
-              >
-                {SORTS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchText("");
-                  setParams({}, { replace: true });
-                }}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#302438] bg-[#17191E] font-mono text-[11px] uppercase tracking-widest text-[#E6E1EA] hover:bg-[#20232B] hover:border-[#554363]"
-              >
-                <RotateCcw className="size-3.5" aria-hidden="true" /> Reset
-              </button>
-            </div>
-          </div>
-
-          <p className="mt-6 font-mono text-[12px] text-[#77717F]" aria-live="polite">
-            <span className="font-semibold text-[#E6E1EA]">{count.toLocaleString()}</span> playlists
-          </p>
-
-          {error && <p role="alert" className="mt-4 text-sm text-[#E58B91]">{error}</p>}
-
-          <div className={`mt-4 grid gap-5 lg:grid-cols-2 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
-            {playlists.map((p) => (
-              <PlaylistListCard key={p.id} playlist={p} />
-            ))}
-          </div>
-
-          {!loading && !error && playlists.length === 0 && (
-            <p className="mt-10 rounded-2xl border border-dashed border-[#302438] p-10 text-center text-sm text-[#A0A0A8]">
-              No playlists found.
+          {error && (
+            <p role="alert" className="py-12 text-center text-sm text-[#E58B91]">
+              {error}
             </p>
+          )}
+
+          {loading && playlists.length === 0 && (
+            <p role="status" className="py-12 text-center text-sm text-[#A0A0A8]">
+              Loading playlists…
+            </p>
+          )}
+
+          {!error && playlists.length === 0 && !loading && (
+            <p className="py-12 text-center text-sm text-[#A0A0A8]">
+              No playlists found. Try changing or clearing the filters.
+            </p>
+          )}
+
+          {/* Results Grid - PlaylistListCard handles the individual owner avatars internally */}
+          {!error && playlists.length > 0 && (
+            <section className="flex flex-col gap-5">
+              <div className="flex items-end justify-between gap-3">
+                <h2 className="text-[20px] font-semibold leading-6 text-[#E6E1EA]">
+                  Results
+                </h2>
+                <p className="text-[11px] text-[#A0A0A8]">
+                  {playlists.length} playlists on this page
+                </p>
+              </div>
+
+              <div className="min-h-[500px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${page}-${genre}-${platform}-${sort}-${q}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="grid grid-cols-1 gap-5 lg:grid-cols-2"
+                  >
+                    {playlists.map((p) => (
+                      <PlaylistListCard key={p.id} playlist={p} />
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </section>
           )}
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <nav aria-label="Playlist pages" className="mt-10 flex flex-wrap items-center justify-center gap-2">
+            <nav aria-label="Pagination" className="flex items-center justify-center gap-2 pt-4">
               <button
                 type="button"
-                onClick={() => goTo(page - 1)}
                 disabled={page === 1 || loading}
-                aria-label="Previous page"
-                className="flex size-9 items-center justify-center rounded-xl bg-[#17191E] border border-[#302438] text-[#E6E1EA] hover:bg-[#20232B] disabled:opacity-40 cursor-pointer"
+                onClick={() => changePage(page - 1)}
+                className="flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] px-3 text-xs font-medium text-[#B39ACF] transition-colors hover:border-[#554363] hover:bg-[#20232B] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <ChevronLeft className="size-4" />
+                Previous
               </button>
 
-              {visiblePages.map((p, i) =>
-                p === "…" ? (
+              {visiblePages.map((n, i) =>
+                n === "…" ? (
                   <span key={`gap-${i}`} className="px-1 text-[#77717F]">…</span>
                 ) : (
                   <button
-                    key={p}
+                    key={n}
                     type="button"
-                    onClick={() => goTo(Number(p))}
                     disabled={loading}
-                    aria-current={p === page ? "page" : undefined}
-                    className={`size-9 rounded-xl text-[13px] font-semibold cursor-pointer border ${
-                      p === page
-                        ? "bg-[#B39ACF] border-[#B39ACF] text-[#17191E]"
-                        : "bg-[#17191E] border-[#302438] text-[#E6E1EA] hover:bg-[#20232B]"
+                    onClick={() => changePage(Number(n))}
+                    aria-current={n === page ? "page" : undefined}
+                    className={`flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-xl border px-3 text-xs font-medium transition-colors ${
+                      n === page
+                        ? "border-[#B39ACF] bg-[#B39ACF] font-bold text-[#17101F] hover:bg-[#C2ADE0]"
+                        : "border-[#302438] bg-[#17191E] text-[#B39ACF] hover:border-[#554363] hover:bg-[#20232B]"
                     }`}
                   >
-                    {p}
+                    {n}
                   </button>
                 )
               )}
 
               <button
                 type="button"
-                onClick={() => goTo(page + 1)}
                 disabled={page >= totalPages || loading}
-                aria-label="Next page"
-                className="flex size-9 items-center justify-center rounded-xl bg-[#17191E] border border-[#302438] text-[#E6E1EA] hover:bg-[#20232B] disabled:opacity-40 cursor-pointer"
+                onClick={() => changePage(page + 1)}
+                className="flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] px-3 text-xs font-medium text-[#B39ACF] transition-colors hover:border-[#554363] hover:bg-[#20232B] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <ChevronRight className="size-4" />
+                Next
               </button>
             </nav>
           )}

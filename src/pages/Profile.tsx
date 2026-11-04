@@ -584,7 +584,7 @@ export default function Profile() {
       >
         <Navbar />
 
-        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
+        <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           <ProfileBanner
             profileUser={profileUser}
             isOwnProfile={isOwnProfile}

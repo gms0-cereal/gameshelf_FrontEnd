@@ -285,11 +285,14 @@ export default function Friends() {
   const paginatedBlocked = blocked.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="min-h-screen bg-[#000000] text-[#E6E1EA]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col">
+    <div className="min-h-screen w-full bg-[#000000]">
+      <div
+        className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
         <Navbar />
 
-        <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-10 md:px-8 xl:px-16">
+        <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           <section className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-[#E6E1EA] md:text-4xl">
@@ -827,7 +830,7 @@ function PlayerCard({
               {favorites.slice(0, 3).map((fav, index) => (
                 <div
                   key={fav.id || index}
-                  className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#302438] bg-[#000000]"
+                  className="aspect-[3/2] w-16 overflow-hidden rounded-xl border border-[#302438] bg-[#000000]"
                   title={fav.title}
                 >
                   <FavoriteCover src={fav.cover_image_url} title={fav.title} />
@@ -835,22 +838,22 @@ function PlayerCard({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#A0A0A8]/70">No favorite games listed.</p>
+            <p className="text-xs text-[#A0A0A8]/70">No favorite games added.</p>
           )}
         </div>
 
         <div className="flex items-center gap-2 md:flex-col md:items-stretch">
           <Button
-            onClick={onAdd}
             disabled={busy}
-            className={`flex-1 font-semibold disabled:opacity-50 ${addButtonColor}`}
+            onClick={onAdd}
+            className={`h-10 flex-1 md:flex-none text-xs font-semibold ${addButtonColor}`}
           >
             {busy ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
               <>
                 {addIcon}
-                <span className={addIcon ? "ml-2" : ""}>{addLabel}</span>
+                <span className={addIcon ? "ml-1.5" : ""}>{addLabel}</span>
               </>
             )}
           </Button>
@@ -858,32 +861,35 @@ function PlayerCard({
           {secondaryAction && (
             <Button
               variant="outline"
-              onClick={secondaryAction.onClick}
               disabled={busy}
-              className="border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B] hover:border-[#554363]"
+              onClick={secondaryAction.onClick}
+              className="h-10 flex-1 md:flex-none border-[#302438] bg-[#17191E] text-xs font-semibold text-[#E6E1EA] hover:bg-[#20232B] hover:border-[#554363]"
             >
               {secondaryAction.icon}
-              <span className="ml-2">{secondaryAction.label}</span>
+              <span className="ml-1.5">{secondaryAction.label}</span>
             </Button>
           )}
 
           {!isBlockedView && (
-            <div className="flex items-center justify-end gap-1 md:justify-between pt-1">
-              <button
-                type="button"
+            <div className="flex items-center gap-1 md:justify-end">
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onBlock}
-                className="text-[11px] text-[#A0A0A8] hover:text-[#E58B91] transition-colors"
+                title="Block user"
+                className="size-9 text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E58B91]"
               >
-                Block
-              </button>
-              <span className="text-[#302438]">•</span>
-              <button
-                type="button"
+                <Ban className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onReport}
-                className="text-[11px] text-[#A0A0A8] hover:text-[#E58B91] transition-colors"
+                title="Report user"
+                className="size-9 text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E58B91]"
               >
-                Report
-              </button>
+                <Flag className="size-4" />
+              </Button>
             </div>
           )}
         </div>
@@ -895,7 +901,7 @@ function PlayerCard({
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-[#302438] bg-[#17191E] p-12 text-center">
-      <Users className="size-10 text-[#B39ACF] mb-3" />
+      <Users className="size-10 text-[#B39ACF]/50 mb-3" />
       <h3 className="text-base font-semibold text-[#E6E1EA]">{title}</h3>
       <p className="mt-1 text-sm text-[#A0A0A8] max-w-sm">{description}</p>
     </div>
