@@ -17,7 +17,6 @@ import GameReviews from "./pages/GameReviews";
 import ChooseInterest from "./pages/ChooseInterest";
 import PlaylistDetails from "./pages/PlaylistDetails";
 import Friends from "./pages/Friends";
-import Browse from "./pages/Browse";
 import CreatePlaylist from "./pages/CreatePlaylist";
 import CommunityPlaylists from "./pages/CommunityPlaylists";
 import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
@@ -25,6 +24,7 @@ import AppealReportPage from "./pages/AppealReportPage";
 // Admin Dashboard Imports
 import { Dashboard } from "./pages/admin/Dashboard";
 import { Games } from "./pages/admin/Games";
+import Discover from "./pages/Discover";
 
 const queryClient = new QueryClient();
 
@@ -54,7 +54,7 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/profile/edit" element={<EditProfile />} />
               <Route path="/profile/set-birthday" element={<SetBirthdayPage/>} />
-              <Route path="/browse" element={<Browse />} />
+              <Route path="/discover" element={<Discover />} />
               <Route path="/interests" element={<ChooseInterest />} />
               <Route path="/appeal-report" element={<AppealReportPage />} />
               {/* Admin Routes */}

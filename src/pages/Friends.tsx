@@ -65,9 +65,10 @@ type ModalConfig =
   | { type: "report"; player: Player }
   | null;
 
+// GameShelf palette: neutral charcoal surfaces with subtle plum borders
 const CARD =
-  "rounded-2xl border border-[#38363F] bg-[#383044] " +
-  "text-[#F0EEF5] shadow-none";
+  "rounded-2xl border border-[#302438] bg-[#17191E] " +
+  "text-[#E6E1EA] shadow-none transition-colors hover:border-[#554363]";
 
 const PAGE_SIZE = 15;
 
@@ -109,19 +110,16 @@ export default function Friends() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  // Modal State Management
   const [modalConfig, setModalConfig] = useState<ModalConfig>(null);
   const [reportReason, setReportReason] = useState("harassment");
   const [reportDetails, setReportDetails] = useState("");
 
-  // Fetch incoming request count on mount so badge is always live across tabs
   useEffect(() => {
     getFriendRequests("incoming")
       .then((res) => setIncoming((res.results ?? []) as Friendship[]))
       .catch(() => {});
   }, []);
 
-  // Reset page when switching tabs or searching
   useEffect(() => {
     setPage(1);
   }, [activeTab, search]);
@@ -274,14 +272,12 @@ export default function Friends() {
 
   const totalPages = Math.ceil(currentCount / PAGE_SIZE) || 1;
 
-  // Safety check to clamp page if items are removed/blocked and page goes out of bounds
   useEffect(() => {
     if (page > totalPages) {
       setPage(totalPages);
     }
   }, [page, totalPages]);
 
-  // Sliced lists for pagination
   const paginatedSuggested = suggested.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const paginatedIncoming = incoming.filter((r) => matchesSearch(r.user, search)).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const paginatedOutgoing = outgoing.filter((r) => matchesSearch(r.friend || r.user, search)).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -289,14 +285,14 @@ export default function Friends() {
   const paginatedBlocked = blocked.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="min-h-screen bg-[#1B1A20] text-[#F0EEF5]">
+    <div className="min-h-screen bg-[#000000] text-[#E6E1EA]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col">
         <Navbar />
 
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-10 md:px-8 xl:px-16">
           <section className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-[#F0EEF5] md:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight text-[#E6E1EA] md:text-4xl">
                 {activeTab === "suggested"
                   ? "Discover Players"
                   : activeTab === "requests"
@@ -306,7 +302,7 @@ export default function Friends() {
                       : "Blocked Users"}
               </h1>
 
-              <p className="mt-2 text-sm text-[#AAA6B5] md:text-base">
+              <p className="mt-2 text-sm text-[#A0A0A8] md:text-base">
                 {activeTab === "suggested"
                   ? "Find players who share your taste in games."
                   : activeTab === "requests"
@@ -317,25 +313,25 @@ export default function Friends() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-[#AAA6B5]">
-              <Users className="size-5 text-[#C2ADE7]" />
+            <div className="flex items-center gap-2 text-sm text-[#A0A0A8]">
+              <Users className="size-5 text-[#B39ACF]" />
               <span>{currentCount} players</span>
             </div>
           </section>
 
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#AAA6B5]" />
+            <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#B39ACF]" />
 
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by username or nickname..."
               aria-label="Search players"
-              className="h-12 rounded-xl border-[#38363F] bg-[#383044] pl-12 text-[#F0EEF5] placeholder:text-[#AAA6B5] focus-visible:ring-[#C2ADE7]"
+              className="h-12 rounded-xl border-[#302438] bg-[#17191E] pl-12 text-[#E6E1EA] placeholder:text-[#A0A0A8]/70 focus-visible:ring-[#B39ACF]/20 focus-visible:border-[#B39ACF]"
             />
           </div>
 
-          <div className="flex gap-2 overflow-x-auto border-b border-[#38363F] pb-3">
+          <div className="flex gap-2 overflow-x-auto border-b border-[#302438] pb-3">
             {[
               { id: "suggested", label: "Suggested" },
               { id: "requests", label: "Requests" },
@@ -345,15 +341,15 @@ export default function Friends() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as Tab)}
-                className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeTab === tab.id
-                    ? "bg-[#C2ADE7] text-[#1B1A20] font-semibold"
-                    : "bg-[#383044] text-[#AAA6B5] hover:bg-[#383044]/80 hover:text-[#F0EEF5]"
+                    ? "bg-[#B39ACF] text-[#17191E] font-semibold shadow-sm shadow-[#B39ACF]/15"
+                    : "bg-[#17191E] text-[#A0A0A8] border border-[#302438] hover:bg-[#20232B] hover:border-[#554363] hover:text-[#E6E1EA]"
                 }`}
               >
                 {tab.label}
                 {tab.id === "requests" && incoming.length > 0 && (
-                  <span className="ml-2 rounded-full bg-[#C2ADE7] px-2 py-0.5 text-xs text-[#1B1A20]">
+                  <span className="ml-2.5 rounded-full bg-[#17191E] px-2 py-0.5 text-xs text-[#B39ACF] font-bold">
                     {incoming.length}
                   </span>
                 )}
@@ -364,7 +360,7 @@ export default function Friends() {
           {notice && (
             <div
               role="status"
-              className="rounded-xl border border-[#38363F] bg-[#383044] px-4 py-3 text-sm text-[#C2ADE7] animate-in fade-in duration-200"
+              className="rounded-xl border border-[#302438] bg-[#17191E] px-4 py-3 text-sm text-[#B39ACF] animate-in fade-in duration-200"
             >
               {notice}
             </div>
@@ -373,31 +369,30 @@ export default function Friends() {
           {error && (
             <div
               role="alert"
-              className="flex items-center justify-between gap-3 rounded-xl border border-[#3A272D] bg-[#3A272D]/50 px-4 py-3 text-sm text-[#EDB1B4]"
+              className="flex items-center justify-between gap-3 rounded-xl border border-[#E58B91]/30 bg-[#2B171C] px-4 py-3 text-sm text-[#E58B91]"
             >
               <span>{error}</span>
               <Button
                 variant="outline"
                 onClick={() => void loadData()}
-                className="border-[#EDB1B4]/40 bg-transparent text-[#EDB1B4] hover:bg-[#3A272D]"
+                className="border-[#E58B91]/30 bg-transparent text-[#E58B91] hover:bg-[#2B171C]"
               >
                 Retry
               </Button>
             </div>
           )}
 
-          {/* Locked minimum height container */}
           <div className="min-h-[650px] flex flex-col justify-between">
             {loading ? (
-              <div className="flex flex-col items-center gap-3 py-20 text-[#AAA6B5]">
-                <Loader2 className="size-8 animate-spin text-[#C2ADE7]" />
+              <div className="flex flex-col items-center gap-3 py-20 text-[#A0A0A8]">
+                <Loader2 className="size-8 animate-spin text-[#B39ACF]" />
                 <p>Loading players...</p>
               </div>
             ) : (
               <div key={activeTab} className="flex flex-col gap-6 animate-in fade-in-50 duration-200">
                 {activeTab === "suggested" && (
                   <section className="flex flex-col gap-4">
-                    <h2 className="text-xl font-semibold text-[#F0EEF5]">Suggested players</h2>
+                    <h2 className="text-xl font-semibold text-[#E6E1EA]">Suggested players</h2>
 
                     {paginatedSuggested.length ? (
                       <div key={`suggested-page-${page}`} className="flex flex-col gap-4">
@@ -431,7 +426,7 @@ export default function Friends() {
                 {activeTab === "requests" && (
                   <section className="flex flex-col gap-8">
                     <div className="flex flex-col gap-4">
-                      <h2 className="text-xl font-semibold text-[#F0EEF5]">Incoming requests</h2>
+                      <h2 className="text-xl font-semibold text-[#E6E1EA]">Incoming requests</h2>
 
                       {paginatedIncoming.length ? (
                         <div key={`incoming-page-${page}`} className="flex flex-col gap-4">
@@ -463,7 +458,7 @@ export default function Friends() {
                     </div>
 
                     <div className="flex flex-col gap-4">
-                      <h2 className="text-xl font-semibold text-[#F0EEF5]">Sent requests</h2>
+                      <h2 className="text-xl font-semibold text-[#E6E1EA]">Sent requests</h2>
 
                       {paginatedOutgoing.length ? (
                         <div key={`outgoing-page-${page}`} className="flex flex-col gap-4">
@@ -486,7 +481,7 @@ export default function Friends() {
                           </AnimatePresence>
                         </div>
                       ) : (
-                        <p className="text-sm text-[#AAA6B5]">
+                        <p className="text-sm text-[#A0A0A8]">
                           You haven't sent any pending requests.
                         </p>
                       )}
@@ -496,7 +491,7 @@ export default function Friends() {
 
                 {activeTab === "friends" && (
                   <section className="flex flex-col gap-4">
-                    <h2 className="text-xl font-semibold text-[#F0EEF5]">My Friends</h2>
+                    <h2 className="text-xl font-semibold text-[#E6E1EA]">My Friends</h2>
 
                     {paginatedFriends.length ? (
                       <div key={`friends-page-${page}`} className="flex flex-col gap-4">
@@ -526,7 +521,7 @@ export default function Friends() {
 
                 {activeTab === "blocked" && (
                   <section className="flex flex-col gap-4">
-                    <h2 className="text-xl font-semibold text-[#F0EEF5]">Blocked Users</h2>
+                    <h2 className="text-xl font-semibold text-[#E6E1EA]">Blocked Users</h2>
 
                     {paginatedBlocked.length ? (
                       <div key={`blocked-page-${page}`} className="flex flex-col gap-4">
@@ -557,27 +552,26 @@ export default function Friends() {
               </div>
             )}
 
-            {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-[#38363F] pt-6 mt-auto">
+              <div className="flex items-center justify-between border-t border-[#302438] pt-6 mt-auto">
                 <Button
                   variant="outline"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={page === 1}
-                  className="border-[#38363F] bg-[#383044] text-[#F0EEF5] hover:bg-[#383044]/80 disabled:opacity-40"
+                  className="border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B] hover:border-[#554363] disabled:opacity-40"
                 >
                   <ChevronLeft className="size-4 mr-1.5" /> Previous
                 </Button>
 
-                <span className="text-sm text-[#AAA6B5]">
-                  Page <strong className="text-[#F0EEF5]">{page}</strong> of <strong className="text-[#F0EEF5]">{totalPages}</strong>
+                <span className="text-sm text-[#A0A0A8]">
+                  Page <strong className="text-[#E6E1EA]">{page}</strong> of <strong className="text-[#E6E1EA]">{totalPages}</strong>
                 </span>
 
                 <Button
                   variant="outline"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                   disabled={page === totalPages}
-                  className="border-[#38363F] bg-[#383044] text-[#F0EEF5] hover:bg-[#383044]/80 disabled:opacity-40"
+                  className="border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B] hover:border-[#554363] disabled:opacity-40"
                 >
                   Next <ChevronRight className="size-4 ml-1.5" />
                 </Button>
@@ -589,27 +583,26 @@ export default function Friends() {
         <Footer />
       </div>
 
-      {/* CUSTOM CONFIRMATION & ACTION MODALS */}
       {modalConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0">
-          <div className="w-full max-w-md rounded-2xl border border-[#38363F] bg-[#1B1A20] p-6 text-[#F0EEF5] shadow-2xl animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-0">
+          <div className="w-full max-w-md rounded-2xl border border-[#302438] bg-[#17191E] p-6 text-[#E6E1EA] shadow-2xl animate-in zoom-in-95">
             {modalConfig.type === "block" && (
               <>
-                <h3 className="text-lg font-semibold text-[#F0EEF5]">Block Player</h3>
-                <p className="mt-2 text-sm text-[#AAA6B5]">
-                  Are you sure you want to block <span className="text-[#F0EEF5] font-medium">{getDisplayName(modalConfig.player)}</span>? They will no longer be able to interact with you or appear in your suggestions.
+                <h3 className="text-lg font-semibold text-[#E6E1EA]">Block Player</h3>
+                <p className="mt-2 text-sm text-[#A0A0A8]">
+                  Are you sure you want to block <span className="text-[#E6E1EA] font-medium">{getDisplayName(modalConfig.player)}</span>? They will no longer be able to interact with you or appear in your suggestions.
                 </p>
                 <div className="mt-6 flex justify-end gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setModalConfig(null)}
-                    className="border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5]"
+                    className="border-[#302438] bg-transparent text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E6E1EA]"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleBlockConfirm}
-                    className="bg-[#3A272D] text-[#EDB1B4] border border-[#EDB1B4]/40 hover:bg-[#4d323a]"
+                    className="border border-[#E58B91]/40 bg-[#2B171C] text-[#E58B91] hover:bg-[#3A2026]"
                   >
                     Block User
                   </Button>
@@ -619,21 +612,21 @@ export default function Friends() {
 
             {modalConfig.type === "unfriend" && (
               <>
-                <h3 className="text-lg font-semibold text-[#F0EEF5]">Remove Friend</h3>
-                <p className="mt-2 text-sm text-[#AAA6B5]">
-                  Are you sure you want to remove <span className="text-[#F0EEF5] font-medium">{getDisplayName(modalConfig.player)}</span> from your friends list?
+                <h3 className="text-lg font-semibold text-[#E6E1EA]">Remove Friend</h3>
+                <p className="mt-2 text-sm text-[#A0A0A8]">
+                  Are you sure you want to remove <span className="text-[#E6E1EA] font-medium">{getDisplayName(modalConfig.player)}</span> from your friends list?
                 </p>
                 <div className="mt-6 flex justify-end gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setModalConfig(null)}
-                    className="border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5]"
+                    className="border-[#302438] bg-transparent text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E6E1EA]"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleUnfriendConfirm}
-                    className="bg-[#3A272D] text-[#EDB1B4] border border-[#EDB1B4]/40 hover:bg-[#4d323a]"
+                    className="border border-[#E58B91]/40 bg-[#2B171C] text-[#E58B91] hover:bg-[#3A2026]"
                   >
                     Unfriend
                   </Button>
@@ -643,18 +636,18 @@ export default function Friends() {
 
             {modalConfig.type === "report" && (
               <>
-                <h3 className="text-lg font-semibold text-[#F0EEF5]">Report Player</h3>
-                <p className="mt-2 text-sm text-[#AAA6B5]">
-                  Report <span className="text-[#F0EEF5] font-medium">{getDisplayName(modalConfig.player)}</span> for inappropriate behavior.
+                <h3 className="text-lg font-semibold text-[#E6E1EA]">Report Player</h3>
+                <p className="mt-2 text-sm text-[#A0A0A8]">
+                  Report <span className="text-[#E6E1EA] font-medium">{getDisplayName(modalConfig.player)}</span> for inappropriate behavior.
                 </p>
 
                 <div className="mt-4 flex flex-col gap-3">
                   <div>
-                    <label className="text-xs font-medium text-[#AAA6B5]">Reason</label>
+                    <label className="text-xs font-medium text-[#A0A0A8]">Reason</label>
                     <select
                       value={reportReason}
                       onChange={(e) => setReportReason(e.target.value)}
-                      className="mt-1 h-10 w-full rounded-lg border border-[#38363F] bg-[#383044] px-3 text-xs text-[#F0EEF5] outline-none focus:border-[#C2ADE7]"
+                      className="mt-1 h-10 w-full rounded-lg border border-[#302438] bg-[#000000] px-3 text-xs text-[#E6E1EA] outline-none focus:border-[#B39ACF]"
                     >
                       <option value="harassment">Harassment or Bullying</option>
                       <option value="spam">Spam or Scams</option>
@@ -665,13 +658,13 @@ export default function Friends() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-[#AAA6B5]">Additional Details (Optional)</label>
+                    <label className="text-xs font-medium text-[#A0A0A8]">Additional Details (Optional)</label>
                     <textarea
                       value={reportDetails}
                       onChange={(e) => setReportDetails(e.target.value)}
                       placeholder="Provide context or links..."
                       rows={3}
-                      className="mt-1 w-full rounded-lg border border-[#38363F] bg-[#383044] p-3 text-xs text-[#F0EEF5] outline-none placeholder:text-[#AAA6B5] focus:border-[#C2ADE7]"
+                      className="mt-1 w-full rounded-lg border border-[#302438] bg-[#000000] p-3 text-xs text-[#E6E1EA] outline-none placeholder:text-[#A0A0A8]/70 focus:border-[#B39ACF]"
                     />
                   </div>
                 </div>
@@ -680,13 +673,13 @@ export default function Friends() {
                   <Button
                     variant="outline"
                     onClick={() => setModalConfig(null)}
-                    className="border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5]"
+                    className="border-[#302438] bg-transparent text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E6E1EA]"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleReportConfirm}
-                    className="bg-[#C2ADE7] text-[#1B1A20] font-semibold hover:bg-[#b098db]"
+                    className="border border-[#E58B91]/40 bg-[#2B171C] text-[#E58B91] font-semibold hover:bg-[#3A2026]"
                   >
                     Submit Report
                   </Button>
@@ -727,7 +720,6 @@ type PlayerCardProps = {
   isBlockedView?: boolean;
 };
 
-/** Optimized cover image handler */
 const FavoriteCover = memo(({ src, title }: { src?: string | null; title: string }) => {
   const [failed, setFailed] = useState(false);
   return src && !failed ? (
@@ -741,7 +733,7 @@ const FavoriteCover = memo(({ src, title }: { src?: string | null; title: string
     />
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Gamepad2 className="size-5 text-[#8870B6]" />
+      <Gamepad2 className="size-5 text-[#B39ACF]" />
     </div>
   );
 });
@@ -773,6 +765,13 @@ function PlayerCard({
     setShowMiniProfile(true);
   };
 
+  const addButtonColor =
+    addLabel === "Add friend" || addLabel === "Accept"
+      ? "border border-[#34D399]/30 bg-[#10251F] text-[#34D399] hover:bg-[#16352A]"
+      : addLabel === "Unfriend" || addLabel === "Cancel request"
+        ? "border border-[#E58B91]/30 bg-[#2B171C] text-[#E58B91] hover:bg-[#3A2026]"
+        : "border border-[#302438] bg-[#20232B] text-[#E6E1EA] hover:border-[#554363] hover:bg-[#292C35]";
+
   return (
     <motion.article
       layout
@@ -784,17 +783,15 @@ function PlayerCard({
     >
       <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[minmax(0,1fr)_250px_120px] md:gap-6">
         <div className="flex min-w-0 items-center gap-4">
-          
-          {/* Hover Avatar Container */}
-          <div 
+          <div
             className="relative inline-block"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={() => setShowMiniProfile(false)}
           >
-            <Avatar className="size-[76px] shrink-0 border-2 border-[#8870B6] bg-[#383044] md:size-[88px] cursor-pointer">
+            <Avatar className="size-[76px] shrink-0 border-2 border-[#B39ACF] bg-[#000000] md:size-[88px] cursor-pointer">
               <AvatarImage src={player.avatar_url || undefined} alt={displayName} />
-              <AvatarFallback className="bg-[#383044]">
-                <Gamepad2 className="size-9 text-[#C2ADE7]" />
+              <AvatarFallback className="bg-[#000000]">
+                <Gamepad2 className="size-9 text-[#B39ACF]" />
               </AvatarFallback>
             </Avatar>
 
@@ -811,19 +808,18 @@ function PlayerCard({
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg font-semibold text-[#F0EEF5] md:text-xl">
+            <h3 className="truncate text-lg font-semibold text-[#E6E1EA] md:text-xl">
               {displayName}
             </h3>
-            <p className="mb-2 text-sm text-[#AAA6B5]">@{player.username}</p>
-            <p className="line-clamp-3 break-words text-sm leading-relaxed text-[#AAA6B5]">
+            <p className="mb-2 text-sm text-[#A0A0A8]">@{player.username}</p>
+            <p className="line-clamp-3 break-words text-sm leading-relaxed text-[#A0A0A8]">
               {player.bio?.trim() || "No bio yet."}
             </p>
           </div>
         </div>
 
-        {/* Middle Column: Favorite Games Preview */}
         <div className="hidden md:flex flex-col gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#AAA6B5]">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#A0A0A8]">
             Favorites
           </span>
           {favorites.length > 0 ? (
@@ -831,7 +827,7 @@ function PlayerCard({
               {favorites.slice(0, 3).map((fav, index) => (
                 <div
                   key={fav.id || index}
-                  className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#38363F] bg-[#1B1A20]"
+                  className="size-14 shrink-0 overflow-hidden rounded-lg border border-[#302438] bg-[#000000]"
                   title={fav.title}
                 >
                   <FavoriteCover src={fav.cover_image_url} title={fav.title} />
@@ -839,19 +835,24 @@ function PlayerCard({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#AAA6B5]">No favorite games listed.</p>
+            <p className="text-xs text-[#A0A0A8]/70">No favorite games listed.</p>
           )}
         </div>
 
-        {/* Right Column: Actions */}
-        <div className="flex flex-col gap-2 md:items-end">
+        <div className="flex items-center gap-2 md:flex-col md:items-stretch">
           <Button
             onClick={onAdd}
             disabled={busy}
-            className="w-full bg-[#C2ADE7] text-[#1B1A20] font-semibold hover:bg-[#b098db] md:w-auto text-xs h-9"
+            className={`flex-1 font-semibold disabled:opacity-50 ${addButtonColor}`}
           >
-            {addIcon}
-            <span className={addIcon ? "ml-1.5" : ""}>{addLabel}</span>
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <>
+                {addIcon}
+                <span className={addIcon ? "ml-2" : ""}>{addLabel}</span>
+              </>
+            )}
           </Button>
 
           {secondaryAction && (
@@ -859,27 +860,27 @@ function PlayerCard({
               variant="outline"
               onClick={secondaryAction.onClick}
               disabled={busy}
-              className="w-full border-[#38363F] bg-transparent text-[#AAA6B5] hover:bg-[#383044] hover:text-[#F0EEF5] md:w-auto text-xs h-9"
+              className="border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B] hover:border-[#554363]"
             >
               {secondaryAction.icon}
-              <span className="ml-1.5">{secondaryAction.label}</span>
+              <span className="ml-2">{secondaryAction.label}</span>
             </Button>
           )}
 
           {!isBlockedView && (
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center justify-end gap-1 md:justify-between pt-1">
               <button
                 type="button"
                 onClick={onBlock}
-                className="text-[11px] text-[#AAA6B5] hover:text-[#EDB1B4] transition-colors"
+                className="text-[11px] text-[#A0A0A8] hover:text-[#E58B91] transition-colors"
               >
                 Block
               </button>
-              <span className="text-[#38363F]">•</span>
+              <span className="text-[#302438]">•</span>
               <button
                 type="button"
                 onClick={onReport}
-                className="text-[11px] text-[#AAA6B5] hover:text-[#EDB1B4] transition-colors"
+                className="text-[11px] text-[#A0A0A8] hover:text-[#E58B91] transition-colors"
               >
                 Report
               </button>
@@ -891,22 +892,12 @@ function PlayerCard({
   );
 }
 
-function EmptyState({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
+function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div
-      className={`${CARD} flex flex-col items-center gap-3 px-5 py-14 text-center`}
-    >
-      <Users className="size-10 text-[#8870B6]" />
-
-      <h3 className="text-lg font-semibold text-[#F0EEF5]">{title}</h3>
-
-      <p className="max-w-sm text-sm text-[#AAA6B5]">{description}</p>
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-[#302438] bg-[#17191E] p-12 text-center">
+      <Users className="size-10 text-[#B39ACF] mb-3" />
+      <h3 className="text-base font-semibold text-[#E6E1EA]">{title}</h3>
+      <p className="mt-1 text-sm text-[#A0A0A8] max-w-sm">{description}</p>
     </div>
   );
 }

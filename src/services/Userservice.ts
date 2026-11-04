@@ -38,7 +38,8 @@ export interface UserProfile {
   ratings_count: number;
   favorites?: UserFavoriteGameEntry[];
   reviews_count: number;
-  birth_day: string | null; // Fixed from Date
+  birth_day: string | null;
+  playlists_count?: number;
 }
 
 export type UpdateMeBody = Partial<

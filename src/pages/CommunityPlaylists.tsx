@@ -5,7 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { PlaylistListCard } from "@/components/playlists/PlaylistCards";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
-import { getMe, type UserProfile } from "@/services/Userservice";
+import { getMe, type User } from "@/services/Userservice";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const PAGE_SIZE = 12;
@@ -65,7 +65,7 @@ export default function CommunityPlaylists() {
 
   const [searchText, setSearchText] = useState(q);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,24 +76,9 @@ export default function CommunityPlaylists() {
   useEffect(() => {
     let isMounted = true;
     getMe()
-      .then((meData: any) => {
+      .then((meData: User) => {
         if (isMounted && meData) {
-          setCurrentUser({
-            id: meData.id,
-            username: meData.username,
-            nickname: meData.nickname,
-            bio: meData.bio,
-            avatar_url: meData.avatar_url,
-            banner_url: meData.banner_url,
-            age: meData.age,
-            gender: meData.gender,
-            pronouns: meData.pronouns,
-            joined: meData.created_at,
-            friend_count: 0,
-            library: null,
-            ratings_count: 0,
-            reviews_count: 0,
-          });
+          setCurrentUser(meData);
         }
       })
       .catch(() => {});
@@ -154,46 +139,49 @@ export default function CommunityPlaylists() {
   const visiblePages = useMemo(() => generatePageList(page, totalPages), [page, totalPages]);
 
   const field =
-    "h-10 w-full rounded-lg border border-[#2f2d40] bg-[#262436] px-3 text-[13px] text-[#e0deeb] placeholder:text-[#8b86a3] focus:outline-none focus:ring-2 focus:ring-[#8b6fd6]/60";
-  const label = "mb-2 block font-mono text-[10px] uppercase tracking-widest text-[#8b86a3]";
+    "h-10 w-full rounded-xl border border-[#302438] bg-[#17191E] px-3 text-[13px] text-[#E6E1EA] placeholder:text-[#77717F] focus:outline-none focus:ring-2 focus:ring-[#B39ACF]/60";
+  const label = "mb-2 block font-mono text-[10px] uppercase tracking-widest text-[#77717F]";
 
   const userDisplayName = currentUser?.nickname?.trim() || currentUser?.username || "Player";
 
   return (
-    <div className="min-h-screen bg-[#201e2f]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col text-[#e0deeb]">
+    <div className="min-h-screen w-full bg-[#000000]">
+      <div
+        className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
         <Navbar />
 
-        <main className="flex-1 px-5 pb-16 pt-8 md:px-8 xl:px-16">
-          <nav className="font-mono text-[11px] uppercase tracking-widest text-[#8b86a3]" aria-label="Breadcrumb">
-            <Link to="/home" className="hover:text-[#e0deeb]">Home</Link>
+        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-5 pb-16 pt-8 md:px-8 xl:px-16">
+          <nav className="font-mono text-[11px] uppercase tracking-widest text-[#77717F]" aria-label="Breadcrumb">
+            <Link to="/home" className="hover:text-[#E6E1EA]">Home</Link>
             <span className="mx-2">/</span>
-            <span className="text-[#e0deeb]">Community playlists</span>
+            <span className="text-[#E6E1EA]">Community playlists</span>
           </nav>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-[32px] font-semibold">Community Playlists</h1>
-              <p className="mt-2 text-[14px] text-[#b4aec7]">
+              <p className="mt-2 text-[14px] text-[#A0A0A8]">
                 Curated lists made by players. Discover new games or share your own.
               </p>
             </div>
 
             {/* User Profile Avatar Bar & Create Link */}
-            <div className="flex items-center gap-3 rounded-2xl border border-[#55516c] bg-[#373646] p-2.5 px-4">
-              <Avatar className="size-10 shrink-0 overflow-hidden border border-[#8870b6] bg-[#4d3e68]">
+            <div className="flex items-center gap-3 rounded-2xl border border-[#302438] bg-[#17191E] p-2.5 px-4">
+              <Avatar className="size-10 shrink-0 overflow-hidden border border-[#554363] bg-[#302438]">
                 <AvatarImage
                   src={currentUser?.avatar_url || undefined}
                   alt={userDisplayName}
                   className="object-cover contrast-110 saturate-125"
                 />
-                <AvatarFallback className="bg-[#4d3e68]">
-                  <Gamepad2 className="size-5 text-[#c2ade7]" />
+                <AvatarFallback className="bg-[#302438]">
+                  <Gamepad2 className="size-5 text-[#B39ACF]" />
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col text-xs">
-                <span className="font-medium text-white">{userDisplayName}</span>
-                <Link to="/playlists/new" className="text-[11px] font-semibold text-[#c2ade7] hover:underline">
+                <span className="font-medium text-[#E6E1EA]">{userDisplayName}</span>
+                <Link to="/playlists/new" className="text-[11px] font-semibold text-[#B39ACF] hover:underline">
                   Create new playlist →
                 </Link>
               </div>
@@ -205,7 +193,7 @@ export default function CommunityPlaylists() {
             <div className="sm:col-span-2 lg:col-span-1">
               <label htmlFor="pl-search" className={label}>Search</label>
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8b86a3]" aria-hidden="true" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" aria-hidden="true" />
                 <input
                   id="pl-search"
                   type="search"
@@ -266,18 +254,18 @@ export default function CommunityPlaylists() {
                   setSearchText("");
                   setParams({}, { replace: true });
                 }}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#2f2d40] bg-[#262436] font-mono text-[11px] uppercase tracking-widest hover:bg-[#2f2d40]"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#302438] bg-[#17191E] font-mono text-[11px] uppercase tracking-widest text-[#E6E1EA] hover:bg-[#20232B] hover:border-[#554363]"
               >
                 <RotateCcw className="size-3.5" aria-hidden="true" /> Reset
               </button>
             </div>
           </div>
 
-          <p className="mt-6 font-mono text-[12px] text-[#8b86a3]" aria-live="polite">
-            <span className="font-semibold text-[#e0deeb]">{count.toLocaleString()}</span> playlists
+          <p className="mt-6 font-mono text-[12px] text-[#77717F]" aria-live="polite">
+            <span className="font-semibold text-[#E6E1EA]">{count.toLocaleString()}</span> playlists
           </p>
 
-          {error && <p role="alert" className="mt-4 text-sm text-[#e58d91]">{error}</p>}
+          {error && <p role="alert" className="mt-4 text-sm text-[#E58B91]">{error}</p>}
 
           <div className={`mt-4 grid gap-5 lg:grid-cols-2 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
             {playlists.map((p) => (
@@ -286,7 +274,7 @@ export default function CommunityPlaylists() {
           </div>
 
           {!loading && !error && playlists.length === 0 && (
-            <p className="mt-10 rounded-xl border border-dashed border-[#55516c] p-10 text-center text-sm text-[#b4aec7]">
+            <p className="mt-10 rounded-2xl border border-dashed border-[#302438] p-10 text-center text-sm text-[#A0A0A8]">
               No playlists found.
             </p>
           )}
@@ -299,14 +287,14 @@ export default function CommunityPlaylists() {
                 onClick={() => goTo(page - 1)}
                 disabled={page === 1 || loading}
                 aria-label="Previous page"
-                className="flex size-9 items-center justify-center rounded-lg bg-[#262436] hover:bg-[#2f2d40] disabled:opacity-40"
+                className="flex size-9 items-center justify-center rounded-xl bg-[#17191E] border border-[#302438] text-[#E6E1EA] hover:bg-[#20232B] disabled:opacity-40 cursor-pointer"
               >
                 <ChevronLeft className="size-4" />
               </button>
 
               {visiblePages.map((p, i) =>
                 p === "…" ? (
-                  <span key={`gap-${i}`} className="px-1 text-[#8b86a3]">…</span>
+                  <span key={`gap-${i}`} className="px-1 text-[#77717F]">…</span>
                 ) : (
                   <button
                     key={p}
@@ -314,8 +302,10 @@ export default function CommunityPlaylists() {
                     onClick={() => goTo(Number(p))}
                     disabled={loading}
                     aria-current={p === page ? "page" : undefined}
-                    className={`size-9 rounded-lg text-[13px] ${
-                      p === page ? "bg-[#9f4044] font-semibold" : "bg-[#262436] hover:bg-[#2f2d40]"
+                    className={`size-9 rounded-xl text-[13px] font-semibold cursor-pointer border ${
+                      p === page
+                        ? "bg-[#B39ACF] border-[#B39ACF] text-[#17191E]"
+                        : "bg-[#17191E] border-[#302438] text-[#E6E1EA] hover:bg-[#20232B]"
                     }`}
                   >
                     {p}
@@ -328,7 +318,7 @@ export default function CommunityPlaylists() {
                 onClick={() => goTo(page + 1)}
                 disabled={page >= totalPages || loading}
                 aria-label="Next page"
-                className="flex size-9 items-center justify-center rounded-lg bg-[#262436] hover:bg-[#2f2d40] disabled:opacity-40"
+                className="flex size-9 items-center justify-center rounded-xl bg-[#17191E] border border-[#302438] text-[#E6E1EA] hover:bg-[#20232B] disabled:opacity-40 cursor-pointer"
               >
                 <ChevronRight className="size-4" />
               </button>

@@ -3,37 +3,25 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import GameCard, { type GameSummary } from "@/components/games/GameCard";
 import { getSimilarGames, type SimilarGameResult } from "@/services/Gameservice";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const toGameSummary = ({ game, score, reason }: SimilarGameResult): GameSummary => {
+  const releaseYear = game.release_date ? new Date(game.release_date).getFullYear() : null;
 
-type SimilarResult = {
-  game: {
-    id: number;
-    appid: number;
-    title: string;
-    slug: string | null;
-    cover_image_url: string | null;
-    header_image?: string | null;
-    release_date: string | null;
-    genres: string[];
+  return {
+    id: game.appid,
+    title: game.title,
+    slug: game.slug ?? String(game.appid),
+    cover: game.header_image ?? game.cover_image_url ?? null,
+    genres: game.genres ?? [],
+    platforms: ["PC"],
+    release_year: releaseYear,
+    score: null,
+    statusLabel: `${Math.round(score * 100)}% match`,
+    statusClassName: "bg-[#20232B] text-[#B39ACF] border border-[#302438]",
+    bio: reason?.shared_features?.length
+      ? `Shared: ${reason.shared_features.slice(0, 5).join(", ")}`
+      : undefined,
   };
-  score: number;
-  rank: number;
-  reason?: { shared_features?: string[] };
 };
-
-const toGameSummary = ({ game, score, reason }: SimilarGameResult): GameSummary => ({
-  id: game.appid,
-  title: game.title,
-  slug: game.slug ?? String(game.appid),
-  cover: game.header_image ?? game.cover_image_url ?? null,
-  genres: game.genres ?? [],
-  statusLabel: `${Math.round(score * 100)}% match`,
-  bio: reason?.shared_features?.length
-    ? `Shared: ${reason.shared_features.slice(0, 5).join(", ")}`
-    : null,
-  lastPlayedText: game.release_date ? `Released ${game.release_date}` : undefined,
-  platform: "PC",
-});
 
 const CARD_WIDTH = "w-[260px] sm:w-[280px]";
 
@@ -44,7 +32,7 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
   const [canNext, setCanNext] = useState(false);
   const trackRef = useRef<HTMLUListElement>(null);
 
-    // Fetch whenever the selected game changes
+  // Fetch whenever the selected game changes
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -85,7 +73,7 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
   if (!loading && games.length === 0) return null;
 
   const arrowClass =
-    "flex size-9 cursor-pointer items-center justify-center rounded-lg border border-[#55516c] bg-[#373646] text-[#e0deeb] transition-colors hover:border-[#c2ade7] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#55516c]";
+    "flex size-9 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#302438] disabled:hover:bg-[#17191E]";
 
   return (
     <section aria-labelledby="similar-games-title" className="flex flex-col gap-5">
@@ -93,11 +81,11 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
         <div>
           <h2
             id="similar-games-title"
-            className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]"
+            className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
           >
             Similar games
           </h2>
-          <p className="mt-1 text-[13px] leading-4 text-[#b4aec7]">
+          <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
             Based on shared tags and features
           </p>
         </div>
@@ -134,7 +122,7 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
         {loading
           ? Array.from({ length: 5 }, (_, i) => (
               <li key={i} className={`${CARD_WIDTH} shrink-0`}>
-                <div className="h-[360px] animate-pulse rounded-xl border border-[#55516c] bg-[#373646]" />
+                <div className="h-[360px] animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]" />
               </li>
             ))
           : games.map((game) => (

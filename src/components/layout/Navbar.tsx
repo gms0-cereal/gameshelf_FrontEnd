@@ -18,9 +18,9 @@ import { Input } from "@/components/ui/input";
 import { searchSteamGames, type PickerGame } from "@/services/playlistService";
 
 const navLinks = [
-  { to: "/", label: "Home" },
+  { to: "/home", label: "Home" },
   { to: "/discover", label: "Discover" },
-  { to: "/browse", label: "Browse" },
+  { to: "/playlists", label: "Gamelist" },
   { to: "/my-library", label: "My Library" },
 ];
 
@@ -31,7 +31,7 @@ const menuItems = [
 ];
 
 const menuItemClass =
-  "block w-full px-4 py-2.5 text-left text-sm text-[#F0EEF5] hover:bg-[#383044] focus:bg-[#383044] focus:outline-none transition-colors";
+  "block w-full px-4 py-2.5 text-left text-sm text-[#E6E1EA] hover:bg-[#20232B] focus:bg-[#20232B] focus:outline-none transition-colors";
 
 export default function Navbar() {
   const { user, loading, logoutUser } = useAuth();
@@ -185,154 +185,146 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-[#38363F] bg-[#1B1A20]">
+    <header className="w-full bg-[#17191E] border-b border-[#302438]">
       <nav
         aria-label="Main navigation"
-        className="mx-auto flex min-h-[88px] w-full max-w-[1440px] flex-wrap items-center gap-5 px-5 py-4 md:px-8 xl:h-[88px] xl:flex-nowrap xl:gap-[34px] xl:px-16 xl:py-0"
+        className="mx-auto flex min-h-[88px] w-full max-w-[1440px] items-center justify-between px-5 py-4 md:px-8 xl:h-[88px] xl:px-16"
       >
-        {/* Brand */}
-        <Link
-          to="/home"
-          aria-label="GameShelf home"
-          className="flex w-[163px] shrink-0 items-center gap-2.5 text-[#F0EEF5]"
-        >
-          <Library
-            className="size-[26px] shrink-0 text-[#8870B6]"
-            strokeWidth={1.7}
-            aria-hidden="true"
-          />
-
-          <span className="text-[21px] font-bold leading-[25px] tracking-[-0.6px] text-[#F0EEF5]">
-            GAMESHELF
-          </span>
-        </Link>
-
-        {/* Main navigation */}
-        <ul className="flex items-center gap-5 text-sm leading-[17px] xl:gap-[34px]">
-          {navLinks.map((link) => (
-            <li key={link.label}>
-              <NavLink
-                to={link.to}
-                end={link.to === "/"}
-                className={({ isActive }) =>
-                  `whitespace-nowrap transition-colors ${
-                    isActive
-                      ? "font-semibold text-[#C2ADE7]"
-                      : "text-[#AAA6B5] hover:text-[#F0EEF5]"
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-
-        {/* Search */}
-        <form
-          role="search"
-          onSubmit={handleSearch}
-          className="relative order-last flex h-10 w-full min-w-0 items-center gap-2.5 rounded-lg bg-[#383044]/40 px-[14px] border border-[#38363F] focus-within:border-[#C2ADE7] focus-within:ring-2 focus-within:ring-[#C2ADE7]/20 xl:order-none xl:w-auto xl:flex-1"
-        >
-          <Search
-            className="size-[18px] shrink-0 text-[#AAA6B5]"
-            strokeWidth={1.7}
-            aria-hidden="true"
-          />
-
-          <Input
-            ref={searchRef}
-            type="search"
-            name="q"
-            value={searchQuery}
-            onChange={(e) => {
-              const value = e.target.value;
-              setSearchQuery(value);
-              setSearchResults([]);
-              setSearchLoading(false);
-              setSearchError(null);
-            }}
-            aria-label="Search games"
-            placeholder="Search games..."
-            className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13px] leading-4 text-[#F0EEF5] shadow-none placeholder:text-[#AAA6B5] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
-          />
-
-          <kbd className="shrink-0 whitespace-nowrap text-[11px] leading-[13px] text-[#AAA6B5]">
-          </kbd>
-
-          {searchQuery.trim().length >= 2 && (
-            <div
-              role="listbox"
-              aria-label="Game search results"
-              className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-lg border border-[#38363F] bg-[#1B1A20] shadow-xl"
-            >
-              {searchLoading && (
-                <p role="status" className="px-4 py-3 text-xs text-[#AAA6B5]">
-                  Searching games…
-                </p>
-              )}
-
-              {searchError && (
-                <p role="alert" className="px-4 py-3 text-xs text-[#EDB1B4]">
-                  {searchError}
-                </p>
-              )}
-
-              {!searchLoading && !searchError && searchResults.length === 0 && (
-                <p className="px-4 py-3 text-xs text-[#AAA6B5]">
-                  No games found.
-                </p>
-              )}
-
-              {!searchLoading &&
-                !searchError &&
-                searchResults.map((game) => (
-                  <button
-                    key={game.appid}
-                    type="button"
-                    role="option"
-                    aria-label={`Open ${game.title}`}
-                    onClick={() => handleGameSelect(game)}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#383044] focus:bg-[#383044] focus:outline-none"
-                  >
-                    <img
-                      src={game.cover}
-                      alt=""
-                      className="h-10 w-[72px] shrink-0 rounded object-cover"
-                      loading="lazy"
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-medium text-[#F0EEF5]">
-                        {game.title}
-                      </span>
-                      {game.subtitle && (
-                        <span className="mt-0.5 block truncate text-[11px] text-[#AAA6B5]">
-                          {game.subtitle}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-            </div>
-          )}
-        </form>
-
-        {/* Authentication and profile */}
-        <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5 xl:ml-0">
-          {loading ? (
-            <div
-              className="h-9 w-9 animate-pulse rounded-full bg-[#383044]"
+        {/* Left side: Brand + Nav Links */}
+        <div className="flex items-center gap-8 xl:gap-10">
+          <Link
+            to="/home"
+            aria-label="GameShelf home"
+            className="flex shrink-0 items-center gap-2.5 text-[#E6E1EA]"
+          >
+            <Library
+              className="size-[26px] shrink-0 text-[#B39ACF]"
+              strokeWidth={1.7}
               aria-hidden="true"
             />
-          ) : user ? (
-            <>
-              <Link
-                to="/profile"
-                className="hidden text-sm leading-[17px] text-[#AAA6B5] hover:text-[#F0EEF5] sm:block"
-              >
-                Profile
-              </Link>
 
+            <span className="text-[21px] font-bold leading-[25px] tracking-[-0.6px] text-[#E6E1EA]">
+              GAMESHELF
+            </span>
+          </Link>
+
+          <ul className="flex items-center gap-6 text-sm leading-[17px]">
+            {navLinks.map((link) => (
+              <li key={link.label}>
+                <NavLink
+                  to={link.to}
+                  end={link.to === "/"}
+                  className={({ isActive }) =>
+                    `whitespace-nowrap transition-colors ${
+                      isActive
+                        ? "font-semibold text-[#B39ACF]"
+                        : "text-[#A0A0A8] hover:text-[#E6E1EA]"
+                    }`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Right side: Search bar + Profile */}
+        <div className="flex items-center gap-5">
+          {/* Search */}
+          <form
+            role="search"
+            onSubmit={handleSearch}
+            className="relative hidden md:flex h-10 w-[280px] lg:w-[320px] items-center gap-2.5 rounded-xl border border-[#302438] bg-[#000000] px-[14px] transition-colors focus-within:border-[#B39ACF] focus-within:ring-2 focus-within:ring-[#B39ACF]/20"
+          >
+            <Search
+              className="size-[18px] shrink-0 text-[#A0A0A8]"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
+
+            <Input
+              ref={searchRef}
+              type="search"
+              name="q"
+              value={searchQuery}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchQuery(value);
+                setSearchResults([]);
+                setSearchLoading(false);
+                setSearchError(null);
+              }}
+              aria-label="Search games"
+              placeholder="Search games..."
+              className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-[13px] leading-4 text-[#E6E1EA] shadow-none placeholder:text-[#A0A0A8] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+            />
+
+            {searchQuery.trim().length >= 2 && (
+              <div
+                role="listbox"
+                aria-label="Game search results"
+                className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] shadow-xl"
+              >
+                {searchLoading && (
+                  <p role="status" className="px-4 py-3 text-xs text-[#A0A0A8]">
+                    Searching games…
+                  </p>
+                )}
+
+                {searchError && (
+                  <p role="alert" className="px-4 py-3 text-xs text-[#E58B91]">
+                    {searchError}
+                  </p>
+                )}
+
+                {!searchLoading && !searchError && searchResults.length === 0 && (
+                  <p className="px-4 py-3 text-xs text-[#A0A0A8]">
+                    No games found.
+                  </p>
+                )}
+
+                {!searchLoading &&
+                  !searchError &&
+                  searchResults.map((game) => (
+                    <button
+                      key={game.appid}
+                      type="button"
+                      role="option"
+                      aria-label={`Open ${game.title}`}
+                      onClick={() => handleGameSelect(game)}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#20232B] focus:bg-[#20232B] focus:outline-none"
+                    >
+                      <img
+                        src={game.cover}
+                        alt=""
+                        className="h-10 w-[72px] shrink-0 rounded object-cover"
+                        loading="lazy"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-medium text-[#E6E1EA]">
+                          {game.title}
+                        </span>
+                        {game.subtitle && (
+                          <span className="mt-0.5 block truncate text-[11px] text-[#A0A0A8]">
+                            {game.subtitle}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </form>
+
+          {/* Authentication and profile */}
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+            {loading ? (
+              <div
+                className="h-9 w-9 animate-pulse rounded-full bg-[#302438]"
+                aria-hidden="true"
+              />
+            ) : user ? (
               <div ref={wrapperRef} className="relative">
                 <button
                   type="button"
@@ -340,21 +332,24 @@ export default function Navbar() {
                   aria-expanded={open}
                   aria-label="Open profile menu"
                   onClick={() => setOpen((v) => !v)}
-                  className="flex shrink-0 items-center gap-2.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE7]"
+                  className="flex shrink-0 items-center gap-2.5 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
                 >
-                  <Avatar className="size-11 shrink-0 overflow-hidden border-2 border-[#8870B6] bg-[#383044] after:hidden">
+                  <Avatar className="size-11 shrink-0 overflow-hidden border-2 border-[#B39ACF] bg-[#20232B] after:hidden">
                     <AvatarImage
                       src={user?.avatar_url || undefined}
                       alt={user?.nickname || user?.username || "Player"}
                       className="object-cover"
                     />
-                    <AvatarFallback className="bg-[#383044]">
-                      <Gamepad2 className="size-11 text-[#C2ADE7]" strokeWidth={1.7} />
+                    <AvatarFallback className="bg-[#20232B]">
+                      <Gamepad2
+                        className="size-11 text-[#B39ACF]"
+                        strokeWidth={1.7}
+                      />
                     </AvatarFallback>
                   </Avatar>
 
                   <ChevronDown
-                    className={`size-[14px] text-[#AAA6B5] transition-transform ${
+                    className={`size-[14px] text-[#A0A0A8] transition-transform ${
                       open ? "rotate-180" : ""
                     }`}
                     strokeWidth={1.7}
@@ -368,7 +363,7 @@ export default function Navbar() {
                     role="menu"
                     aria-label="Profile menu"
                     onKeyDown={onMenuKeyDown}
-                    className="absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-lg border border-[#38363F] bg-[#1B1A20] py-1 shadow-xl"
+                    className="absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] py-1 shadow-xl"
                   >
                     {menuItems.map((item) => (
                       <Link
@@ -387,7 +382,7 @@ export default function Navbar() {
                       role="menuitem"
                       onClick={handleLogout}
                       disabled={loggingOut}
-                      className={`${menuItemClass} border-t border-[#38363F] text-[#EDB1B4] hover:bg-[#3A272D] focus:bg-[#3A272D] disabled:opacity-60`}
+                      className={`${menuItemClass} border-t border-[#302438] text-[#E58B91] hover:bg-[#2B171C] focus:bg-[#2B171C] disabled:opacity-60`}
                     >
                       {loggingOut ? "Logging out…" : "Logout"}
                     </button>
@@ -395,7 +390,7 @@ export default function Navbar() {
                     {logoutError && (
                       <p
                         role="alert"
-                        className="px-4 py-2 text-xs text-[#EDB1B4]"
+                        className="px-4 py-2 text-xs text-[#E58B91]"
                       >
                         {logoutError}
                       </p>
@@ -403,24 +398,24 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className="whitespace-nowrap text-sm text-[#AAA6B5] hover:text-[#F0EEF5]"
-              >
-                Log In
-              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="whitespace-nowrap text-sm text-[#A0A0A8] transition-colors hover:text-[#E6E1EA]"
+                >
+                  Log In
+                </Link>
 
-              <Link
-                to="/register"
-                className="whitespace-nowrap rounded-lg bg-[#BDA6E4] px-4 py-2.5 text-sm font-semibold text-[#1B1A20] transition-colors hover:bg-[#C2ADE7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE7]"
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
+                <Link
+                  to="/register"
+                  className="whitespace-nowrap rounded-xl bg-[#B39ACF] px-4 py-2.5 text-sm font-semibold text-[#17191E] transition-colors hover:bg-[#C2ADE0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </nav>
     </header>

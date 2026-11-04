@@ -22,12 +22,7 @@ import {
 } from "@/services/tasteService";
 import { getFriends } from "@/services/Userservice";
 // RTK Query hooks from store
-import {
-  useGetGameSummariesQuery,
-  useGetGameListQuery,
-} from "@/store/apiSlice";
-
-const STEAM_PAGE_SIZE = 12;
+import { useGetGameSummariesQuery } from "@/store/apiSlice";
 
 const TOP_10_HERO_IDS = [
   367520, 504230, 1030300, 620, 387290,
@@ -41,12 +36,12 @@ const CURATED_IDS_STRING = Array.from(
 ).join(",");
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  playing: { label: "Playing", className: "bg-[#393229] text-[#DFC192]" },
-  completed: { label: "Completed", className: "bg-[#1E3A2B] text-[#9EE8B8]" },
-  on_hold: { label: "On Hold", className: "bg-[#393229] text-[#DFC192]" },
-  plan_to_play: { label: "Plan to Play", className: "bg-[#2B2A33] text-[#C2ADE7]" },
-  dropped: { label: "Dropped", className: "bg-[#3A272D] text-[#EDB1B4]" },
-  unplayed: { label: "Unplayed", className: "bg-[#1A1A20] text-[#76717F] border border-[#38363F]" },
+  playing: { label: "Playing", className: "bg-[#20232B] text-[#B39ACF] border border-[#302438]" },
+  completed: { label: "Completed", className: "bg-[#10251F] text-[#34D399] border border-[#302438]" },
+  on_hold: { label: "On Hold", className: "bg-[#20232B] text-[#B39ACF] border border-[#302438]" },
+  plan_to_play: { label: "Plan to Play", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
+  dropped: { label: "Dropped", className: "bg-[#2B171C] text-[#E58B91] border border-[#E58B91]/40" },
+  unplayed: { label: "Unplayed", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
 };
 
 function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSummary {
@@ -129,14 +124,9 @@ function playersLikeYouToSummary(item: PlayersLikeYouItem): GameSummary | null {
 
 export default function Home() {
   const [heroIndex, setHeroIndex] = useState(0);
-  const [userListMap, setUserListMap] = useState<Map<any, any>>(new Map());
-
+  //const [userListMap, setUserListMap] = useState>(new Map());
+  const [userListMap, setUserListMap] = useState<Map<string, UserGameEntry>>(new Map());
   const { user } = useAuth();
-
-  // Catalog pagination
-  const [cursors, setCursors] = useState<number[]>([0]);
-  const currentCursor = cursors[cursors.length - 1];
-  const pageNumber = cursors.length;
 
   // Community Playlists State
   const [communityPlaylists, setCommunityPlaylists] = useState<Playlist[]>([]);
@@ -193,7 +183,6 @@ export default function Home() {
   const [recommendationsLoading, setRecommendationsLoading] = useState(true);
   const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-
 
   // Fetch taste-based recommendations
   useEffect(() => {
@@ -282,7 +271,7 @@ export default function Home() {
         }
 
         const gameMap = new Map<number, GameSummary>();
-        
+
         for (const friend of friendsList) {
           if (friend.favorites && friend.favorites.length > 0) {
             friend.favorites.forEach((fav) => {
@@ -364,7 +353,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
 
-    getPlaylists({ limit: 4, offset: 0 })
+    getPlaylists({ limit: 8, offset: 0 })
       .then(({ results }) => {
         if (!cancelled) setCommunityPlaylists(results);
       })
@@ -389,17 +378,6 @@ export default function Home() {
     return map;
   }, [curatedData]);
 
-  // RTK Query: Fetch Steam Catalog List with Pagination & Expansion
-  const { data: catalogData, isLoading: catalogLoading, error: catalogError } = useGetGameListQuery({
-    limit: STEAM_PAGE_SIZE,
-    last_appid: currentCursor,
-    expand: "1",
-  });
-
-  const catalogGames: SteamGameCard[] = catalogData?.games || [];
-  const nextCursor = catalogData?.last_appid || null;
-  const hasMore = Boolean(catalogData?.have_more_results && nextCursor);
-
   // Derived memoized summaries
   const heroGames = useMemo(
     () => pickSummaries(TOP_10_HERO_IDS, curatedCardsMap, userListMap),
@@ -408,10 +386,6 @@ export default function Home() {
   const rpgGames = useMemo(
     () => pickSummaries(RPG_IDS, curatedCardsMap, userListMap),
     [curatedCardsMap, userListMap]
-  );
-  const steamSummaries = useMemo(
-    () => catalogGames.map((card) => toGameSummary(card, userListMap.get(String(card.appid)))),
-    [catalogGames, userListMap]
   );
 
   const topRatedGames = useMemo(
@@ -432,136 +406,169 @@ export default function Home() {
     [topRatedCards, userListMap]
   );
 
-  function goToNextPage() {
-    if (hasMore && nextCursor !== null) {
-      setCursors((previous) => [...previous, nextCursor]);
-    }
-  }
-
-  function goToPreviousPage() {
-    if (pageNumber > 1) {
-      setCursors((previous) => previous.slice(0, -1));
-    }
-  }
   useEffect(() => {
-  if (heroGames.length <= 1 || isHovered) return;
+    if (heroGames.length <= 1 || isHovered) return;
 
-  const timer = setInterval(() => {
-    setHeroIndex((prev) => (prev < heroGames.length - 1 ? prev + 1 : 0));
-  }, 7000); // 7 seconds
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => (prev < heroGames.length - 1 ? prev + 1 : 0));
+    }, 7000);
 
-  return () => clearInterval(timer);
+    return () => clearInterval(timer);
   }, [heroGames.length, isHovered]);
 
-  const currentHero = heroGames[heroIndex] || null;
-
   return (
-    <div className="min-h-screen bg-[#141417]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#141417] text-[#F0EEF5] antialiased">
+    <div className="min-h-screen w-full bg-[#000000]">
+      <div
+        className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
         <Navbar />
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           {/* Welcome header */}
           <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
             <div className="flex flex-col gap-2">
-              <p className="text-[13px] leading-4 text-[#AAA6B5] uppercase tracking-wider">
+              <p className="text-[13px] leading-4 text-[#A0A0A8] uppercase tracking-wider">
                 WELCOME BACK, {user?.nickname || user?.username || "Player"}
               </p>
-              <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#F0EEF5]">Home</h1>
+              <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">Home</h1>
             </div>
           </div>
 
           {/* Hero Banner */}
-<section
-  onMouseEnter={() => setIsHovered(true)}
-  onMouseLeave={() => setIsHovered(false)}
-  className="relative min-h-[420px] w-full overflow-hidden rounded-2xl bg-[#1B1A20] border border-[#38363F] xl:h-[440px]"
->
-  {/* Horizontal Sliding Track */}
-  <div
-    className="flex h-full w-full transition-transform duration-700 ease-in-out"
-    style={{ transform: `translateX(-${heroIndex * 100}%)` }}
-  >
-    {heroGames.map((hero) => (
-      <div
-        key={hero.id}
-        className="relative flex min-h-[420px] w-full flex-shrink-0 items-end px-6 py-10 md:px-11 xl:h-[440px]"
-      >
-        <img
-          src={hero.cover || ""}
-          alt={hero.title}
-          fetchPriority="high"
-          loading="eager"
-          className="absolute inset-0 h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
-        />
-        {/* Gradient overlays for contrast */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1B1A20] via-[#1B1A20]/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#1B1A20]/90 via-transparent to-transparent" />
-
-        {/* Hero Card Text Content */}
-        <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[#C2ADE7]">
-            TOP RATED THIS MONTH
-          </p>
-          <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] text-[#F0EEF5] drop-shadow-md md:text-[46px]">
-            {hero.title}
-          </h2>
-          <p className="line-clamp-2 text-[14px] leading-relaxed text-[#AAA6B5] drop-shadow">
-            {hero.bio}
-          </p>
-          <div className="flex items-center gap-4 pt-2">
-            <Button
-              asChild
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#BDA6E4] px-6 text-[14px] font-semibold text-[#1B1A20] hover:bg-[#C2ADE7]"
+          <section
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="relative min-h-[420px] w-full overflow-hidden rounded-2xl bg-[#17191E] border border-[#302438] xl:h-[440px]"
+          >
+            {/* Horizontal Sliding Track */}
+            <div
+              className="flex h-full w-full transition-transform duration-700 ease-in-out"
+              style={{ transform: `translateX(-${heroIndex * 100}%)` }}
             >
-              <Link to={`/gamedetails/${hero.slug}`}>
-                <Info className="size-4" /> Details
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
+              {heroGames.map((hero) => (
+                <div
+                  key={hero.id}
+                  className="relative flex min-h-[420px] w-full flex-shrink-0 items-end px-6 py-10 md:px-11 xl:h-[440px]"
+                >
+                  <img
+                    src={hero.cover || ""}
+                    alt={hero.title}
+                    fetchPriority="high"
+                    loading="eager"
+                    className="absolute inset-0 h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
+                  />
+                  {/* Gradient overlays */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#17191E] via-[#17191E]/60 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#17191E]/90 via-transparent to-transparent" />
 
-  {/* Top Right Controls & Slide Indicators */}
-  <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
-    <span className="text-xs font-medium text-[#F0EEF5]">
-      {heroIndex + 1} / {Math.max(heroGames.length, 1)}
-    </span>
-    <div className="flex items-center gap-1">
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() =>
-          setHeroIndex((prev) => (prev > 0 ? prev - 1 : heroGames.length - 1))
-        }
-        className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20]/80 text-[#F0EEF5] hover:bg-[#383044]"
-      >
-        <ChevronLeft className="size-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() =>
-          setHeroIndex((prev) =>
-            prev < heroGames.length - 1 ? prev + 1 : 0
-          )
-        }
-        className="size-8 rounded-lg border-[#38363F] bg-[#1B1A20]/80 text-[#F0EEF5] hover:bg-[#383044]"
-      >
-        <ChevronRight className="size-4" />
-      </Button>
-    </div>
-  </div>
-</section>
-
-          {/* RPGs Section */}
-          <section className="flex flex-col gap-8">
-            <div className="flex flex-col">
-              <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#F0EEF5]">More RPGs for you</h2>
-              <p className="text-[13px] leading-4 text-[#AAA6B5] mt-1">Inspired by your favorite genre</p>
+                  {/* Hero Card Text Content */}
+                  <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[#34D399]">
+                      TOP RATED THIS MONTH
+                    </p>
+                    <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] text-[#E6E1EA] drop-shadow-md md:text-[46px]">
+                      {hero.title}
+                    </h2>
+                    <p className="line-clamp-2 text-[14px] leading-relaxed text-[#A0A0A8] drop-shadow">
+                      {hero.bio}
+                    </p>
+                    <div className="flex items-center gap-4 pt-2">
+                      <Button
+                        asChild
+                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#B39ACF] px-6 text-[14px] font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
+                      >
+                        <Link to={`/gamedetails/${hero.slug}`}>
+                          <Info className="size-4 text-[#17191E]" /> Details
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <GameGrid games={rpgGames} loading={rpgGames.length === 0} />
+
+            {/* Top Right Controls & Slide Indicators */}
+            <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
+              <span className="text-xs font-medium text-[#E6E1EA]">
+                {heroIndex + 1} / {Math.max(heroGames.length, 1)}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setHeroIndex((prev) => (prev > 0 ? prev - 1 : heroGames.length - 1))
+                  }
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setHeroIndex((prev) =>
+                      prev < heroGames.length - 1 ? prev + 1 : 0
+                    )
+                  }
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </section>
+
+{/* RPGs Section */}
+          <section className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">More RPGs for you</h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">Inspired by your favorite genre</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    const el = document.getElementById("rpg-scroll-track");
+                    el?.scrollBy({ left: -el.clientWidth * 0.8, behavior: "smooth" });
+                  }}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    const el = document.getElementById("rpg-scroll-track");
+                    el?.scrollBy({ left: el.clientWidth * 0.8, behavior: "smooth" });
+                  }}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            {rpgGames.length === 0 ? (
+              <p role="status" className="text-sm text-[#A0A0A8]">Loading RPGs…</p>
+            ) : (
+              <div
+                id="rpg-scroll-track"
+                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {rpgGames.map((game) => (
+                  <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
+                    <GameCard game={game} />
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Top Rated */}
@@ -571,11 +578,11 @@ export default function Home() {
                 <div className="flex flex-col">
                   <h2
                     id="top-rated-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#F0EEF5]"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                   >
                     Top Rated on GameShelf Players
                   </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#AAA6B5]">
+                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
                     Highest-rated games based on ratings from GameShelf players.
                   </p>
                 </div>
@@ -586,7 +593,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollTopRated(-1)}
                     aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
@@ -595,15 +602,15 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollTopRated(1)}
                     aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                   >
                     <ChevronRight className="size-4" />
                   </Button>
                 </div>
               </div>
 
-              {topRatedError && <p role="alert" className="text-sm text-[#EDB1B4]">{topRatedError}</p>}
-              {topRatedLoading && <p role="status" className="text-sm text-[#AAA6B5]">Loading top rated games…</p>}
+              {topRatedError && <p role="alert" className="text-sm text-[#E58B91]">{topRatedError}</p>}
+              {topRatedLoading && <p role="status" className="text-sm text-[#A0A0A8]">Loading top rated games…</p>}
 
               {!topRatedLoading && !topRatedError && topRatedGames.length > 0 && (
                 <div
@@ -611,7 +618,7 @@ export default function Home() {
                   className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {topRatedGames.map((game) => (
-                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                    <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
                       <GameCard game={game} />
                     </div>
                   ))}
@@ -626,16 +633,16 @@ export default function Home() {
               <div className="flex flex-col">
                 <h2
                   id="taste-recommendations-title"
-                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#F0EEF5]"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                 >
                   Recommended for You
                 </h2>
-                <p className="mt-1 text-[13px] leading-4 text-[#AAA6B5]">
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
                   Games selected based on your genres, platforms, and liked games.
                 </p>
                 <Link
                   to="/interests"
-                  className="mt-1 text-[13px] leading-4 text-[#C2ADE7] hover:underline"
+                  className="mt-1 text-[13px] leading-4 text-[#B39ACF] hover:underline"
                 >
                   Tune your suggestions: edit genres and liked games →
                 </Link>
@@ -647,7 +654,7 @@ export default function Home() {
                   size="icon"
                   onClick={() => scrollRecommended(-1)}
                   aria-label="Scroll left"
-                  className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
                   <ChevronLeft className="size-4" />
                 </Button>
@@ -656,7 +663,7 @@ export default function Home() {
                   size="icon"
                   onClick={() => scrollRecommended(1)}
                   aria-label="Scroll right"
-                  className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
                   <ChevronRight className="size-4" />
                 </Button>
@@ -664,15 +671,15 @@ export default function Home() {
             </div>
 
             {recommendationsError && (
-              <p role="alert" className="text-sm text-[#EDB1B4]">{recommendationsError}</p>
+              <p role="alert" className="text-sm text-[#E58B91]">{recommendationsError}</p>
             )}
 
             {recommendationsLoading && (
-              <p role="status" className="text-sm text-[#AAA6B5]">Loading recommendations…</p>
+              <p role="status" className="text-sm text-[#A0A0A8]">Loading recommendations…</p>
             )}
 
             {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
-              <p className="text-sm text-[#AAA6B5]">
+              <p className="text-sm text-[#A0A0A8]">
                 No recommendations yet. Update your interests to get personalized suggestions.
               </p>
             )}
@@ -683,7 +690,7 @@ export default function Home() {
                 className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {recommendedGames.map((game) => (
-                  <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                  <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
                     <GameCard game={game} />
                   </div>
                 ))}
@@ -698,11 +705,11 @@ export default function Home() {
                 <div className="flex flex-col">
                   <h2
                     id="players-like-you-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#F0EEF5]"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                   >
                     Players Like You
                   </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#AAA6B5]">
+                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
                     Discover games you may enjoy based on the preferences and ratings of players with
                     similar gaming tastes.
                   </p>
@@ -714,7 +721,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollPlayers(-1)}
                     aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
@@ -723,15 +730,15 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollPlayers(1)}
                     aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                   >
                     <ChevronRight className="size-4" />
                   </Button>
                 </div>
               </div>
 
-              {playersError && <p role="alert" className="text-sm text-[#EDB1B4]">{playersError}</p>}
-              {playersLoading && <p role="status" className="text-sm text-[#AAA6B5]">Loading Players Like You…</p>}
+              {playersError && <p role="alert" className="text-sm text-[#E58B91]">{playersError}</p>}
+              {playersLoading && <p role="status" className="text-sm text-[#A0A0A8]">Loading Players Like You…</p>}
 
               {!playersLoading && !playersError && playersGames.length > 0 && (
                 <div
@@ -739,7 +746,7 @@ export default function Home() {
                   className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {playersGames.map((game) => (
-                    <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                    <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
                       <GameCard game={game} />
                     </div>
                   ))}
@@ -755,11 +762,11 @@ export default function Home() {
                 <div className="flex flex-col">
                   <h2
                     id="friends-also-play-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#F0EEF5]"
+                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                   >
                     Your Friends Also Play
                   </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#AAA6B5]">
+                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
                     Explore the favorite games of the players on your friends list.
                   </p>
                 </div>
@@ -770,7 +777,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollFriendsPlay(-1)}
                     aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
@@ -779,7 +786,7 @@ export default function Home() {
                     size="icon"
                     onClick={() => scrollFriendsPlay(1)}
                     aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                   >
                     <ChevronRight className="size-4" />
                   </Button>
@@ -791,7 +798,7 @@ export default function Home() {
                 className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {friendsGames.map((game) => (
-                  <div key={game.id} className="w-[260px] shrink-0 snap-start">
+                  <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
                     <GameCard game={game} />
                   </div>
                 ))}
@@ -799,37 +806,16 @@ export default function Home() {
             </section>
           )}
 
-          {/* Discover on Steam Section */}
-          <section className="flex flex-col gap-8">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#F0EEF5]">Discover on Steam</h2>
-                <p className="text-[13px] leading-4 text-[#AAA6B5] mt-1">Pulled live from the Steam catalog</p>
-              </div>
-            </div>
-            {catalogError && <p className="text-sm text-[#EDB1B4]">Failed to load catalog games.</p>}
-            <GameGrid games={steamSummaries} loading={catalogLoading} />
-            <nav className="flex items-center justify-center gap-4 pt-4">
-              <Button onClick={goToPreviousPage} disabled={pageNumber === 1 || catalogLoading} className="h-10 rounded-lg border border-[#38363F] bg-[#1A1A20] px-5 text-sm font-semibold text-[#F0EEF5] hover:bg-[#2B2A33] disabled:opacity-50">
-                Previous
-              </Button>
-              <span className="text-[13px] text-[#AAA6B5]">Page {pageNumber}</span>
-              <Button onClick={goToNextPage} disabled={!hasMore || catalogLoading} className="h-10 rounded-lg border-0 bg-[#C2ADE7] px-5 text-sm font-bold text-[#141417] hover:bg-[#b098db] disabled:opacity-50">
-                Next
-              </Button>
-            </nav>
-          </section>
-
           {/* Community Playlists Section */}
           <section id="community-playlists" aria-labelledby="community-playlists-title" className="flex flex-col gap-5">
             <div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 id="community-playlists-title" className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#F0EEF5]">
+                  <h2 id="community-playlists-title" className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
                     Community Playlists
                   </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#AAA6B5]">Discover what other players are curating</p>
-                  <Link to="/playlists" className="text-[13px] text-[#C2ADE7] hover:underline">
+                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">Discover what other players are curating</p>
+                  <Link to="/playlists" className="text-[13px] text-[#B39ACF] hover:underline">
                     View more →
                   </Link>
                 </div>
@@ -837,29 +823,39 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <Link
                     to="/playlists/new"
-                    className="mr-2 rounded-lg bg-[#C2ADE7] px-4 py-2.5 text-[13px] font-bold text-[#141417] hover:bg-[#b098db]"
+                    className="mr-2 rounded-xl bg-[#B39ACF] px-4 py-2.5 text-[13px] font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
                   >
                     Create playlist
                   </Link>
-                  <Button variant="outline" size="icon" onClick={() => scrollCarousel(-1)} aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollCarousel(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:border-[#554363] hover:bg-[#20232B]"
+                  >
                     <ChevronLeft className="size-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={() => scrollCarousel(1)} aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#38363F] bg-[#1A1A20] text-[#F0EEF5] hover:bg-[#2B2A33]">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollCarousel(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:border-[#554363] hover:bg-[#20232B]"
+                  >
                     <ChevronRight className="size-4" />
                   </Button>
                 </div>
               </div>
             </div>
 
-            {playlistsLoading && <p role="status" className="text-sm text-[#AAA6B5]">Loading community playlists…</p>}
-            {playlistsError && <p role="alert" className="text-sm text-[#EDB1B4]">{playlistsError}</p>}
+            {playlistsLoading && <p role="status" className="text-sm text-[#A0A0A8]">Loading community playlists…</p>}
+            {playlistsError && <p role="alert" className="text-sm text-[#E58B91]">{playlistsError}</p>}
 
             {!playlistsLoading && !playlistsError && communityPlaylists.length === 0 && (
-              <div className="rounded-xl border border-dashed border-[#38363F] bg-[#1A1A20] px-6 py-10 text-center">
-                <ListMusic className="mx-auto size-8 text-[#76717F]" strokeWidth={1.5} />
-                <p className="mt-3 text-sm text-[#AAA6B5]">No public playlists yet. Be the first to share one.</p>
+              <div className="rounded-2xl border border-dashed border-[#302438] bg-[#17191E] px-6 py-10 text-center">
+                <ListMusic className="mx-auto size-8 text-[#A0A0A8]" strokeWidth={1.5} />
+                <p className="mt-3 text-sm text-[#A0A0A8]">No public playlists yet. Be the first to share one.</p>
               </div>
             )}
 

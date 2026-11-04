@@ -52,10 +52,6 @@ function stripHtml(html: string | undefined) {
   return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
-function truncate(text: string, max: number) {
-  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
-}
-
 function platformLabel(platforms: SteamGameDetail["platforms"]) {
   if (!platforms) return "";
   const names: string[] = [];
@@ -77,8 +73,6 @@ function movieSource(movie: SteamMovie) {
 
 type RequirementRow = { label: string; value: string };
 
-// Steam sends requirements as HTML (<ul><li><strong>OS:</strong> Windows 10</li>…).
-// Turn it into plain label/value rows instead of injecting the HTML.
 function parseRequirements(html: string | undefined): RequirementRow[] {
   if (!html) return [];
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -92,7 +86,6 @@ function parseRequirements(html: string | undefined): RequirementRow[] {
       const value = (clone.textContent ?? "").replace(/\s+/g, " ").trim();
       return { label, value };
     })
-    // drop empty rows like "Additional Notes:" with no value
     .filter((row) => row.value);
 }
 
@@ -102,10 +95,10 @@ function parseRequirements(html: string | undefined): RequirementRow[] {
 function SectionHeading({ title, note }: { title: string; note?: string }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px]">
+      <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
         {title}
       </h2>
-      {note && <p className="text-[13px] leading-4 text-[#b4aec7]">{note}</p>}
+      {note && <p className="text-[13px] leading-4 text-[#A0A0A8]">{note}</p>}
     </div>
   );
 }
@@ -182,7 +175,7 @@ function AddToListMenu({ appId }: { appId: number }) {
         disabled={busy}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="h-10 gap-2 rounded-lg border-0 bg-[#a8484c] px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
+        className="h-10 gap-2 rounded-xl border-0 bg-[#B39ACF] px-4 text-[13px] font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
       >
         <Plus className="size-4" strokeWidth={1.7} aria-hidden="true" />
         {currentLabel ?? "Add to My List"}
@@ -192,7 +185,7 @@ function AddToListMenu({ appId }: { appId: number }) {
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 top-12 z-30 w-[200px] overflow-hidden rounded-xl border border-[#55516c] bg-[#2a2838] p-1.5 shadow-xl"
+          className="absolute left-0 top-12 z-30 w-[200px] overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] p-1.5 shadow-xl"
         >
           {LIST_STATUS_OPTIONS.map(({ value, label }) => {
             const isSelected = entry?.status === value;
@@ -201,15 +194,15 @@ function AddToListMenu({ appId }: { appId: number }) {
                 <button
                   type="button"
                   onClick={() => choose(value, label)}
-                  className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs ${
+                  className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors ${
                     isSelected
-                      ? "bg-[#4a3d73] text-[#e0deeb]"
-                      : "text-[#b4aec7] hover:bg-[#373646]"
+                      ? "bg-[#B39ACF]/20 text-[#E6E1EA]"
+                      : "text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E6E1EA]"
                   }`}
                 >
                   {label}
                   {isSelected && (
-                    <span className="rounded-full bg-[#7c5fc4] px-2 py-0.5 text-[10px] font-semibold">
+                    <span className="rounded-full bg-[#B39ACF] px-2 py-0.5 text-[10px] font-semibold text-[#17191E]">
                       Selected
                     </span>
                   )}
@@ -219,11 +212,11 @@ function AddToListMenu({ appId }: { appId: number }) {
           })}
 
           {entry && (
-            <li role="presentation" className="mt-1 border-t border-[#55516c] pt-1">
+            <li role="presentation" className="mt-1 border-t border-[#302438] pt-1">
               <button
                 type="button"
                 onClick={remove}
-                className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-xs text-[#e58d91] hover:bg-[#373646]"
+                className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-xs text-[#E58B91] hover:bg-[#2B171C]"
               >
                 Remove from list
               </button>
@@ -246,7 +239,7 @@ function TrailerTile({
   const source = movieSource(movie);
 
   const frame =
-    "relative block aspect-video w-full overflow-hidden rounded-xl border border-[#55516c] bg-black";
+    "relative block aspect-video w-full overflow-hidden rounded-2xl border border-[#302438] bg-black";
 
   if (playing && source) {
     return (
@@ -269,11 +262,11 @@ function TrailerTile({
         className="h-full w-full object-cover contrast-110 saturate-125"
       />
       <span className="absolute inset-0 flex items-center justify-center bg-black/30">
-        <span className="flex size-14 items-center justify-center rounded-full bg-[#a8484c] text-[#e0deeb]">
+        <span className="flex size-14 items-center justify-center rounded-full bg-[#B39ACF] text-[#17191E]">
           <Play className="size-6" fill="currentColor" aria-hidden="true" />
         </span>
       </span>
-      <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-3 py-1 text-xs text-[#e0deeb]">
+      <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-3 py-1 text-xs text-[#E6E1EA]">
         Watch trailer
       </span>
     </>
@@ -308,22 +301,22 @@ function RequirementColumn({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold text-[#c2ade7]">{title}</h3>
+      <h3 className="text-sm font-semibold text-[#B39ACF]">{title}</h3>
 
       {rows.length === 0 ? (
-        <p className="text-xs text-[#b4aec7]">Not specified.</p>
+        <p className="text-xs text-[#A0A0A8]">Not specified.</p>
       ) : (
         <dl className="flex flex-col gap-3 text-xs">
           {rows.map((row, index) =>
             row.label ? (
               <div key={`${row.label}-${index}`}>
-                <dt className="mb-0.5 uppercase tracking-wide text-[#8b86a3]">
+                <dt className="mb-0.5 uppercase tracking-wide text-[#77717F]">
                   {row.label}
                 </dt>
-                <dd className="leading-5 text-[#e0deeb]">{row.value}</dd>
+                <dd className="leading-5 text-[#E6E1EA]">{row.value}</dd>
               </div>
             ) : (
-              <p key={index} className="leading-5 text-[#b4aec7]">
+              <p key={index} className="leading-5 text-[#A0A0A8]">
                 {row.value}
               </p>
             )
@@ -342,7 +335,6 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
     { key: "mac", label: "Mac", supported: game.platforms?.mac, data: game.mac_requirements },
     { key: "linux", label: "Linux", supported: game.platforms?.linux, data: game.linux_requirements },
   ].map(({ key, label, supported, data }) => {
-    // Steam sends [] instead of an object when there are no requirements
     const reqs = data && !Array.isArray(data) ? data : undefined;
     const minimum = parseRequirements(reqs?.minimum);
     const recommended = parseRequirements(reqs?.recommended);
@@ -356,10 +348,8 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
     };
   });
 
-  // Nothing to show at all
   if (!sources.some((s) => s.hasData || s.supported)) return null;
 
-  // Default to the first platform that has data, otherwise PC
   const active =
     sources.find((s) => s.key === activeKey) ??
     sources.find((s) => s.hasData) ??
@@ -369,12 +359,12 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
     <section className="flex flex-col gap-5">
       <SectionHeading title="System requirements" note="From the Steam store page" />
 
-      <Card className="gap-0 rounded-xl border border-[#55516c] bg-[#373646] py-0 text-[#e0deeb] shadow-none">
+      <Card className="gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none">
         <CardContent className="flex flex-col gap-5 p-6">
           <div
             role="tablist"
             aria-label="Platform"
-            className="flex w-fit gap-1 rounded-lg border border-[#55516c] bg-[#2a2838] p-1"
+            className="flex w-fit gap-1 rounded-xl border border-[#302438] bg-[#000000] p-1"
           >
             {sources.map((s) => (
               <button
@@ -383,12 +373,12 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
                 role="tab"
                 aria-selected={active.key === s.key}
                 onClick={() => setActiveKey(s.key)}
-                className={`h-8 cursor-pointer rounded-md px-4 text-xs font-medium transition-colors ${
+                className={`h-8 cursor-pointer rounded-lg px-4 text-xs font-medium transition-colors ${
                   active.key === s.key
-                    ? "bg-[#4a3d73] text-[#e0deeb]"
+                    ? "bg-[#B39ACF] text-[#17191E] font-semibold"
                     : s.hasData || s.supported
-                      ? "text-[#b4aec7] hover:text-[#e0deeb]"
-                      : "text-[#6f6a85] hover:text-[#b4aec7]"
+                      ? "text-[#A0A0A8] hover:text-[#E6E1EA]"
+                      : "text-[#554363] hover:text-[#A0A0A8]"
                 }`}
               >
                 {s.label}
@@ -402,7 +392,7 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
               <RequirementColumn title="Recommended" rows={active.recommended} />
             </div>
           ) : (
-            <p className="text-sm text-[#b4aec7]">
+            <p className="text-sm text-[#A0A0A8]">
               {active.supported
                 ? `The publisher hasn’t listed ${active.label} requirements for this game.`
                 : `This game isn’t available on ${active.label}.`}
@@ -427,10 +417,8 @@ export default function GameDetails() {
   const [dlc, setDlc] = useState<SteamGameDetail[]>([]);
   const [reviewData, setReviewData] = useState<SteamReviewsResponse | null>(null);
 
-  // Modal state for in-page screenshot lightbox
   const [activeScreenshot, setActiveScreenshot] = useState<string | null>(null);
 
-  // GameShelf reviews
   const [reviewTab, setReviewTab] = useState<"gameshelf" | "external">("gameshelf");
   const [gsReviews, setGsReviews] = useState<GameshelfReview[]>([]);
   const [gsPage, setGsPage] = useState(1);
@@ -477,7 +465,6 @@ export default function GameDetails() {
     };
   }, [appid]);
 
-  // Has this user already liked the game?
   useEffect(() => {
     if (!appid || !/^\d+$/.test(appid)) return;
     let cancelled = false;
@@ -498,7 +485,6 @@ export default function GameDetails() {
     if (!appid || likeBusy) return;
     const previous = like;
 
-    // optimistic update
     setLike({
       liked: !previous.liked,
       like_count: Math.max(0, previous.like_count + (previous.liked ? -1 : 1)),
@@ -515,7 +501,6 @@ export default function GameDetails() {
     }
   }
 
-  // Page title
   useEffect(() => {
     if (game) document.title = `${game.name} | GameShelf`;
   }, [game]);
@@ -636,40 +621,40 @@ export default function GameDetails() {
   const trailer = game?.movies?.[0];
 
   return (
-    <div className="min-h-screen bg-[#201e2f]">
+    <div className="min-h-screen w-full bg-[#000000]">
       <div
-        className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col bg-[#201e2f] text-[#e0deeb] antialiased"
+        className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
         <Navbar />
 
-        <main className="flex flex-1 flex-col gap-10 px-5 pb-16 pt-8 md:px-8 xl:px-16">
+        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-10 px-5 pb-16 pt-8 md:px-8 xl:px-16">
           {/* Breadcrumb */}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-[#b4aec7]">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-[#A0A0A8]">
             <nav aria-label="Breadcrumb" className="flex items-center gap-1.5">
-              <Link to="/home" className="cursor-pointer hover:text-[#e0deeb]">
+              <Link to="/home" className="cursor-pointer hover:text-[#E6E1EA]">
                 Home
               </Link>
               <span aria-hidden="true">/</span>
               <span>Games</span>
               <span aria-hidden="true">/</span>
-              <span className="text-[#e0deeb]">{game?.name ?? "…"}</span>
+              <span className="text-[#E6E1EA]">{game?.name ?? "…"}</span>
             </nav>
             <span>Game Details</span>
           </div>
 
           {loading && (
-            <p role="status" className="py-24 text-center text-sm text-[#b4aec7]">
+            <p role="status" className="py-24 text-center text-sm text-[#A0A0A8]">
               Loading game…
             </p>
           )}
 
           {error && (
             <div role="alert" className="flex flex-col items-center gap-4 py-24">
-              <p className="text-sm text-[#e58d91]">{error}</p>
+              <p className="text-sm text-[#E58B91]">{error}</p>
               <Button
                 asChild
-                className="h-10 rounded-lg border-0 bg-[#a8484c] px-5 text-sm font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
+                className="h-10 rounded-xl border-0 bg-[#B39ACF] px-5 text-sm font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
               >
                 <Link to="/home">Back to Home</Link>
               </Button>
@@ -678,12 +663,12 @@ export default function GameDetails() {
 
           {game && (
             <>
-              {/* Hero */}
+              {/* Hero Banner */}
               <section
                 aria-labelledby="game-title"
-                className="relative z-20 flex min-h-[360px] items-center rounded-2xl px-6 py-10 md:px-11"
+                className="relative z-20 flex min-h-[320px] items-center rounded-2xl px-6 py-10 md:px-11"
               >
-                <div className="absolute inset-0 overflow-hidden rounded-2xl bg-[#2a2838]">
+                <div className="absolute inset-0 overflow-hidden rounded-2xl bg-[#17191E]">
                   {heroImage && (
                     <img
                       src={heroImage}
@@ -698,88 +683,126 @@ export default function GameDetails() {
                     className="absolute inset-0"
                     style={{
                       background:
-                        "linear-gradient(90deg, rgba(32,30,47,0.94) 0%, rgba(32,30,47,0.7) 50%, rgba(32,30,47,0.15) 100%)",
+                        "linear-gradient(90deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.15) 100%)",
                     }}
                   />
                 </div>
 
-                <div className="relative flex w-full max-w-[600px] flex-col gap-4">
-                  <p className="text-[10px] leading-[12px] tracking-[2px] text-[#c2ade7]">
-                    CURATED FOR YOUR NEXT CHAPTER
-                  </p>
+                <div className="relative flex w-full max-w-[600px] flex-col gap-3">
 
                   <h1
                     id="game-title"
-                    className="text-[36px] font-semibold leading-[1.1] tracking-[-0.8px] md:text-[48px]"
+                    className="text-[36px] font-semibold leading-[1.1] tracking-[-0.8px] text-[#E6E1EA] md:text-[48px]"
                   >
                     {game.name}
                   </h1>
 
-                  <p className="text-[13px] text-[#b4aec7]">
+                  <p className="text-[13px] text-[#A0A0A8]">
                     {genres.join(" • ")}
                     {genres.length > 0 && platforms && " | "}
                     {platforms}
                   </p>
-
-                  <p className="line-clamp-3 text-[14px] leading-6 text-[#e0deeb]">
-                    {game.short_description}
-                  </p>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <AddToListMenu appId={game.steam_appid} />
-
-                    <Button
-                      asChild
-                      className="h-10 gap-2 rounded-lg border border-[#55516c] bg-[#373646]/80 px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a]"
-                    >
-                      <Link to={reviewsPath}>
-                        <PenLine className="size-4" strokeWidth={1.7} aria-hidden="true" />
-                        Rate / Write Review
-                      </Link>
-                    </Button>
-                  </div>
                 </div>
               </section>
 
-              {/* About + score */}
-              <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
-                <Card className="gap-0 rounded-xl border border-[#55516c] bg-[#373646] py-0 text-[#e0deeb] shadow-none">
-                  <CardContent className="flex flex-col gap-5 p-6">
-                    <h2 className="text-[22px] font-semibold leading-7">
-                      About {game.name}
-                    </h2>
+{/* Unified Single-Container Layout */}
+              <section className="flex flex-col gap-5">
+                <Card className="gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none">
+                  <CardContent className="flex flex-col gap-6 p-6">
+                    {/* Top Row: List Status & Review Button (Left) | Community Score & Like (Right) */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#302438] pb-5">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <AddToListMenu appId={game.steam_appid} />
 
-                    <p className="text-sm leading-6 text-[#b4aec7]">
-                      {truncate(
-                        stripHtml(game.about_the_game) || game.short_description,
-                        700
-                      )}
-                    </p>
+                        <Button
+                          asChild
+                          className="h-10 gap-2 rounded-xl border border-[#302438] bg-[#000000] px-4 text-[13px] font-semibold text-[#E6E1EA] shadow-none hover:border-[#554363] hover:bg-[#20232B]"
+                        >
+                          <Link to={reviewsPath}>
+                            <PenLine className="size-4 text-[#B39ACF]" strokeWidth={1.7} aria-hidden="true" />
+                            Rate / Write Review
+                          </Link>
+                        </Button>
+                      </div>
 
-                    <dl className="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
+                      <div className="flex flex-wrap items-center gap-6">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-[20px] font-semibold leading-7">
+                            {communityScore !== null
+                              ? `${communityScore.toFixed(1)} / 10`
+                              : "No score yet"}
+                          </span>
+                          <span className="text-sm text-[#A0A0A8]">
+                            • Community score ({totalReviews > 0 ? `${totalReviews.toLocaleString()} ratings` : "Not enough reviews"})
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={toggleLike}
+                          disabled={likeBusy}
+                          aria-pressed={like.liked}
+                          className={`flex cursor-pointer items-center gap-2 text-sm transition-colors ${
+                            like.liked ? "text-[#E58B91]" : "text-[#A0A0A8] hover:text-[#E6E1EA]"
+                          }`}
+                        >
+                          <Heart
+                            className={`size-4 ${like.liked ? "fill-[#E58B91] text-[#E58B91]" : ""}`}
+                            strokeWidth={1.7}
+                            aria-hidden="true"
+                          />
+                          {like.liked ? "Liked" : "Like"}
+                          {like.like_count > 0 && (
+                            <span className="text-xs text-[#77717F]">
+                              ({like.like_count.toLocaleString()})
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Middle: About Section */}
+                    <div className="flex flex-col gap-2">
+                      <h2 className="text-[22px] font-semibold leading-7">
+                        About {game.name}
+                      </h2>
+
+                      <p className="min-h-[120px] text-sm leading-6 text-[#A0A0A8]">
+                        {stripHtml(game.about_the_game) || game.short_description || "No description available."}
+                      </p>
+                    </div>
+
+                    {/* Bottom Metadata Grid */}
+                    <dl className="grid grid-cols-2 gap-4 border-t border-[#302438] pt-5 text-xs sm:grid-cols-4">
                       <div>
-                        <dt className="mb-1 uppercase tracking-wide text-[#8b86a3]">
+                        <dt className="mb-1 uppercase tracking-wide text-[#77717F]">
                           Developer
                         </dt>
-                        <dd>{game.developers?.join(", ") || "—"}</dd>
+                        <dd className="font-medium text-[#38BDF8]">
+                          {game.developers?.join(", ") || "—"}
+                        </dd>
                       </div>
                       <div>
-                        <dt className="mb-1 uppercase tracking-wide text-[#8b86a3]">
+                        <dt className="mb-1 uppercase tracking-wide text-[#77717F]">
                           Publisher
                         </dt>
-                        <dd>{game.publishers?.join(", ") || "—"}</dd>
+                        <dd className="font-medium text-[#B39ACF]">
+                          {game.publishers?.join(", ") || "—"}
+                        </dd>
                       </div>
                       <div>
-                        <dt className="mb-1 uppercase tracking-wide text-[#8b86a3]">
+                        <dt className="mb-1 uppercase tracking-wide text-[#77717F]">
                           Release year
                         </dt>
-                        <dd>{releaseYear}</dd>
+                        <dd className="font-medium text-[#34D399]">
+                          {releaseYear}
+                        </dd>
                       </div>
                       <div>
-                        <dt className="mb-1 uppercase tracking-wide text-[#8b86a3]">
+                        <dt className="mb-1 uppercase tracking-wide text-[#77717F]">
                           Price
                         </dt>
-                        <dd>
+                        <dd className="font-semibold text-[#34D399]">
                           {game.is_free
                             ? "Free to play"
                             : (game.price_overview?.final_formatted ?? "—")}
@@ -788,57 +811,7 @@ export default function GameDetails() {
                     </dl>
                   </CardContent>
                 </Card>
-
-                <Card className="gap-0 rounded-xl border border-[#55516c] bg-[#373646] py-0 text-[#e0deeb] shadow-none">
-                  <CardContent className="flex flex-col gap-3 p-6">
-                    <p className="text-[20px] font-semibold leading-7">
-                      {communityScore !== null
-                        ? `${communityScore.toFixed(1)} / 10`
-                        : "No score yet"}{" "}
-                      - <span className="text-[#b4aec7]">Community score</span>
-                    </p>
-
-                    <p className="text-xs text-[#b4aec7]">
-                      {totalReviews > 0
-                        ? `${totalReviews.toLocaleString()} ratings • ${summary?.review_score_desc ?? "Steam reviews"}`
-                        : "Not enough Steam reviews yet"}
-                    </p>
-
-                    <Button
-                      asChild
-                      className="h-10 w-fit gap-2 rounded-lg border-0 bg-[#a8484c] px-4 text-[13px] font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
-                    >
-                      <Link to={reviewsPath}>
-                        <PenLine className="size-4" strokeWidth={1.7} aria-hidden="true" />
-                        Rate / Write Review
-                      </Link>
-                    </Button>
-
-                    <button
-                      type="button"
-                      onClick={toggleLike}
-                      disabled={likeBusy}
-                      aria-pressed={like.liked}
-                      className={`flex w-fit cursor-pointer items-center gap-2 text-sm transition-colors ${
-                        like.liked ? "text-[#e58d91]" : "text-[#b4aec7] hover:text-[#e0deeb]"
-                      }`}
-                    >
-                      <Heart
-                        className={`size-4 ${like.liked ? "fill-[#e58d91] text-[#e58d91]" : ""}`}
-                        strokeWidth={1.7}
-                        aria-hidden="true"
-                      />
-                      {like.liked ? "Liked" : "Like this game"}
-                      {like.like_count > 0 && (
-                        <span className="text-xs text-[#8b86a3]">
-                          • {like.like_count.toLocaleString()}
-                        </span>
-                      )}
-                    </button>
-                  </CardContent>
-                </Card>
               </section>
-
               {/* Trailer */}
               {trailer && (
                 <section className="flex flex-col gap-5">
@@ -858,7 +831,7 @@ export default function GameDetails() {
                       <Link
                         key={item.steam_appid}
                         to={`/gamedetails/${item.steam_appid}`}
-                        className="group overflow-hidden rounded-xl border border-[#55516c] bg-[#373646] transition-colors hover:border-[#c2ade7]"
+                        className="group overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] transition-colors hover:border-[#554363]"
                       >
                         <img
                           src={item.header_image}
@@ -867,10 +840,10 @@ export default function GameDetails() {
                           className="aspect-[460/215] w-full object-cover contrast-110 saturate-125"
                         />
                         <div className="flex flex-col gap-1 p-4">
-                          <p className="truncate text-sm font-medium group-hover:text-[#c2ade7]">
+                          <p className="truncate text-sm font-medium group-hover:text-[#B39ACF]">
                             {item.name}
                           </p>
-                          <p className="text-xs text-[#b4aec7]">
+                          <p className="text-xs text-[#A0A0A8]">
                             {item.is_free
                               ? "Free"
                               : (item.price_overview?.final_formatted ?? "DLC")}
@@ -896,7 +869,7 @@ export default function GameDetails() {
                         type="button"
                         onClick={() => setActiveScreenshot(shot.path_full)}
                         aria-label="Enlarge screenshot"
-                        className="group relative cursor-pointer overflow-hidden rounded-xl border border-[#55516c] bg-black transition-colors hover:border-[#c2ade7]"
+                        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-[#302438] bg-black transition-colors hover:border-[#554363]"
                       >
                         <img
                           src={shot.path_thumbnail}
@@ -918,7 +891,7 @@ export default function GameDetails() {
 
               {/* Reviews */}
               <section id="reviews" className="scroll-mt-6">
-                <Card className="gap-0 rounded-xl border border-[#55516c] bg-[#373646] py-0 text-[#e0deeb] shadow-none">
+                <Card className="gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none">
                   <CardContent className="flex flex-col gap-5 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h2 className="text-[22px] font-semibold leading-7">
@@ -928,7 +901,7 @@ export default function GameDetails() {
                       <div
                         role="tablist"
                         aria-label="Review type"
-                        className="flex gap-1 rounded-lg border border-[#55516c] bg-[#2a2838] p-1"
+                        className="flex gap-1 rounded-xl border border-[#302438] bg-[#000000] p-1"
                       >
                         {(
                           [
@@ -942,10 +915,10 @@ export default function GameDetails() {
                             role="tab"
                             aria-selected={reviewTab === value}
                             onClick={() => setReviewTab(value)}
-                            className={`h-8 cursor-pointer rounded-md px-4 text-xs font-medium transition-colors ${
+                            className={`h-8 cursor-pointer rounded-lg px-4 text-xs font-medium transition-colors ${
                               reviewTab === value
-                                ? "bg-[#4a3d73] text-[#e0deeb]"
-                                : "text-[#b4aec7] hover:text-[#e0deeb]"
+                                ? "bg-[#B39ACF] text-[#17191E] font-semibold"
+                                : "text-[#A0A0A8] hover:text-[#E6E1EA]"
                             }`}
                           >
                             {label}
@@ -961,7 +934,7 @@ export default function GameDetails() {
                       />
                     ) : (
                       <>
-                        <p className="text-xs text-[#b4aec7]">
+                        <p className="text-xs text-[#A0A0A8]">
                           Most helpful reviews from GameShelf members
                         </p>
 
@@ -975,26 +948,26 @@ export default function GameDetails() {
                         ))}
 
                         {reviewsLoading && (
-                          <p role="status" className="text-sm text-[#b4aec7]">
+                          <p role="status" className="text-sm text-[#A0A0A8]">
                             Loading reviews…
                           </p>
                         )}
 
                         {reviewsError && (
-                          <p role="alert" className="text-sm text-[#e58d91]">
+                          <p role="alert" className="text-sm text-[#E58B91]">
                             Couldn’t load reviews right now.
                           </p>
                         )}
 
                         {!reviewsLoading && !reviewsError && gsReviews.length === 0 && (
-                          <p className="text-sm text-[#b4aec7]">No written reviews yet.</p>
+                          <p className="text-sm text-[#A0A0A8]">No written reviews yet.</p>
                         )}
 
                         {gsHasNext && !reviewsLoading && (
                           <Button
                             type="button"
                             onClick={loadMoreGsReviews}
-                            className="h-10 w-fit rounded-lg border border-[#55516c] bg-transparent px-5 text-sm font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a]"
+                            className="h-10 w-fit rounded-xl border border-[#302438] bg-transparent px-5 text-sm font-semibold text-[#E6E1EA] shadow-none hover:border-[#554363] hover:bg-[#20232B]"
                           >
                             Load more reviews
                           </Button>
@@ -1020,7 +993,7 @@ export default function GameDetails() {
           onClick={() => setActiveScreenshot(null)}
         >
           <div
-            className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-2xl border border-[#55516c] bg-[#2a2838] shadow-2xl animate-in zoom-in-95"
+            className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] shadow-2xl animate-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             <button
