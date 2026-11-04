@@ -254,10 +254,15 @@ export default function MyLibrary() {
       >
         <Navbar />
 
-        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-5 pb-16 pt-8 md:px-8 xl:px-16">
-          <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
-            My List
-          </h1>
+        <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
+          {/* Header section matching Home precisely */}
+          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
+                My List
+              </h1>
+            </div>
+          </div>
 
           {/* Controls */}
           <div className="flex flex-col gap-5">
@@ -596,7 +601,7 @@ export default function MyLibrary() {
           )}
 
           {/* My Playlists Carousel Section */}
-          <section id="my-playlists" aria-labelledby="my-playlists-title" className="mt-8 flex flex-col gap-5">
+          <section id="my-playlists" aria-labelledby="my-playlists-title" className="flex flex-col gap-5">
             <div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <div>

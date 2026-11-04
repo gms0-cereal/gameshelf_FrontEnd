@@ -305,17 +305,18 @@ export default function Discover() {
       >
         <Navbar />
 
-        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-5 pb-16 pt-8 md:px-8 xl:px-16">
-          {/* Page heading */}
-          <header className="flex flex-col gap-3">
-            <h1 className="text-[32px] font-semibold leading-10 tracking-[-0.5px] text-[#E6E1EA]">
-              Discover Games
-            </h1>
-
-            <p className="text-[13px] text-[#B39ACF]">
-              A whole world of games. Find the one that stays with you.
-            </p>
-          </header>
+        <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
+          {/* Page header matching Home's layout */}
+          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">
+                EXPLORE & FILTER
+              </p>
+              <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
+                Discover Games
+              </h1>
+            </div>
+          </div>
 
           {/* Filters */}
           <section
