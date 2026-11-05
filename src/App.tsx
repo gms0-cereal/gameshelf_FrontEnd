@@ -21,10 +21,18 @@ import CreatePlaylist from "./pages/CreatePlaylist";
 import CommunityPlaylists from "./pages/CommunityPlaylists";
 import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
 import AppealReportPage from "./pages/AppealReportPage";
+import { SettingsProvider } from "./context/Settingscontext";
 // Admin Dashboard Imports
 import { Dashboard } from "./pages/admin/Dashboard";
 import { Games } from "./pages/admin/Games";
 import Discover from "./pages/Discover";
+//Legal Stuff
+import About from "@/pages/About";
+import Contact from "@/pages/Contact";
+import Help from "@/pages/Help";
+import PrivacyPolicy from "@/pages/Privacypolicy";
+import Terms from "@/pages/Terms";
+import Settings from "@/pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +44,7 @@ const App = () => (
 
         <BrowserRouter>
           <AuthProvider>
+            <SettingsProvider>
             <Routes>
               {/* Public / User Storefront Routes */}
               <Route path="/" element={<Login />} />
@@ -54,13 +63,23 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/profile/edit" element={<EditProfile />} />
               <Route path="/profile/set-birthday" element={<SetBirthdayPage/>} />
+              
               <Route path="/discover" element={<Discover />} />
               <Route path="/interests" element={<ChooseInterest />} />
               <Route path="/appeal-report" element={<AppealReportPage />} />
               {/* Admin Routes */}
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/games" element={<Games />} />
+              {/* Legal Routes */}
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<Terms />} />
+              {/* Settings Route */}
+              <Route path="/settings" element={<Settings />} />
             </Routes>
+            </SettingsProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

@@ -33,7 +33,7 @@ export default function Footer() {
         ))}
       </nav>
 
-      <span>Demo • Sample content</span>
+      <span></span>
     </footer>
   );
 }

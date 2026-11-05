@@ -144,10 +144,17 @@ export default function CommunityPlaylists() {
     setSearchText(q);
   }, [q]);
 
+  // Functional update: always builds on the latest URL params, so several
+  // changes in one event (e.g. set genre + reset page) can't overwrite each other.
   const update = (next: Record<string, string | null>) => {
-    const p = new URLSearchParams(params);
-    Object.entries(next).forEach(([k, v]) => (v ? p.set(k, v) : p.delete(k)));
-    setParams(p, { replace: true });
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        Object.entries(next).forEach(([k, v]) => (v ? p.set(k, v) : p.delete(k)));
+        return p;
+      },
+      { replace: true }
+    );
   };
 
   useEffect(() => {
@@ -184,10 +191,6 @@ export default function CommunityPlaylists() {
       cancelled = true;
     };
   }, [q, genre, platform, sort, page]);
-
-  function changeFilter(key: string, value: string) {
-    update({ [key]: value || null, page: null });
-  }
 
   function changePage(next: number) {
     update({ page: next > 1 ? String(next) : null });
@@ -266,21 +269,21 @@ export default function CommunityPlaylists() {
               <FilterSelect
                 label="Genre"
                 value={genre}
-                onChange={(v) => changeFilter("genre", v)}
+                onChange={(v) => update({ genre: v || null, page: null })}
                 options={GENRES}
               />
 
               <FilterSelect
                 label="Platform"
                 value={platform}
-                onChange={(v) => changeFilter("platform", v)}
+                onChange={(v) => update({ platform: v || null, page: null })}
                 options={PLATFORMS}
               />
 
               <FilterSelect
                 label="Sort by"
                 value={sort}
-                onChange={(v) => changeFilter("sort", v === "newest" ? "" : v)}
+                onChange={(v) => update({ sort: v === "newest" ? null : v, page: null })}
                 options={SORTS}
               />
 
