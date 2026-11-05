@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useRef, useState, memo } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { Heart, LayoutGrid, List, Loader2 } from "lucide-react";
+import { Copy, Heart, LayoutGrid, List, Loader2 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import { timeAgo } from "../components/playlists/PlaylistCards";
-import { getPlaylist, toggleLikePlaylist, type Playlist, type PlaylistGame } from "../services/playlistService";
+import {
+  copyPlaylist,
+  getPlaylist,
+  toggleLikePlaylist,
+  type Playlist,
+  type PlaylistGame,
+} from "../services/playlistService";
 import MiniProfileCard from "@/components/social/MiniProfileCard";
 import { getUserProfile, type UserProfile } from "../services/Userservice";
 
@@ -75,21 +81,28 @@ function GameLink({ game, className, children }: { game: PlaylistGame; className
   return game.steam_appid ? (
     <Link
       to={`/gamedetails/${game.steam_appid}`}
+      title={game.title}
+      aria-label={game.title}
       className={`${className} transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]`}
     >
       {children}
     </Link>
   ) : (
-    <div className={className}>{children}</div>
+    <div title={game.title} aria-label={game.title} className={className}>
+      {children}
+    </div>
   );
 }
 
 const PlaylistDetail = () => {
   const { id, username } = useParams<{ id: string; username?: string }>();
+  const navigate = useNavigate();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [liking, setLiking] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const [sort, setSort] = useState<Sort>("order");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -148,6 +161,7 @@ const PlaylistDetail = () => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setCopyError(null);
 
     getPlaylist(playlistId)
       .then((data) => !cancelled && setPlaylist(data))
@@ -166,17 +180,17 @@ const PlaylistDetail = () => {
     };
   }, [id]);
 
-  // Handle like toggle functionality
+  // Like / unlike. Updates instantly, then syncs with the server's real count
+  // (which includes likes from other users) and rolls back if the request fails.
   const handleLikeToggle = async () => {
     if (!playlist || liking) return;
     const playlistId = Number(id);
     if (!Number.isInteger(playlistId)) return;
 
     setLiking(true);
-    const previousIsLiked = (playlist as any).is_liked;
+    const previousIsLiked = Boolean((playlist as any).is_liked);
     const previousLikeCount = playlist.like_count;
 
-    // Optimistic UI Update
     const nextIsLiked = !previousIsLiked;
     setPlaylist({
       ...playlist,
@@ -186,14 +200,40 @@ const PlaylistDetail = () => {
 
     try {
       const res = await toggleLikePlaylist(playlistId);
-      if (res && typeof res.like_count === "number") {
-        setPlaylist((prev) => prev ? { ...prev, like_count: res.like_count, is_liked: res.is_liked ?? nextIsLiked } : null);
-      }
+      setPlaylist((prev) =>
+        prev
+          ? ({ ...prev, like_count: res.like_count, is_liked: res.is_liked } as any)
+          : null
+      );
     } catch {
-      // Rollback on error
-      setPlaylist((prev) => prev ? { ...prev, is_liked: previousIsLiked, like_count: previousLikeCount } : null);
+      // Rollback on error (e.g. not logged in)
+      setPlaylist((prev) =>
+        prev ? ({ ...prev, is_liked: previousIsLiked, like_count: previousLikeCount } as any) : null
+      );
     } finally {
       setLiking(false);
+    }
+  };
+
+  // Copy this playlist into the viewer's own library, then open the new copy.
+  const handleCopy = async () => {
+    if (!playlist || copying) return;
+    const playlistId = Number(id);
+    if (!Number.isInteger(playlistId)) return;
+
+    setCopying(true);
+    setCopyError(null);
+    try {
+      const created = await copyPlaylist(playlistId);
+      const newOwner = created.owner?.username;
+      if (newOwner) {
+        navigate(`/playlists/${encodeURIComponent(newOwner)}/${created.id}`);
+      }
+    } catch (err) {
+      const detail = isAxiosError(err) ? err.response?.data?.detail : null;
+      setCopyError(detail || "Couldn't copy this playlist. Please try again.");
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -221,6 +261,9 @@ const PlaylistDetail = () => {
   const shownGenres = showAllGenres ? genreCounts : genreCounts.slice(0, TOP_GENRES_SHOWN);
   const hiddenGenres = genreCounts.length - TOP_GENRES_SHOWN;
   const isLiked = Boolean((playlist as any)?.is_liked);
+  const isOwner = Boolean((playlist as any)?.is_owner);
+  // Anyone can copy a playlist that isn't theirs (no like required)
+  const canCopy = !isOwner;
 
   if (
     playlist &&
@@ -306,27 +349,47 @@ const PlaylistDetail = () => {
                   {playlist.title}
                 </h1>
 
-                {playlist.description && (
-                  <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-[#A0A0A8]">
-                    {playlist.description}
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  {/* Interactive Like Button */}
+                  <button
+                    type="button"
+                    onClick={handleLikeToggle}
+                    disabled={liking}
+                    aria-pressed={isLiked}
+                    aria-label={isLiked ? "Unlike playlist" : "Like playlist"}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-colors border ${
+                      isLiked
+                        ? "border-[#E58B91] bg-[#E58B91]/20 text-[#E58B91] hover:bg-[#E58B91]/30"
+                        : "border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:border-[#554363]"
+                    }`}
+                  >
+                    <Heart className={`size-4 ${isLiked ? "fill-[#E58B91] text-[#E58B91]" : "text-[#B39ACF]"}`} aria-hidden="true" />
+                    <span>{playlist.like_count}</span>
+                  </button>
+
+                  {/* Copy button: shown on every playlist that belongs to someone else */}
+                  {canCopy && (
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      disabled={copying}
+                      className="inline-flex items-center gap-2 rounded-xl border border-[#B39ACF] bg-[#B39ACF] px-4 py-2.5 text-[13px] font-semibold text-[#17191E] transition-colors hover:bg-[#B39ACF]/85 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                    >
+                      {copying ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Copy className="size-4" aria-hidden="true" />
+                      )}
+                      <span>{copying ? "Copying..." : "Make a copy"}</span>
+                    </button>
+                  )}
+                </div>
+
+                {copyError && (
+                  <p role="alert" className="mt-3 text-[12px] text-[#E58B91]">
+                    {copyError}
                   </p>
                 )}
-
-                {/* Interactive Like Button */}
-                <button
-                  type="button"
-                  onClick={handleLikeToggle}
-                  disabled={liking}
-                  aria-label={isLiked ? "Unlike playlist" : "Like playlist"}
-                  className={`mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-colors border ${
-                    isLiked
-                      ? "border-[#E58B91] bg-[#E58B91]/20 text-[#E58B91] hover:bg-[#E58B91]/30"
-                      : "border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:border-[#554363]"
-                  }`}
-                >
-                  <Heart className={`size-4 ${isLiked ? "fill-[#E58B91] text-[#E58B91]" : "text-[#B39ACF]"}`} aria-hidden="true" />
-                  <span>{playlist.like_count}</span>
-                </button>
               </div>
 
               <aside aria-label="Top genres" className="rounded-2xl border border-[#302438] bg-[#17191E] p-6 shadow-none">
@@ -417,22 +480,15 @@ const PlaylistDetail = () => {
 
             {/* Games */}
             {view === "grid" ? (
-              <ul className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+              // Larger, cover-only cards (title + genres are hidden; title shows as a hover tooltip)
+              <ul className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleGames.map((game) => (
                   <li key={game.id}>
                     <GameLink game={game} className="group block">
                       <Cover
                         src={coverFor(game)}
-                        className="aspect-[16/9] w-full rounded-2xl border border-[#302438] bg-[#17191E] group-hover:border-[#554363]"
+                        className="aspect-[16/9] w-full rounded-2xl border border-[#302438] bg-[#17191E] transition-transform duration-200 group-hover:scale-[1.02] group-hover:border-[#554363]"
                       />
-                      <p className="mt-3 truncate text-center text-[14px] font-semibold text-[#E6E1EA] group-hover:text-[#B39ACF]">
-                        {game.title}
-                      </p>
-                      {game.genres.length > 0 && (
-                        <p className="mt-0.5 truncate text-center text-[11px] text-[#A0A0A8]">
-                          {game.genres.slice(0, 3).join(" · ")}
-                        </p>
-                      )}
                     </GameLink>
                   </li>
                 ))}

@@ -12,13 +12,7 @@ type InfoPageProps = {
 /** Shared shell for About, Contact, Help, Privacy Policy, Terms and Settings. */
 export default function InfoPage({ title, intro, wide = false, children }: InfoPageProps) {
   useEffect(() => {
-    const previousTitle = document.title;
     window.scrollTo({ top: 0 });
-
-    // Put the old tab title back when leaving this page.
-    return () => {
-      document.title = previousTitle;
-    };
   }, [title]);
 
   return (

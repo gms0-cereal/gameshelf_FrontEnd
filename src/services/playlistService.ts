@@ -134,6 +134,11 @@ export async function createPlaylist(input: CreatePlaylistInput) {
   return data;
 }
 
+export const copyPlaylist = async (id: number): Promise<Playlist> => {
+  const { data } = await api.post(`/social/playlists/${id}/copy/`); // match your router prefix
+  return data;
+};
+
 export async function toggleLikePlaylist(id: number): Promise<{ is_liked: boolean; like_count: number }> {
   const { data } = await api.post(`/social/playlists/${id}/like/`);
   return data;
@@ -190,3 +195,4 @@ export async function getPlaylist(id: number): Promise<Playlist> {
   const { data } = await api.get<Playlist>(`/social/playlists/${id}/`);
   return data;
 }
+

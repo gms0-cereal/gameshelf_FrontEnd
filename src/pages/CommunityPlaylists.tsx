@@ -223,7 +223,7 @@ export default function CommunityPlaylists() {
                 PLAYER CURATED COLLECTIONS
               </p>
               <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
-                Community Playlists
+                Community Gamelist
               </h1>
             </div>
 
