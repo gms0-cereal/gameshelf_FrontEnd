@@ -278,15 +278,28 @@ const PlaylistDetail = () => {
                       </div>
                     )}
                   </div>
-
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-[#E6E1EA]">{ownerName}</p>
-                    <p className="text-[11px] text-[#A0A0A8]">
-                      <span className="capitalize">{playlist.visibility}</span> · {total}{" "}
-                      {total === 1 ? "title" : "titles"} · Created {timeAgo(playlist.created_at)} · Updated{" "}
-                      {timeAgo(playlist.updated_at)}
-                    </p>
-                  </div>
+<div className="min-w-0">
+  <p className="truncate text-[14px] font-semibold text-[#E6E1EA]">
+    {ownerName}
+  </p>
+  <p className="text-[11px] text-[#A0A0A8]">
+    <span className="capitalize text-[#B39ACF]">
+      {playlist.visibility}
+    </span>
+    {" · "}
+    <span className="text-[#38BDF8]">
+      {total} {total === 1 ? "title" : "titles"}
+    </span>
+    {" · Created "}
+    <span className="text-[#FBBF24]">
+      {timeAgo(playlist.created_at)}
+    </span>
+    {" · Updated "}
+    <span className="text-[#34D399]">
+      {timeAgo(playlist.updated_at)}
+    </span>
+  </p>
+</div>
                 </div>
 
                 <h1 className="mt-4 text-[32px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
