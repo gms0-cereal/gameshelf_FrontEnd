@@ -389,45 +389,48 @@ export default function Discover() {
             </p>
           )}
 
-          {loading && !data && (
-            <p
-              role="status"
-              className="py-12 text-center text-sm text-[#A0A0A8]"
-            >
-              Loading games…
-            </p>
-          )}
+          {/* Results Section Shell (Always Rendered to Prevent Layout Shift) */}
+          <section className="flex flex-col gap-5">
+            <div className="flex items-end justify-between gap-3">
+              <h2 className="text-[20px] font-semibold leading-6 text-[#E6E1EA]">
+                Results
+              </h2>
 
-          {!error && data && results.length === 0 && !loading && (
-            <p className="py-12 text-center text-sm text-[#A0A0A8]">
-              No games match your search. Try changing or clearing the filters.
-            </p>
-          )}
+              <p className="text-[11px] text-[#A0A0A8]">
+                {loading && !data
+                  ? "Loading…"
+                  : `${results.length} games on this page`}
+              </p>
+            </div>
 
-          {/* Results */}
-          {!error && results.length > 0 && (
-            <section
-              className={`flex flex-col gap-5 transition-opacity duration-200 ${
-                isFetching ? "opacity-60" : ""
-              }`}
-            >
-              <div className="flex items-end justify-between gap-3">
-                <h2 className="text-[20px] font-semibold leading-6 text-[#E6E1EA]">
-                  Results
-                </h2>
-
-                <p className="text-[11px] text-[#A0A0A8]">
-                  {results.length} games on this page
+            <div className="min-h-[500px]">
+              {loading && !data ? (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[320px] animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]"
+                      aria-hidden="true"
+                    />
+                  ))}
+                </div>
+              ) : results.length > 0 ? (
+                <div
+                  className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 transition-opacity duration-200 ${
+                    isFetching ? "opacity-60" : ""
+                  }`}
+                >
+                  {results.map((game) => (
+                    <GameCard key={game.appid} game={game} />
+                  ))}
+                </div>
+              ) : (
+                <p className="py-12 text-center text-sm text-[#A0A0A8]">
+                  No games match your search. Try changing or clearing the filters.
                 </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                {results.map((game) => (
-                  <GameCard key={game.appid} game={game} />
-                ))}
-              </div>
-            </section>
-          )}
+              )}
+            </div>
+          </section>
 
           {!error && data && (
             <Pagination

@@ -48,7 +48,7 @@ const getFullUrl = (url?: string | null) => {
   return `http://127.0.0.1:8000${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
-/** Owner Avatar component with error fallback to gradient and initials, matching PlaylistDetail */
+/** Owner Avatar component matching PlaylistDetail design system */
 const OwnerAvatar = memo(({ src, name }: { src?: string | null; name: string }) => {
   const [failed, setFailed] = useState(false);
   const initials = name ? name.slice(0, 2).toUpperCase() : "U";
@@ -185,9 +185,8 @@ export default function CommunityPlaylists() {
     };
   }, [q, genre, platform, sort, page]);
 
-  function changeFilter(setter: (value: string) => void, value: string) {
-    setter(value);
-    update({ page: null });
+  function changeFilter(key: string, value: string) {
+    update({ [key]: value || null, page: null });
   }
 
   function changePage(next: number) {
@@ -267,21 +266,21 @@ export default function CommunityPlaylists() {
               <FilterSelect
                 label="Genre"
                 value={genre}
-                onChange={(v) => changeFilter((val) => update({ genre: val || null }), v)}
+                onChange={(v) => changeFilter("genre", v)}
                 options={GENRES}
               />
 
               <FilterSelect
                 label="Platform"
                 value={platform}
-                onChange={(v) => changeFilter((val) => update({ platform: val || null }), v)}
+                onChange={(v) => changeFilter("platform", v)}
                 options={PLATFORMS}
               />
 
               <FilterSelect
                 label="Sort by"
                 value={sort}
-                onChange={(v) => changeFilter((val) => update({ sort: val === "newest" ? null : val }), v)}
+                onChange={(v) => changeFilter("sort", v === "newest" ? "" : v)}
                 options={SORTS}
               />
 
@@ -307,31 +306,29 @@ export default function CommunityPlaylists() {
             </p>
           )}
 
-          {loading && playlists.length === 0 && (
-            <p role="status" className="py-12 text-center text-sm text-[#A0A0A8]">
-              Loading playlists…
-            </p>
-          )}
+          {/* Results Section Shell (Always Rendered to Prevent Layout Shift) */}
+          <section className="flex flex-col gap-5">
+            <div className="flex items-end justify-between gap-3">
+              <h2 className="text-[20px] font-semibold leading-6 text-[#E6E1EA]">
+                Results
+              </h2>
+              <p className="text-[11px] text-[#A0A0A8]">
+                {loading ? "Loading…" : `${playlists.length} playlists on this page`}
+              </p>
+            </div>
 
-          {!error && playlists.length === 0 && !loading && (
-            <p className="py-12 text-center text-sm text-[#A0A0A8]">
-              No playlists found. Try changing or clearing the filters.
-            </p>
-          )}
-
-          {/* Results Grid - PlaylistListCard handles the individual owner avatars internally */}
-          {!error && playlists.length > 0 && (
-            <section className="flex flex-col gap-5">
-              <div className="flex items-end justify-between gap-3">
-                <h2 className="text-[20px] font-semibold leading-6 text-[#E6E1EA]">
-                  Results
-                </h2>
-                <p className="text-[11px] text-[#A0A0A8]">
-                  {playlists.length} playlists on this page
-                </p>
-              </div>
-
-              <div className="min-h-[500px]">
+            <div className="min-h-[500px]">
+              {loading ? (
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[240px] animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]"
+                      aria-hidden="true"
+                    />
+                  ))}
+                </div>
+              ) : playlists.length > 0 ? (
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={`${page}-${genre}-${platform}-${sort}-${q}`}
@@ -346,9 +343,13 @@ export default function CommunityPlaylists() {
                     ))}
                   </motion.div>
                 </AnimatePresence>
-              </div>
-            </section>
-          )}
+              ) : (
+                <p className="py-12 text-center text-sm text-[#A0A0A8]">
+                  No playlists found. Try changing or clearing the filters.
+                </p>
+              )}
+            </div>
+          </section>
 
           {/* Pagination */}
           {totalPages > 1 && (
