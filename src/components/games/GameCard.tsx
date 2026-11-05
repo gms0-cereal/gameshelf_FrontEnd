@@ -17,6 +17,8 @@ export type GameSummary = {
   communityRatingText?: string;
   lastPlayedText?: string;
   bio?: string;
+  description?: string;
+  short_description?: string;
 };
 
 export function GameCard({ game }: { game: GameSummary }) {
@@ -43,10 +45,15 @@ export function GameCard({ game }: { game: GameSummary }) {
     },
   ];
 
+  const descText =
+    game.bio ||
+    game.description ||
+    game.short_description ||
+    "Explore this game title and dive into immersive gameplay.";
+
   return (
-  <Card className="group relative flex min-w-0 flex-col gap-0 overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none transition-colors duration-200 hover:border-[#554363] focus-within:border-[#B39ACF]">
-      {/* Added overflow-hidden and rounded-t-2xl here so the image top matches the card */}
-      <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden rounded-t-2xl bg-[#000000]">
+    <Card className="group relative flex min-w-0 flex-col gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none transition-colors duration-200 hover:border-[#554363] focus-within:border-[#B39ACF]">
+     <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden rounded-t-[15px] bg-[#000000]">
         {game.cover ? (
           <img
             src={game.cover}
@@ -82,7 +89,11 @@ export function GameCard({ game }: { game: GameSummary }) {
           </Link>
         </h3>
 
-        <ul className="mt-2.5 flex flex-col gap-1.5">
+        <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-[#A0A0A8]">
+          {descText}
+        </p>
+
+        <ul className="mt-3 flex flex-col gap-1.5">
           {details.map(({ icon: Icon, text, color }, i) => (
             <li
               key={i}
@@ -111,5 +122,4 @@ export function GameCard({ game }: { game: GameSummary }) {
   );
 }
 
-// Export both named and default to prevent any import mismatches across files
 export default GameCard;

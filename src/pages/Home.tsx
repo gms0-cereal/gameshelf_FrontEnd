@@ -523,8 +523,12 @@ export default function Home() {
           <section className="flex flex-col gap-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
-                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">More RPGs for you</h2>
-                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">Inspired by your favorite genre</p>
+                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
+                  More RPGs for you
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                  Inspired by your favorite genre
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -556,17 +560,24 @@ export default function Home() {
             </div>
 
             {rpgGames.length === 0 ? (
-              <p role="status" className="text-sm text-[#A0A0A8]">Loading RPGs…</p>
+              <p role="status" className="text-sm text-[#A0A0A8]">
+                Loading RPGs…
+              </p>
             ) : (
               <div
                 id="rpg-scroll-track"
-                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {rpgGames.map((game) => (
-                  <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
-                    <GameCard game={game} />
-                  </div>
-                ))}
+                <div className="flex gap-5">
+                  {rpgGames.map((game) => (
+                   <div
+  key={game.id}
+  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+>
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </section>
@@ -609,19 +620,32 @@ export default function Home() {
                 </div>
               </div>
 
-              {topRatedError && <p role="alert" className="text-sm text-[#E58B91]">{topRatedError}</p>}
-              {topRatedLoading && <p role="status" className="text-sm text-[#A0A0A8]">Loading top rated games…</p>}
+              {topRatedError && (
+                <p role="alert" className="text-sm text-[#E58B91]">
+                  {topRatedError}
+                </p>
+              )}
+              {topRatedLoading && (
+                <p role="status" className="text-sm text-[#A0A0A8]">
+                  Loading top rated games…
+                </p>
+              )}
 
               {!topRatedLoading && !topRatedError && topRatedGames.length > 0 && (
                 <div
                   ref={topRatedRef}
-                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                  {topRatedGames.map((game) => (
-                    <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
-                      <GameCard game={game} />
-                    </div>
-                  ))}
+                  <div className="flex gap-5">
+                    {topRatedGames.map((game) => (
+                     <div
+  key={game.id}
+  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+>
+                        <GameCard game={game} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </section>
@@ -671,11 +695,15 @@ export default function Home() {
             </div>
 
             {recommendationsError && (
-              <p role="alert" className="text-sm text-[#E58B91]">{recommendationsError}</p>
+              <p role="alert" className="text-sm text-[#E58B91]">
+                {recommendationsError}
+              </p>
             )}
 
             {recommendationsLoading && (
-              <p role="status" className="text-sm text-[#A0A0A8]">Loading recommendations…</p>
+              <p role="status" className="text-sm text-[#A0A0A8]">
+                Loading recommendations…
+              </p>
             )}
 
             {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
@@ -687,13 +715,18 @@ export default function Home() {
             {!recommendationsLoading && !recommendationsError && recommendedGames.length > 0 && (
               <div
                 ref={recommendedRef}
-                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {recommendedGames.map((game) => (
-                  <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
-                    <GameCard game={game} />
-                  </div>
-                ))}
+                <div className="flex gap-5">
+                  {recommendedGames.map((game) => (
+                   <div
+  key={game.id}
+  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+>
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </section>
@@ -737,19 +770,32 @@ export default function Home() {
                 </div>
               </div>
 
-              {playersError && <p role="alert" className="text-sm text-[#E58B91]">{playersError}</p>}
-              {playersLoading && <p role="status" className="text-sm text-[#A0A0A8]">Loading Players Like You…</p>}
+              {playersError && (
+                <p role="alert" className="text-sm text-[#E58B91]">
+                  {playersError}
+                </p>
+              )}
+              {playersLoading && (
+                <p role="status" className="text-sm text-[#A0A0A8]">
+                  Loading Players Like You…
+                </p>
+              )}
 
               {!playersLoading && !playersError && playersGames.length > 0 && (
                 <div
                   ref={playersRef}
-                  className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                  {playersGames.map((game) => (
-                    <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
-                      <GameCard game={game} />
-                    </div>
-                  ))}
+                  <div className="flex gap-5">
+                    {playersGames.map((game) => (
+                   <div
+  key={game.id}
+  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+>
+                        <GameCard game={game} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </section>
@@ -795,13 +841,18 @@ export default function Home() {
 
               <div
                 ref={friendsPlayRef}
-                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {friendsGames.map((game) => (
-                  <div key={game.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
-                    <GameCard game={game} />
-                  </div>
-                ))}
+                <div className="flex gap-5">
+                  {friendsGames.map((game) => (
+<div
+  key={game.id}
+  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+>
+                      <GameCard game={game} />
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
           )}

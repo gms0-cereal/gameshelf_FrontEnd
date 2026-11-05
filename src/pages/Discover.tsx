@@ -108,6 +108,11 @@ function GameCard({ game }: { game: BrowseGame }) {
     },
   ];
 
+  const descriptionText =
+    (game as any).description ??
+    (game as any).short_description ??
+    "Explore this game title and dive into immersive gameplay.";
+
   return (
     <Card className="group relative flex min-w-0 flex-col gap-0 overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none transition-colors duration-200 hover:border-[#554363] focus-within:border-[#B39ACF]">
       <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden bg-[#000000]">
@@ -140,7 +145,11 @@ function GameCard({ game }: { game: BrowseGame }) {
           </Link>
         </h3>
 
-        <ul className="mt-2.5 flex flex-col gap-1.5">
+        <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-[#A0A0A8]">
+          {descriptionText}
+        </p>
+
+        <ul className="mt-3 flex flex-col gap-1.5">
           {details.map(({ icon: Icon, text, color }, i) => (
             <li
               key={i}
@@ -151,7 +160,6 @@ function GameCard({ game }: { game: BrowseGame }) {
                 strokeWidth={1.7}
                 aria-hidden="true"
               />
-
               <span className="min-w-0 truncate">{text}</span>
             </li>
           ))}
@@ -169,6 +177,7 @@ function GameCard({ game }: { game: BrowseGame }) {
     </Card>
   );
 }
+
 
 function Pagination({
   page,

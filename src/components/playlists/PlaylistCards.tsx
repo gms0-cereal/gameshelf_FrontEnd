@@ -115,11 +115,15 @@ export function PlaylistCarouselCard({ playlist }: { playlist: Playlist }) {
       <h3 className="mt-3 truncate text-[15px] font-semibold text-[#E6E1EA] transition-colors group-hover:text-[#B39ACF]">
         {playlist.title}
       </h3>
-
-      <p className="mt-1 font-mono text-[11px] text-[#A0A0A8]">
-        {titlesLabel(playlist.game_count)} ·{" "}
-        <span className="text-[#34D399]">{timeAgo(playlist.updated_at)}</span>
-      </p>
+<p className="mt-1 font-mono text-[11px] text-[#A0A0A8]">
+  <span className="text-[#38BDF8]">
+    {titlesLabel(playlist.game_count)}
+  </span>
+  {" · "}
+  <span className="text-[#34D399]">
+    {timeAgo(playlist.updated_at)}
+  </span>
+</p>
     </Link>
   );
 }

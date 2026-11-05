@@ -15,13 +15,12 @@ const GameGrid = ({ games, loading = false, emptyMessage = "No games to show yet
         {Array.from({ length: 4 }, (_, i) => (
           <div
             key={i}
-            className="h-[360px] animate-pulse rounded-xl border border-[#55516c] bg-[#373646]"
+            className="h-[420px] animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]"
           />
         ))}
       </div>
     );
   }
-
   if (games.length === 0) {
     return (
       <p className="rounded-lg border border-[#55516c] bg-[#373646] px-4 py-8 text-center text-sm text-[#b4aec7]">
