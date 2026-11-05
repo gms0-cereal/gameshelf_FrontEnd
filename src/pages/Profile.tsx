@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Gamepad2,
@@ -10,6 +10,8 @@ import {
   Star,
   Library,
   ListVideo,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
@@ -28,7 +30,8 @@ import {
   type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 import { getMyGameList } from "@/services/Gameservice";
-import { getMyPlaylists } from "@/services/playlistService";
+import { getMyPlaylists, type Playlist } from "@/services/playlistService";
+import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 import MiniProfileCard from "@/components/social/MiniProfileCard";
 
 const OUTLINE_BUTTON =
@@ -355,6 +358,78 @@ function FavoriteGames({
   );
 }
 
+function UserPlaylistsSection({ playlists }: { playlists: Playlist[] }) {
+  const playlistsRef = useRef<HTMLDivElement>(null);
+  const scrollPlaylists = (dir: 1 | -1) =>
+    playlistsRef.current?.scrollBy({
+      left: dir * (playlistsRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
+  return (
+    <section aria-labelledby="user-playlists-title" className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ListVideo className="size-5 text-[#B39ACF]" />
+          <h2
+            id="user-playlists-title"
+            className="text-2xl font-semibold tracking-tight text-[#E6E1EA]"
+          >
+            Playlists
+          </h2>
+        </div>
+
+        {playlists.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => scrollPlaylists(-1)}
+              aria-label="Scroll left"
+              className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => scrollPlaylists(1)}
+              aria-label="Scroll right"
+              className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {playlists.length > 0 ? (
+        <div
+          ref={playlistsRef}
+          className="-mx-1 flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {playlists.map((playlist) => (
+            <div
+              key={playlist.id}
+              className="w-[280px] sm:w-[320px] shrink-0 snap-start"
+            >
+              <PlaylistCarouselCard playlist={playlist} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-[#302438] bg-[#17191E] p-8 text-center">
+          <ListVideo className="mx-auto mb-3 size-8 text-[#B39ACF]" />
+          <p className="font-medium text-[#E6E1EA]">No playlists yet</p>
+          <p className="mt-1 text-sm text-[#A0A0A8]">
+            Playlists you create will appear here.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function FriendsBar({
   friends,
   onSelectFriend,
@@ -457,6 +532,7 @@ export default function Profile() {
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [friends, setFriends] = useState<SocialUser[]>([]);
   const [favorites, setFavorites] = useState<UserFavoriteGameEntry[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [libraryTotal, setLibraryTotal] = useState<number>(0);
   const [playlistTotal, setPlaylistTotal] = useState<number>(0);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -495,7 +571,8 @@ export default function Profile() {
           if (isMounted) {
             const counts = listData?.counts;
             const total = counts?.all ?? 0;
-            const pTotal = playlistData?.count ?? (playlistData?.results?.length || 0);
+            const pResults = playlistData?.results ?? [];
+            const pTotal = playlistData?.count ?? pResults.length;
 
             setProfileUser({
               id: meData.id,
@@ -518,6 +595,7 @@ export default function Profile() {
 
             setFriends(friendsData ?? []);
             setFavorites(favsData ?? []);
+            setPlaylists(pResults);
             setLibraryTotal(total);
             setPlaylistTotal(pTotal);
           }
@@ -528,11 +606,16 @@ export default function Profile() {
             setProfileUser(profileData);
             setFriends([]);
             setFavorites(profileData.favorites ?? []);
+            setPlaylists(profileData.playlists ?? []);
 
             if (profileData.library) {
               setLibraryTotal(profileData.library.all ?? 0);
             }
-            setPlaylistTotal(profileData.playlists_count ?? 0);
+            setPlaylistTotal(
+              profileData.playlists_count ??
+                profileData.playlists?.length ??
+                0
+            );
           }
         }
       } catch {
@@ -599,6 +682,8 @@ export default function Profile() {
           />
 
           <FavoriteGames favorites={favorites} />
+
+          <UserPlaylistsSection playlists={playlists} />
 
           {isOwnProfile && (
             <FriendsBar

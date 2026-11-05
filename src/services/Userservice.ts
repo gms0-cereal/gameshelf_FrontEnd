@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import type { Playlist } from "./playlistService";
 
 export type Visibility = "public" | "friends" | "private";
 export type LibraryStatus = "playing" | "completed" | "on_hold" | "dropped" | "plan_to_play";
@@ -40,6 +41,8 @@ export interface UserProfile {
   reviews_count: number;
   birth_day: string | null;
   playlists_count?: number;
+  playlists?: Playlist[];
+
 }
 
 export type UpdateMeBody = Partial<

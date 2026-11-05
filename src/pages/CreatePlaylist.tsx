@@ -311,7 +311,7 @@ export default function CreatePlaylist() {
     <div className="flex min-h-screen flex-col bg-[#000000] font-sans text-[#E6E1EA]">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 py-8 md:px-8 xl:px-16 overflow-x-hidden">
+      <main className="mx-auto w-full flex-1 px-5 py-8 md:px-8 xl:px-16 overflow-x-hidden">
         <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-2">
             <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">

@@ -571,9 +571,9 @@ export default function Home() {
                 <div className="flex gap-5">
                   {rpgGames.map((game) => (
                    <div
-  key={game.id}
-  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
->
+                      key={game.id}
+                      className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                    >
                       <GameCard game={game} />
                     </div>
                   ))}
@@ -639,9 +639,9 @@ export default function Home() {
                   <div className="flex gap-5">
                     {topRatedGames.map((game) => (
                      <div
-  key={game.id}
-  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
->
+                        key={game.id}
+                        className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                      >
                         <GameCard game={game} />
                       </div>
                     ))}
@@ -720,9 +720,9 @@ export default function Home() {
                 <div className="flex gap-5">
                   {recommendedGames.map((game) => (
                    <div
-  key={game.id}
-  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
->
+                      key={game.id}
+                      className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                    >
                       <GameCard game={game} />
                     </div>
                   ))}
@@ -731,8 +731,8 @@ export default function Home() {
             )}
           </section>
 
-          {/* Players Like You */}
-          {user && (playersLoading || playersError || playersGames.length > 0) && (
+{/* Players Like You */}
+          {user && (
             <section aria-labelledby="players-like-you-title" className="flex flex-col gap-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col">
@@ -775,9 +775,16 @@ export default function Home() {
                   {playersError}
                 </p>
               )}
+
               {playersLoading && (
                 <p role="status" className="text-sm text-[#A0A0A8]">
                   Loading Players Like You…
+                </p>
+              )}
+
+              {!playersLoading && !playersError && playersGames.length === 0 && (
+                <p className="text-sm text-[#A0A0A8]">
+                  No player suggestions yet. Rate more games to connect with players who share your tastes.
                 </p>
               )}
 
@@ -788,10 +795,10 @@ export default function Home() {
                 >
                   <div className="flex gap-5">
                     {playersGames.map((game) => (
-                   <div
-  key={game.id}
-  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
->
+                      <div
+                        key={game.id}
+                        className="w-[300px] sm:w-[340px] md:w-[360px] shrink-0 snap-start"
+                      >
                         <GameCard game={game} />
                       </div>
                     ))}
@@ -845,10 +852,10 @@ export default function Home() {
               >
                 <div className="flex gap-5">
                   {friendsGames.map((game) => (
-<div
-  key={game.id}
-  className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
->
+                    <div
+                      key={game.id}
+                      className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                    >
                       <GameCard game={game} />
                     </div>
                   ))}

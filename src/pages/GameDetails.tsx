@@ -377,8 +377,8 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
                   active.key === s.key
                     ? "bg-[#B39ACF] text-[#17191E] font-semibold"
                     : s.hasData || s.supported
-                      ? "text-[#A0A0A8] hover:text-[#E6E1EA]"
-                      : "text-[#554363] hover:text-[#A0A0A8]"
+                    ? "text-[#A0A0A8] hover:text-[#E6E1EA]"
+                    : "text-[#554363] hover:text-[#A0A0A8]"
                 }`}
               >
                 {s.label}
@@ -628,7 +628,7 @@ export default function GameDetails() {
       >
         <Navbar />
 
-        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-10 px-5 pb-16 pt-8 md:px-8 xl:px-16">
+         <main className="flex flex-1 flex-col gap-10 px-5 pb-16 pt-8 md:px-8 xl:px-16">
           {/* Breadcrumb */}
           <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-[#A0A0A8]">
             <nav aria-label="Breadcrumb" className="flex items-center gap-1.5">
@@ -689,7 +689,6 @@ export default function GameDetails() {
                 </div>
 
                 <div className="relative flex w-full max-w-[600px] flex-col gap-3">
-
                   <h1
                     id="game-title"
                     className="text-[36px] font-semibold leading-[1.1] tracking-[-0.8px] text-[#E6E1EA] md:text-[48px]"
@@ -705,7 +704,7 @@ export default function GameDetails() {
                 </div>
               </section>
 
-{/* Unified Single-Container Layout */}
+              {/* Unified Single-Container Layout */}
               <section className="flex flex-col gap-5">
                 <Card className="gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none">
                   <CardContent className="flex flex-col gap-6 p-6">
@@ -812,6 +811,7 @@ export default function GameDetails() {
                   </CardContent>
                 </Card>
               </section>
+
               {/* Trailer */}
               {trailer && (
                 <section className="flex flex-col gap-5">
@@ -927,52 +927,57 @@ export default function GameDetails() {
                       </div>
                     </div>
 
-                    {reviewTab === "external" ? (
-                      <ThirdPartyReviews
-                        appId={game.steam_appid}
-                        gameName={game.name}
-                      />
-                    ) : (
-                      <>
-                        <p className="text-xs text-[#A0A0A8]">
-                          Most helpful reviews from GameShelf members
-                        </p>
-
-                        {gsReviews.map((review) => (
-                          <GameshelfReviewItem
-                            key={review.id}
-                            review={review}
-                            onUpdated={replaceReview}
-                            onDeleted={removeReview}
-                          />
-                        ))}
-
-                        {reviewsLoading && (
-                          <p role="status" className="text-sm text-[#A0A0A8]">
-                            Loading reviews…
-                          </p>
-                        )}
-
+                    {reviewTab === "gameshelf" ? (
+                      <div className="flex flex-col gap-4">
                         {reviewsError && (
                           <p role="alert" className="text-sm text-[#E58B91]">
                             Couldn’t load reviews right now.
                           </p>
                         )}
+                        {reviewsLoading && gsReviews.length === 0 ? (
+                          <p role="status" className="text-sm text-[#A0A0A8]">
+                            Loading reviews…
+                          </p>
+                        ) : gsReviews.length === 0 ? (
+                          <div className="flex flex-col items-center gap-3 py-8 text-center">
+                            <p className="text-sm text-[#A0A0A8]">
+                              No reviews on GameShelf yet. Be the first to share your thoughts!
+                            </p>
+                            <Button
+                              asChild
+                              className="h-9 rounded-xl bg-[#B39ACF] px-4 text-xs font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
+                            >
+                              <Link to={reviewsPath}>Write Review</Link>
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-4">
+                            {gsReviews.map((review) => (
+                              <GameshelfReviewItem
+                                key={review.id}
+                                review={review}
+                                onUpdate={replaceReview}
+                                onDelete={removeReview}
+                              />
+                            ))}
 
-                        {!reviewsLoading && !reviewsError && gsReviews.length === 0 && (
-                          <p className="text-sm text-[#A0A0A8]">No written reviews yet.</p>
+                            {gsHasNext && (
+                              <div className="flex justify-center pt-2">
+                                <Button
+                                  type="button"
+                                  onClick={loadMoreGsReviews}
+                                  disabled={reviewsLoading}
+                                  className="h-9 rounded-xl border border-[#302438] bg-[#000000] px-5 text-xs font-medium text-[#E6E1EA] hover:border-[#554363] hover:bg-[#20232B]"
+                                >
+                                  {reviewsLoading ? "Loading…" : "Load more reviews"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         )}
-
-                        {gsHasNext && !reviewsLoading && (
-                          <Button
-                            type="button"
-                            onClick={loadMoreGsReviews}
-                            className="h-10 w-fit rounded-xl border border-[#302438] bg-transparent px-5 text-sm font-semibold text-[#E6E1EA] shadow-none hover:border-[#554363] hover:bg-[#20232B]"
-                          >
-                            Load more reviews
-                          </Button>
-                        )}
-                      </>
+                      </div>
+                    ) : (
+                      <ThirdPartyReviews appid={appid!} />
                     )}
                   </CardContent>
                 </Card>
@@ -981,37 +986,33 @@ export default function GameDetails() {
           )}
         </main>
 
-        <Footer />
-      </div>
-
-      {/* Screenshot Lightbox Modal */}
-      {activeScreenshot && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in-0"
-          onClick={() => setActiveScreenshot(null)}
-        >
+        {activeScreenshot && (
           <div
-            className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] shadow-2xl animate-in zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Enlarged screenshot"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setActiveScreenshot(null)}
           >
             <button
               type="button"
               onClick={() => setActiveScreenshot(null)}
-              aria-label="Close screenshot"
-              className="absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black transition-colors cursor-pointer"
+              aria-label="Close lightbox"
+              className="absolute right-6 top-6 flex size-10 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
             >
               <X className="size-5" />
             </button>
             <img
               src={activeScreenshot}
               alt="Enlarged game screenshot"
-              className="max-h-[85vh] max-w-[85vw] object-contain"
+              className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain"
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
-        </div>
-      )}
+        )}
+
+        <Footer />
+      </div>
     </div>
   );
 }

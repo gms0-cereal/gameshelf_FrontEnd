@@ -234,7 +234,7 @@ const PlaylistDetail = () => {
     <div className="flex min-h-screen flex-col bg-[#000000] font-sans text-[#E6E1EA]">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 py-8 md:px-8 xl:px-16">
+      <main className="mx-auto w-full flex-1 px-5 py-8 md:px-8 xl:px-16">
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 text-[#A0A0A8]">
             <Loader2 className="size-6 animate-spin text-[#B39ACF]" aria-hidden="true" />
@@ -278,33 +278,39 @@ const PlaylistDetail = () => {
                       </div>
                     )}
                   </div>
-<div className="min-w-0">
-  <p className="truncate text-[14px] font-semibold text-[#E6E1EA]">
-    {ownerName}
-  </p>
-  <p className="text-[11px] text-[#A0A0A8]">
-    <span className="capitalize text-[#B39ACF]">
-      {playlist.visibility}
-    </span>
-    {" · "}
-    <span className="text-[#38BDF8]">
-      {total} {total === 1 ? "title" : "titles"}
-    </span>
-    {" · Created "}
-    <span className="text-[#FBBF24]">
-      {timeAgo(playlist.created_at)}
-    </span>
-    {" · Updated "}
-    <span className="text-[#34D399]">
-      {timeAgo(playlist.updated_at)}
-    </span>
-  </p>
-</div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold text-[#E6E1EA]">
+                      {ownerName}
+                    </p>
+                    <p className="text-[11px] text-[#A0A0A8]">
+                      <span className="capitalize text-[#B39ACF]">
+                        {playlist.visibility}
+                      </span>
+                      {" · "}
+                      <span className="text-[#38BDF8]">
+                        {total} {total === 1 ? "title" : "titles"}
+                      </span>
+                      {" · Created "}
+                      <span className="text-[#FBBF24]">
+                        {timeAgo(playlist.created_at)}
+                      </span>
+                      {" · Updated "}
+                      <span className="text-[#34D399]">
+                        {timeAgo(playlist.updated_at)}
+                      </span>
+                    </p>
+                  </div>
                 </div>
 
                 <h1 className="mt-4 text-[32px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
                   {playlist.title}
                 </h1>
+
+                {playlist.description && (
+                  <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-[#A0A0A8]">
+                    {playlist.description}
+                  </p>
+                )}
 
                 {/* Interactive Like Button */}
                 <button
@@ -363,21 +369,20 @@ const PlaylistDetail = () => {
 
             {/* Toolbar */}
             <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-[12px] text-[#A0A0A8]" aria-live="polite">
-                <span className="font-semibold text-[#E6E1EA]">{visibleGames.length}</span> items
+              <div className="text-[12px] text-[#A0A0A8]" aria-live="polite">
                 {genreFilter && (
-                  <>
-                    {" "}in <span className="text-[#B39ACF]">{genreFilter}</span> ·{" "}
+                  <span>
+                    Filtered by <span className="text-[#B39ACF]">{genreFilter}</span> ·{" "}
                     <button
                       type="button"
                       onClick={() => setGenreFilter(null)}
                       className="underline hover:text-[#E6E1EA]"
                     >
-                      clear
+                      clear filter
                     </button>
-                  </>
+                  </span>
                 )}
-              </p>
+              </div>
 
               <div className="flex items-center gap-2">
                 <select
