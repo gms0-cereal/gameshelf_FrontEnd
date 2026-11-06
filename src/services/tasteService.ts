@@ -57,6 +57,7 @@ export interface TasteRecommendationResponse {
   results: TasteRecommendation[];
   source?: string;
   count?: number;
+  has_more?: boolean;
   detail?: string;
   [key: string]: unknown;
 }
@@ -84,7 +85,15 @@ export async function getTasteProfile() {
 }
 
 // GET /api/v1/taste/  -> K-Means recommendations
-export async function getTasteRecommendations() {
-  const { data } = await api.get<TasteRecommendationResponse>("/taste/");
+export async function getTasteRecommendations(
+  limit = 20,
+  offset = 0,
+  signal?: AbortSignal
+) {
+  const { data } = await api.get<TasteRecommendationResponse>("/taste/", {
+    params: { limit, offset },
+    signal,
+  });
+
   return data;
 }

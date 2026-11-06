@@ -51,7 +51,7 @@ function parseApiError(err: unknown): { general?: string; fields: FieldErrors } 
 }
 
 const inputBase =
-  "h-[38px] w-full rounded-lg border bg-transparent pl-3 pr-10 text-[13px] text-[#e6e3f5] placeholder:text-[#9a97b5] focus:outline-none focus:ring-2 focus:ring-[#8b6fd6]/60";
+  "h-[42px] w-full rounded-xl border border-[#302438] bg-[#17191E] pl-3 pr-10 text-[13px] text-[#E6E1EA] placeholder:text-[#77717F] focus:border-[#B39ACF] focus:outline-none focus:ring-2 focus:ring-[#B39ACF]/40";
 
 const Login = () => {
   const { user, loading: authLoading, refreshUser } = useAuth();
@@ -176,13 +176,14 @@ const Login = () => {
       const currentAttempts = parseInt(localStorage.getItem(STORAGE_KEY_ATTEMPTS) || "0", 10) + 1;
       localStorage.setItem(STORAGE_KEY_ATTEMPTS, currentAttempts.toString());
 
-      if (currentAttempts === 2) {
-        setWarningMessage("Warning: 2 failed attempts. If you fail 1 more time, you will be locked out for an hour.");
-      } else if (currentAttempts >= 3) {
-        const lockoutEnd = Date.now() + 3600 * 1000;
+      if (currentAttempts === 3) {
+        setWarningMessage("Warning: 3 failed attempts. If you fail 1 more time, you will be temporarily locked out.");
+      } else if (currentAttempts >= 4) {
+        // 5 minute lockout instead of 1 hour
+        const lockoutEnd = Date.now() + 5 * 60 * 1000;
         localStorage.setItem(STORAGE_KEY_LOCKOUT, lockoutEnd.toString());
-        setLockoutTimeLeft(3600);
-        setWarningMessage("Too many failed login attempts. Locked out for 1 hour.");
+        setLockoutTimeLeft(5 * 60);
+        setWarningMessage("Too many failed login attempts. Locked out for 5 minutes.");
       }
     } finally {
       setSubmitting(false);
@@ -196,62 +197,62 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#282539] font-sans text-[#e6e3f5]">
+    <div className="flex min-h-screen flex-col bg-[#000000] font-sans text-[#E6E1EA]">
       <Navbar />
 
-      <main className="mx-auto grid w-full max-w-[1200px] flex-1 items-center gap-10 px-4 py-10 sm:px-6 md:grid-cols-2 md:gap-14 lg:px-[52px] lg:py-[50px]">
+      <main className="mx-auto grid w-full max-w-[1440px] flex-1 items-center gap-12 px-5 py-12 md:px-8 xl:px-16 md:grid-cols-2">
         {/* Hero panel with dynamic game covers */}
         <section
           aria-label="GameShelf Featured Artwork"
-          className="relative hidden min-h-[360px] overflow-hidden rounded-2xl bg-[#1d2b33] md:block md:h-full md:min-h-[550px] shadow-xl"
+          className="relative hidden min-h-[420px] overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] md:block md:h-full md:min-h-[580px]"
         >
           <img
             src={currentCover}
             alt="Featured Game Artwork"
-            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700"
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 opacity-80"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1b1a2a]/95 via-[#1b1a2a]/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#000000]/95 via-[#000000]/30 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-8 z-10">
-            <p className="text-xs tracking-widest text-[#c9c6e0] font-semibold">FEATURED ADVENTURE</p>
-            <h2 className="mt-3 max-w-[320px] text-[32px] font-semibold leading-[1.1] text-[#ecebf7]">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#B39ACF]">Featured Adventure</p>
+            <h2 className="mt-3 max-w-[360px] text-[32px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
               A home for every adventure.
             </h2>
-            <p className="mt-5 text-[13px] text-[#c9c6e0]">
+            <p className="mt-3 text-[13px] text-[#A0A0A8]">
               Discover what’s next. Keep the games you love close.
             </p>
           </div>
         </section>
 
-        {/* Form */}
-        <section className="w-full md:max-w-[473px] md:justify-self-end">
-          <h1 className="text-[28px] font-semibold text-[#e6e3f5]">Log In</h1>
-          <p className="mt-6 text-[13px] text-[#a9a6c2]">
+        {/* Form Container */}
+        <section className="w-full md:max-w-[440px] md:justify-self-center rounded-2xl border border-[#302438] bg-[#17191E] p-8">
+          <h1 className="text-[28px] font-semibold tracking-[-0.6px] text-[#E6E1EA]">Log In</h1>
+          <p className="mt-2 text-[13px] text-[#A0A0A8]">
             Welcome back. Your next chapter is waiting.
           </p>
 
           <form onSubmit={handleSubmit} noValidate className="mt-6">
             <div role="alert" aria-live="polite">
               {error && (
-                <p className="mb-4 rounded-lg border border-[#a8454b] bg-[#a8454b]/15 px-3 py-2 text-[13px] text-[#f4b6ba]">
+                <p className="mb-4 rounded-xl border border-[#E58B91] bg-[#E58B91]/15 px-4 py-3 text-[13px] text-[#E58B91]">
                   {error}
                 </p>
               )}
               {warningMessage && lockoutTimeLeft === 0 && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#e5a942] bg-[#e5a942]/15 px-3 py-2 text-[13px] text-[#fce8b2]">
-                  <ShieldAlert className="h-4 w-4 shrink-0 text-[#e5a942]" />
+                <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-[#FBBF24]/40 bg-[#FBBF24]/10 px-4 py-3 text-[13px] text-[#FBBF24]">
+                  <ShieldAlert className="size-4 shrink-0 text-[#FBBF24]" />
                   <span>{warningMessage}</span>
                 </div>
               )}
               {lockoutTimeLeft > 0 && (
-                <div className="mb-4 rounded-lg border border-[#a8454b] bg-[#a8454b]/20 p-4 text-center text-[13px] text-[#f4b6ba]">
+                <div className="mb-4 rounded-xl border border-[#E58B91] bg-[#E58B91]/15 p-4 text-center text-[13px] text-[#E58B91]">
                   <p className="font-semibold">Too many failed attempts.</p>
-                  <p className="mt-1">Account login locked. Try again in <span className="font-mono text-white font-bold">{formatTime(lockoutTimeLeft)}</span>.</p>
+                  <p className="mt-1">Account login locked. Try again in <span className="font-mono font-bold text-[#E6E1EA]">{formatTime(lockoutTimeLeft)}</span>.</p>
                 </div>
               )}
             </div>
 
-            <label htmlFor="username" className="block text-xs font-medium text-[#e6e3f5]">
-              UserName
+            <label htmlFor="username" className="block text-xs font-medium text-[#E6E1EA]">
+              Username
             </label>
             <div className="relative mt-2">
               <input
@@ -264,18 +265,18 @@ const Login = () => {
                 disabled={lockoutTimeLeft > 0}
                 aria-invalid={!!fieldErrors.username}
                 aria-describedby={fieldErrors.username ? "username-error" : undefined}
-                className={`${inputBase} ${fieldErrors.username ? "border-[#a8454b]" : "border-[#4a4766]"} disabled:opacity-50`}
+                className={`${inputBase} ${fieldErrors.username ? "border-[#E58B91]" : ""} disabled:opacity-50`}
               />
               <User
-                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f8ca9]"
+                className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]"
                 aria-hidden="true"
               />
             </div>
             {fieldErrors.username && (
-              <p id="username-error" className="mt-1 text-xs text-[#f4b6ba]">{fieldErrors.username}</p>
+              <p id="username-error" className="mt-1.5 text-xs text-[#E58B91]">{fieldErrors.username}</p>
             )}
 
-            <label htmlFor="password" className="mt-6 block text-xs font-medium text-[#e6e3f5]">
+            <label htmlFor="password" className="mt-5 block text-xs font-medium text-[#E6E1EA]">
               Password
             </label>
             <div className="relative mt-2">
@@ -289,7 +290,7 @@ const Login = () => {
                 disabled={lockoutTimeLeft > 0}
                 aria-invalid={!!fieldErrors.password}
                 aria-describedby={fieldErrors.password ? "password-error" : undefined}
-                className={`${inputBase} ${fieldErrors.password ? "border-[#a8454b]" : "border-[#4a4766]"} disabled:opacity-50`}
+                className={`${inputBase} ${fieldErrors.password ? "border-[#E58B91]" : ""} disabled:opacity-50`}
               />
               <button
                 type="button"
@@ -297,41 +298,38 @@ const Login = () => {
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 aria-pressed={showPassword}
                 disabled={lockoutTimeLeft > 0}
-                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-[#8f8ca9] hover:text-[#e6e3f5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6fd6]"
+                className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#77717F] hover:text-[#E6E1EA] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
               >
-                {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {showPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
               </button>
             </div>
             {fieldErrors.password && (
-              <p id="password-error" className="mt-1 text-xs text-[#f4b6ba]">{fieldErrors.password}</p>
+              <p id="password-error" className="mt-1.5 text-xs text-[#E58B91]">{fieldErrors.password}</p>
             )}
 
-            <p className="mt-7 text-[13px] text-[#a9a6c2]">
-              Your account keeps your list and ratings together.
-            </p>
+            <div className="mt-6 flex items-center justify-between text-[13px]">
+              <Link to="/forgot-password" className="text-[#B39ACF] hover:underline">
+                Forgot password?
+              </Link>
+            </div>
 
             <button
               type="submit"
               disabled={submitting || lockoutTimeLeft > 0}
-              className="mt-6 inline-flex h-[34px] min-w-[82px] items-center justify-center gap-2 rounded-md bg-[#a8454b] px-5 text-[13px] font-medium text-white transition-colors hover:bg-[#b9525a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e6e3f5] disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#B39ACF] px-5 text-[13px] font-semibold text-[#17191E] transition-colors hover:bg-[#B39ACF]/85 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : (
-                <LogIn className="h-3.5 w-3.5 text-white/60" aria-hidden="true" />
+                <LogIn className="size-4" aria-hidden="true" />
               )}
-              {submitting ? "Logging in…" : "Log In"}
+              <span>{submitting ? "Logging in..." : "Log In"}</span>
             </button>
           </form>
 
-          <p className="mt-6 text-[13px]">
-            <Link to="/forgot-password" className="text-[#b6a8e8] hover:underline">
-              Forgot password?
-            </Link>
-          </p>
-          <p className="mt-5 text-[13px] text-[#a9a6c2]">
+          <p className="mt-6 text-center text-[13px] text-[#A0A0A8]">
             New here?{" "}
-            <Link to="/register" className="text-[#b6a8e8] hover:underline">
+            <Link to="/register" className="font-semibold text-[#B39ACF] hover:underline">
               Create an account
             </Link>
           </p>

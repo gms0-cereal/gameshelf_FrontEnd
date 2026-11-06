@@ -126,6 +126,7 @@ const PlaylistDetail = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMiniProfile]);
+
   const [miniProfileUser, setMiniProfileUser] = useState<UserProfile | null>(null);
   const [, setLoadingProfile] = useState(false);
 
@@ -277,7 +278,7 @@ const PlaylistDetail = () => {
     <div className="flex min-h-screen flex-col bg-[#000000] font-sans text-[#E6E1EA]">
       <Navbar />
 
-      <main className="mx-auto w-full flex-1 px-5 py-8 md:px-8 xl:px-16">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 py-8 md:px-8 xl:px-16">
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 text-[#A0A0A8]">
             <Loader2 className="size-6 animate-spin text-[#B39ACF]" aria-hidden="true" />
@@ -432,20 +433,21 @@ const PlaylistDetail = () => {
 
             {/* Toolbar */}
             <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-[12px] text-[#A0A0A8]" aria-live="polite">
+              <p className="text-[12px] text-[#A0A0A8]" aria-live="polite">
+                <span className="font-semibold text-[#E6E1EA]">{visibleGames.length}</span> items
                 {genreFilter && (
-                  <span>
-                    Filtered by <span className="text-[#B39ACF]">{genreFilter}</span> ·{" "}
+                  <>
+                    {" "}in <span className="text-[#B39ACF]">{genreFilter}</span> ·{" "}
                     <button
                       type="button"
                       onClick={() => setGenreFilter(null)}
                       className="underline hover:text-[#E6E1EA]"
                     >
-                      clear filter
+                      clear
                     </button>
-                  </span>
+                  </>
                 )}
-              </div>
+              </p>
 
               <div className="flex items-center gap-2">
                 <select

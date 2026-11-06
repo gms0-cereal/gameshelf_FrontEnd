@@ -216,3 +216,4 @@ export async function getUserAchievements(username?: string): Promise<UserAchiev
   const { data } = await api.get<UserAchievement[] | { results: UserAchievement[] }>(endpoint);
   return Array.isArray(data) ? data : (data.results ?? []);
 }
+

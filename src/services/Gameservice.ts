@@ -454,11 +454,16 @@ export async function browseSteamGames(
 // GET /games/steam/top-rated/
 export async function getTopRatedGames(
   limit = 20,
+  offset = 0,
   signal?: AbortSignal
-): Promise<SteamGameCard[]> {
-  const { data } = await api.get<{ results: SteamGameCard[] }>(
-    "/games/steam/top-rated/",
-    { params: { limit }, signal }
-  );
-  return data.results;
+): Promise<{ count: number; results: SteamGameCard[] }> {
+  const { data } = await api.get<{
+    count: number;
+    results: SteamGameCard[];
+  }>("/games/steam/top-rated/", {
+    params: { limit, offset },
+    signal,
+  });
+
+  return data;
 }

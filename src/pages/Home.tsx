@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -10,7 +10,6 @@ import {
   type UserGameEntry,
 } from "@/services/Gameservice";
 import { Button } from "@/components/ui/button";
-import GameGrid from "@/components/games/GameGrid";
 import GameCard, { type GameSummary } from "@/components/games/GameCard";
 import { useAuth } from "@/context/AuthContext";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
@@ -18,22 +17,18 @@ import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 import { getPlayersLikeYou, type PlayersLikeYouItem } from "@/services/playersLikeYouService";
 import {
   getTasteRecommendations,
-  type TasteRecommendation,
-} from "@/services/tasteService";
-import { getFriends } from "@/services/Userservice";
-// RTK Query hooks from store
-import { useGetGameSummariesQuery } from "@/store/apiSlice";
+  getTasteProfile,
+  getSimilarGames,
+  type TasteRecommendationItem,
+} from "@/services/recommendationService";
 
-const TOP_10_HERO_IDS = [
-  367520, 504230, 1030300, 620, 387290,
-  774361, 730, 1369630, 1245620, 1809540,
-];
+import {
+  getFriends,
+  getFavoriteGames,
+  type UserFavoriteGameEntry,
+} from "@/services/Userservice";
 
-const RPG_IDS = [1245620, 1809540, 1244090, 1971650];
-
-const CURATED_IDS_STRING = Array.from(
-  new Set([...TOP_10_HERO_IDS, ...RPG_IDS])
-).join(",");
+import api from "@/lib/api";
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   playing: { label: "Playing", className: "bg-[#20232B] text-[#B39ACF] border border-[#302438]" },
@@ -64,18 +59,7 @@ function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSumm
   };
 }
 
-function pickSummaries(
-  ids: number[],
-  cardsMap: Map<number, SteamGameCard>,
-  userListMap: Map<string, UserGameEntry>
-): GameSummary[] {
-  return ids
-    .map((id) => cardsMap.get(id))
-    .filter((card): card is SteamGameCard => Boolean(card))
-    .map((card) => toGameSummary(card, userListMap.get(String(card.appid))));
-}
-
-function recommendationBio(reason?: TasteRecommendation["reason"]) {
+function recommendationBio(reason?: TasteRecommendationItem["reason"]) {
   if (reason?.similar_to) return `Because you like ${reason.similar_to}.`;
   const matched = [...(reason?.matched_genres ?? []), ...(reason?.matched_tags ?? [])];
   return matched.length > 0
@@ -83,7 +67,7 @@ function recommendationBio(reason?: TasteRecommendation["reason"]) {
     : "Recommended based on your interests.";
 }
 
-function recommendationToSummary(rec: TasteRecommendation): GameSummary | null {
+function recommendationToSummary(rec: TasteRecommendationItem): GameSummary | null {
   const appId = rec.game.appid;
   if (!appId) return null;
 
@@ -96,7 +80,7 @@ function recommendationToSummary(rec: TasteRecommendation): GameSummary | null {
       rec.game.cover_image_url ??
       `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
     genres: rec.game.genres?.length ? rec.game.genres : ["Steam Game"],
-    platforms: rec.game.platforms?.length ? rec.game.platforms : ["PC"],
+    platforms: ["PC"],
     statusLabel: STATUS_STYLES.unplayed.label,
     statusClassName: STATUS_STYLES.unplayed.className,
     bio: recommendationBio(rec.reason),
@@ -124,7 +108,6 @@ function playersLikeYouToSummary(item: PlayersLikeYouItem): GameSummary | null {
 
 export default function Home() {
   const [heroIndex, setHeroIndex] = useState(0);
-  //const [userListMap, setUserListMap] = useState>(new Map());
   const [userListMap, setUserListMap] = useState<Map<string, UserGameEntry>>(new Map());
   const { user } = useAuth();
 
@@ -133,10 +116,29 @@ export default function Home() {
   const [playlistsLoading, setPlaylistsLoading] = useState(true);
   const [playlistsError, setPlaylistsError] = useState<string | null>(null);
 
+  // Dynamic Genre Section State ("More [Genre]s for You")
+  const [primaryGenre, setPrimaryGenre] = useState<string>("Action");
+  const [genreGames, setGenreGames] = useState<GameSummary[]>([]);
+  const [genreLoading, setGenreLoading] = useState(true);
+
+  // Similar Games Section State ("Because you played...")
+  const [similarGames, setSimilarGames] = useState<GameSummary[]>([]);
+  const [likedGameTitle, setLikedGameTitle] = useState<string>("");
+  const [likedGameAppId, setLikedGameAppId] = useState<number | null>(null);
+  const [similarLoading, setSimilarLoading] = useState(false);
+
+  // Friends Also Play State
+  const [friendsGames, setFriendsGames] = useState<GameSummary[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(true);
+
   // Carousel refs
   const carouselRef = useRef<HTMLDivElement>(null);
   const scrollCarousel = (dir: 1 | -1) =>
     carouselRef.current?.scrollBy({ left: dir * 380, behavior: "smooth" });
+
+  const genreRef = useRef<HTMLDivElement>(null);
+  const scrollGenre = (dir: 1 | -1) =>
+    genreRef.current?.scrollBy({ left: dir * (genreRef.current.clientWidth * 0.8), behavior: "smooth" });
 
   const recommendedRef = useRef<HTMLDivElement>(null);
   const scrollRecommended = (dir: 1 | -1) =>
@@ -152,20 +154,12 @@ export default function Home() {
       behavior: "smooth",
     });
 
-  // Friends Also Play refs and states
   const friendsPlayRef = useRef<HTMLDivElement>(null);
   const scrollFriendsPlay = (dir: 1 | -1) =>
     friendsPlayRef.current?.scrollBy({
       left: dir * (friendsPlayRef.current.clientWidth * 0.8),
       behavior: "smooth",
     });
-  const [friendsGames, setFriendsGames] = useState<GameSummary[]>([]);
-  const [friendsLoading, setFriendsLoading] = useState(true);
-
-  // Players Like You State
-  const [playersGames, setPlayersGames] = useState<GameSummary[]>([]);
-  const [playersLoading, setPlayersLoading] = useState(true);
-  const [playersError, setPlayersError] = useState<string | null>(null);
 
   const topRatedRef = useRef<HTMLDivElement>(null);
   const scrollTopRated = (dir: 1 | -1) =>
@@ -173,6 +167,18 @@ export default function Home() {
       left: dir * (topRatedRef.current.clientWidth * 0.8),
       behavior: "smooth",
     });
+
+  const similarRef = useRef<HTMLDivElement>(null);
+  const scrollSimilar = (dir: 1 | -1) =>
+    similarRef.current?.scrollBy({
+      left: dir * (similarRef.current.clientWidth * 0.8),
+      behavior: "smooth",
+    });
+
+  // Players Like You State
+  const [playersGames, setPlayersGames] = useState<GameSummary[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
+  const [playersError, setPlayersError] = useState<string | null>(null);
 
   const [topRatedCards, setTopRatedCards] = useState<SteamGameCard[]>([]);
   const [topRatedLoading, setTopRatedLoading] = useState(true);
@@ -184,74 +190,442 @@ export default function Home() {
   const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Fetch taste-based recommendations
-  useEffect(() => {
-    if (!user) {
-      setRecommendedGames([]);
-      setRecommendationsLoading(false);
-      return;
-    }
+  const PAGE_SIZE = 20;
 
-    let cancelled = false;
-    setRecommendationsLoading(true);
-    setRecommendationsError(null);
+  // Pagination Refs for Infinite Scroll
+  const tasteOffset = useRef(0);
+  const playersOffset = useRef(0);
+  const topRatedOffset = useRef(0);
+  const genreOffset = useRef(0);
+  const similarOffset = useRef(0);
 
-    getTasteRecommendations()
-      .then((data) => {
-        if (cancelled) return;
-        setRecommendedGames(
-          (data.results ?? [])
-            .map(recommendationToSummary)
-            .filter((g): g is GameSummary => g !== null)
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setRecommendationsError("Failed to load recommendations.");
-      })
-      .finally(() => {
-        if (!cancelled) setRecommendationsLoading(false);
+  const tasteHasMore = useRef(true);
+  const playersHasMore = useRef(true);
+  const topRatedHasMore = useRef(true);
+  const genreHasMore = useRef(true);
+  const similarHasMore = useRef(true);
+
+  const tasteLoadingRef = useRef(false);
+  const playersLoadingRef = useRef(false);
+  const topRatedLoadingRef = useRef(false);
+  const genreLoadingRef = useRef(false);
+  const similarLoadingRef = useRef(false);
+  const GENRE_PAGE_SIZE = 24;
+
+  // 1. Fetch User Taste Profile & Dynamically Rotate Genres / Liked Games by Time Slots
+
+    useEffect(() => {
+      let cancelled = false;
+      let rotationInterval: ReturnType<typeof setInterval> | undefined;
+
+      async function loadPreferences() {
+        try {
+          const [profileResult, favoritesResult] = await Promise.allSettled([
+            getTasteProfile(),
+            getFavoriteGames(),
+          ]);
+
+          if (cancelled) return;
+
+          const profile =
+            profileResult.status === "fulfilled"
+              ? profileResult.value
+              : null;
+
+          const favorites =
+            favoritesResult.status === "fulfilled"
+              ? favoritesResult.value
+              : [];
+
+          // Rotate primary genre every 2 hours
+          if (profile?.genres?.length) {
+            const now = Date.now();
+            const twoHours = 1000 * 60 * 60 * 2;
+            const genreIndex =
+              Math.floor(now / twoHours) % profile.genres.length;
+
+            setPrimaryGenre(profile.genres[genreIndex]);
+          }
+
+          // Combine Taste Profile liked games and User Favorite Games
+          const likedGames = (profile?.liked_games ?? []).map((game) => ({
+            appid: game.appid,
+            title: game.title,
+          }));
+
+          const favoriteGames = favorites
+            .filter((game) => game.steam_app_id != null)
+            .map((game) => ({
+              appid: game.steam_app_id!,
+              title: game.title,
+            }));
+
+          // Remove duplicates using Steam app ID
+          const combinedGames = Array.from(
+            new Map(
+              [...likedGames, ...favoriteGames].map((game) => [
+                game.appid,
+                game,
+              ])
+            ).values()
+          );
+
+          if (combinedGames.length > 0) {
+            let currentAppId: number | null = null;
+
+            const pickRandomLikedGame = () => {
+              const availableGames =
+                combinedGames.length > 1
+                  ? combinedGames.filter(
+                      (game) => game.appid !== currentAppId
+                    )
+                  : combinedGames;
+
+              const selected =
+                availableGames[
+                  Math.floor(Math.random() * availableGames.length)
+                ];
+
+              currentAppId = selected.appid;
+
+              setLikedGameTitle(selected.title);
+              setLikedGameAppId(selected.appid);
+            };
+
+            // Pick immediately, then rotate every 30 minutes
+            pickRandomLikedGame();
+
+            rotationInterval = setInterval(
+              pickRandomLikedGame,
+              30 * 60 * 1000
+            );
+          } else {
+            setLikedGameTitle("Counter-Strike 2");
+            setLikedGameAppId(730);
+          }
+        } catch {
+          if (!cancelled) {
+            setLikedGameTitle("Counter-Strike 2");
+            setLikedGameAppId(730);
+          }
+        }
+      }
+
+      void loadPreferences();
+
+      return () => {
+        cancelled = true;
+        if (rotationInterval) clearInterval(rotationInterval);
+      };
+    }, [user?.id]);
+
+  // 2. Infinite Scroll: Dynamic Genre Section ("More [Genre]s for You")
+  const loadGenrePage = useCallback(async () => {
+    if (genreLoadingRef.current || !genreHasMore.current) return;
+
+    genreLoadingRef.current = true;
+
+    try {
+      const offset = genreOffset.current;
+      const { data } = await api.get("/games/steam/browse/", {
+        params: {
+          genre: primaryGenre.trim().toLowerCase(),
+          page: Math.floor(offset / GENRE_PAGE_SIZE) + 1,
+        },
+      });
+      const results = Array.isArray(data) ? data : data.results || [];
+      const summaries = results.map((card: SteamGameCard) =>
+        toGameSummary(card, userListMap.get(String(card.appid)))
+      );
+
+      setGenreGames((prev) => {
+        const existingIds = new Set(prev.map((game) => game.id));
+        const existingTitles = new Set(prev.map((game) => game.title.trim().toLowerCase()));
+
+        const uniqueNew = summaries.filter((game: GameSummary) => {
+          const cleanTitle = game.title.trim().toLowerCase();
+          if (existingIds.has(game.id) || existingTitles.has(cleanTitle)) {
+            return false;
+          }
+          existingIds.add(game.id);
+          existingTitles.add(cleanTitle);
+          return true;
+        });
+
+        return [...prev, ...uniqueNew];
       });
 
-    return () => {
-      cancelled = true;
-    };
+      genreOffset.current += GENRE_PAGE_SIZE;
+      genreHasMore.current = data.has_next ?? results.length === GENRE_PAGE_SIZE;
+    } catch {
+      // Handle error gracefully
+    } finally {
+      genreLoadingRef.current = false;
+      setGenreLoading(false);
+    }
+  }, [primaryGenre, userListMap]);
+
+  useEffect(() => {
+      const oneHour = 1000 * 60 * 60;
+      // Use a larger range (e.g., up to 10 pages deep) multiplied by the hour slot to truly get fresh items
+      const randomWindowSlot = Math.floor(Date.now() / oneHour) % 5;
+      const hourlyBatchOffset = randomWindowSlot * GENRE_PAGE_SIZE;
+
+      genreOffset.current = hourlyBatchOffset;
+      genreHasMore.current = true;
+      genreLoadingRef.current = false;
+      setGenreGames([]);
+      setGenreLoading(true);
+
+      void loadGenrePage();
+    }, [primaryGenre, loadGenrePage]);
+
+  // 3. Infinite Scroll: Cosine Similarity Section ("Because you played...")
+  const loadSimilarPage = useCallback(async () => {
+    if (!likedGameAppId || similarLoadingRef.current || !similarHasMore.current) return;
+
+    similarLoadingRef.current = true;
+
+    try {
+      const offset = similarOffset.current;
+      const simData = await getSimilarGames(likedGameAppId, PAGE_SIZE, offset);
+      const results = simData.results || [];
+
+      const summaries = results
+        .map((item: any) => {
+          const game = item.game;
+          const appId = game.appid || game.id;
+          if (!appId) return null;
+          return {
+            id: appId,
+            title: game.title,
+            slug: String(appId),
+            cover:
+              game.header_image ||
+              game.cover_image_url ||
+              `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
+            genres: game.genres?.length ? game.genres : ["Steam Game"],
+            platforms: ["PC"],
+            statusLabel: STATUS_STYLES.unplayed.label,
+            statusClassName: STATUS_STYLES.unplayed.className,
+            bio: `Similar to ${likedGameTitle}`,
+          };
+        })
+        .filter((g: any): g is GameSummary => g !== null);
+
+      let addedCount = 0;
+
+      setSimilarGames((prev) => {
+        const existingIds = new Set(prev.map((game) => game.id));
+        const existingTitles = new Set(prev.map((game) => game.title.trim().toLowerCase()));
+
+        const uniqueNewSummaries = summaries.filter((game: GameSummary) => {
+          const cleanTitle = game.title.trim().toLowerCase();
+          if (existingIds.has(game.id) || existingTitles.has(cleanTitle)) {
+            return false;
+          }
+          existingIds.add(game.id);
+          existingTitles.add(cleanTitle);
+          return true;
+        });
+
+        addedCount = uniqueNewSummaries.length;
+        return [...prev, ...uniqueNewSummaries];
+      });
+
+      // FIX: Advance offset by the full requested batch size, not the filtered results length!
+      similarOffset.current += PAGE_SIZE;
+      similarHasMore.current = simData.has_more ?? results.length === PAGE_SIZE;
+
+      // Auto-fetch next page if deduplication stripped away too many items in this batch
+      if (addedCount < 5 && similarHasMore.current) {
+        similarLoadingRef.current = false;
+        void loadSimilarPage();
+        return;
+      }
+    } catch {
+      // Handle error gracefully
+    } finally {
+      similarLoadingRef.current = false;
+      setSimilarLoading(false);
+    }
+  }, [likedGameAppId, likedGameTitle]);
+
+  useEffect(() => {
+    if (!likedGameAppId) return;
+
+    // Reset pagination for the newly selected reference game
+    similarOffset.current = 0;
+    similarHasMore.current = true;
+    similarLoadingRef.current = false;
+
+    setSimilarGames([]);
+    setSimilarLoading(true);
+
+    void loadSimilarPage();
+  }, [likedGameAppId, loadSimilarPage]);
+
+  // 4. Infinite Scroll: Taste Recommendations (K-Means)
+  const loadTastePage = useCallback(async () => {
+    if (!user || tasteLoadingRef.current || !tasteHasMore.current) return;
+
+    tasteLoadingRef.current = true;
+
+    try {
+      const offset = tasteOffset.current;
+      const data = await getTasteRecommendations(PAGE_SIZE, offset);
+      const results = data.results ?? [];
+
+      const games = results
+        .map(recommendationToSummary)
+        .filter((game): game is GameSummary => game !== null);
+
+      setRecommendedGames((prev) => {
+        const existingIds = new Set(prev.map((g) => g.id));
+        const existingTitles = new Set(prev.map((g) => g.title.trim().toLowerCase()));
+
+        const uniqueNew = games.filter((game) => {
+          const cleanTitle = game.title.trim().toLowerCase();
+          if (existingIds.has(game.id) || existingTitles.has(cleanTitle)) {
+            return false;
+          }
+          existingIds.add(game.id);
+          existingTitles.add(cleanTitle);
+          return true;
+        });
+
+        return [...prev, ...uniqueNew];
+      });
+
+      tasteOffset.current += results.length;
+      tasteHasMore.current = data.has_more ?? results.length === PAGE_SIZE;
+    } catch {
+      setRecommendationsError("Failed to load recommendations.");
+    } finally {
+      tasteLoadingRef.current = false;
+      setRecommendationsLoading(false);
+    }
   }, [user?.id]);
 
-  // Fetch Players Like You
+ useEffect(() => {
+  tasteOffset.current = 0;
+  tasteHasMore.current = true;
+  tasteLoadingRef.current = false;
+  setRecommendedGames([]);
+  setRecommendationsError(null);
+
+  if (!user) {
+    setRecommendationsLoading(false);
+    return;
+  }
+
+  setRecommendationsLoading(true);
+  void loadTastePage();
+}, [user?.id, loadTastePage]);
+
+  // 5. Infinite Scroll: Players Like You (SVD)
+  const loadPlayersPage = useCallback(async () => {
+    if (!user || playersLoadingRef.current || !playersHasMore.current) return;
+
+    playersLoadingRef.current = true;
+
+    try {
+      const offset = playersOffset.current;
+      const data = await getPlayersLikeYou(PAGE_SIZE, offset);
+
+      if (data.source !== "personalized") {
+        playersHasMore.current = false;
+        setPlayersGames([]);
+        return;
+      }
+
+      const results = data.results ?? [];
+      const games = results
+        .map(playersLikeYouToSummary)
+        .filter((game): game is GameSummary => game !== null);
+
+      setPlayersGames((prev) => {
+        const existingIds = new Set(prev.map((g) => g.id));
+        const existingTitles = new Set(prev.map((g) => g.title.trim().toLowerCase()));
+
+        const uniqueNew = games.filter((game) => {
+          const cleanTitle = game.title.trim().toLowerCase();
+          if (existingIds.has(game.id) || existingTitles.has(cleanTitle)) {
+            return false;
+          }
+          existingIds.add(game.id);
+          existingTitles.add(cleanTitle);
+          return true;
+        });
+
+        return [...prev, ...uniqueNew];
+      });
+
+      playersOffset.current += results.length;
+      playersHasMore.current = data.has_more ?? results.length === PAGE_SIZE;
+    } catch {
+      setPlayersError("Failed to load Players Like You.");
+    } finally {
+      playersLoadingRef.current = false;
+      setPlayersLoading(false);
+    }
+  }, [user?.id]);
+
+
   useEffect(() => {
+    playersOffset.current = 0;
+    playersHasMore.current = true;
+    playersLoadingRef.current = false;
+    setPlayersGames([]);
+    setPlayersError(null);
+
     if (!user) {
-      setPlayersGames([]);
       setPlayersLoading(false);
       return;
     }
 
-    const controller = new AbortController();
     setPlayersLoading(true);
-    setPlayersError(null);
+    void loadPlayersPage();
+  }, [user?.id, loadPlayersPage]);
 
-    getPlayersLikeYou(20, controller.signal)
-      .then((data) => {
-        if (data.source !== "personalized") {
-          setPlayersGames([]);
-          return;
-        }
-        setPlayersGames(
-          data.results
-            .map(playersLikeYouToSummary)
-            .filter((g): g is GameSummary => g !== null)
-        );
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setPlayersError("Failed to load Players Like You.");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setPlayersLoading(false);
+  // 6. Infinite Scroll: Top Rated Games
+  const loadTopRatedPage = useCallback(async () => {
+    if (topRatedLoadingRef.current || !topRatedHasMore.current) return;
+
+    topRatedLoadingRef.current = true;
+
+    try {
+      const offset = topRatedOffset.current;
+      const data = await getTopRatedGames(PAGE_SIZE, offset);
+      const results = data.results ?? [];
+
+      setTopRatedCards((prev) => {
+        const existing = new Set(prev.map((game) => game.appid));
+        return [...prev, ...results.filter((game) => !existing.has(game.appid))];
       });
 
-    return () => controller.abort();
-  }, [user?.id]);
+      topRatedOffset.current += results.length;
+      topRatedHasMore.current = topRatedOffset.current < data.count;
+    } catch {
+      setTopRatedError("Failed to load top rated games.");
+    } finally {
+      topRatedLoadingRef.current = false;
+      setTopRatedLoading(false);
+    }
+  }, []);
 
-  // Fetch Friends Also Play (Friends' favorite games)
+  useEffect(() => {
+    topRatedOffset.current = 0;
+    topRatedHasMore.current = true;
+    topRatedLoadingRef.current = false;
+    setTopRatedCards([]);
+    setTopRatedError(null);
+    setTopRatedLoading(true);
+
+    void loadTopRatedPage();
+  }, [user?.id, loadTopRatedPage]);
+
+  // Fetch Friends Also Play
   useEffect(() => {
     if (!user) {
       setFriendsGames([]);
@@ -309,24 +683,6 @@ export default function Home() {
     };
   }, [user?.id]);
 
-  // Fetch top rated games
-  useEffect(() => {
-    const controller = new AbortController();
-    setTopRatedLoading(true);
-    setTopRatedError(null);
-
-    getTopRatedGames(20, controller.signal)
-      .then(setTopRatedCards)
-      .catch(() => {
-        if (!controller.signal.aborted) setTopRatedError("Failed to load top rated games.");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setTopRatedLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [user?.id]);
-
   // Fetch User's Game List to map statuses
   useEffect(() => {
     let cancelled = false;
@@ -369,25 +725,6 @@ export default function Home() {
     };
   }, []);
 
-  // RTK Query: Fetch Curated Hero & Section Games
-  const { data: curatedData } = useGetGameSummariesQuery(CURATED_IDS_STRING);
-
-  const curatedCardsMap = useMemo(() => {
-    const map = new Map<number, SteamGameCard>();
-    curatedData?.results?.forEach((card: SteamGameCard) => map.set(card.appid, card));
-    return map;
-  }, [curatedData]);
-
-  // Derived memoized summaries
-  const heroGames = useMemo(
-    () => pickSummaries(TOP_10_HERO_IDS, curatedCardsMap, userListMap),
-    [curatedCardsMap, userListMap]
-  );
-  const rpgGames = useMemo(
-    () => pickSummaries(RPG_IDS, curatedCardsMap, userListMap),
-    [curatedCardsMap, userListMap]
-  );
-
   const topRatedGames = useMemo(
     () =>
       topRatedCards.map((card) => {
@@ -406,6 +743,10 @@ export default function Home() {
     [topRatedCards, userListMap]
   );
 
+  const heroGames = useMemo(() => {
+    return topRatedGames.slice(0, 10);
+  }, [topRatedGames]);
+
   useEffect(() => {
     if (heroGames.length <= 1 || isHovered) return;
 
@@ -415,6 +756,19 @@ export default function Home() {
 
     return () => clearInterval(timer);
   }, [heroGames.length, isHovered]);
+
+  const handleRecommendationScroll = (
+    event: React.UIEvent<HTMLDivElement>,
+    loadMore: () => void
+  ) => {
+    const element = event.currentTarget;
+    const nearEnd =
+      element.scrollLeft + element.clientWidth >= element.scrollWidth - 500;
+
+    if (nearEnd) {
+      loadMore();
+    }
+  };
 
   return (
     <div className="min-h-screen w-full bg-[#000000]">
@@ -434,100 +788,98 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hero Banner */}
-          <section
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            className="relative min-h-[420px] w-full overflow-hidden rounded-2xl bg-[#17191E] border border-[#302438] xl:h-[440px]"
-          >
-            {/* Horizontal Sliding Track */}
-            <div
-              className="flex h-full w-full transition-transform duration-700 ease-in-out"
-              style={{ transform: `translateX(-${heroIndex * 100}%)` }}
+          {/* Hero Banner (Dynamic Top Bayesian Rated Games) */}
+          {heroGames.length > 0 && (
+            <section
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              className="relative min-h-[420px] w-full overflow-hidden rounded-2xl bg-[#17191E] border border-[#302438] xl:h-[440px]"
             >
-              {heroGames.map((hero) => (
-                <div
-                  key={hero.id}
-                  className="relative flex min-h-[420px] w-full flex-shrink-0 items-end px-6 py-10 md:px-11 xl:h-[440px]"
-                >
-                  <img
-                    src={hero.cover || ""}
-                    alt={hero.title}
-                    fetchPriority="high"
-                    loading="eager"
-                    className="absolute inset-0 h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
-                  />
-                  {/* Gradient overlays */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#17191E] via-[#17191E]/60 to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#17191E]/90 via-transparent to-transparent" />
+              <div
+                className="flex h-full w-full transition-transform duration-700 ease-in-out"
+                style={{ transform: `translateX(-${heroIndex * 100}%)` }}
+              >
+                {heroGames.map((hero) => (
+                  <div
+                    key={hero.id}
+                    className="relative flex min-h-[420px] w-full flex-shrink-0 items-end px-6 py-10 md:px-11 xl:h-[440px]"
+                  >
+                    <img
+                      src={hero.cover || ""}
+                      alt={hero.title}
+                      fetchPriority="high"
+                      loading="eager"
+                      className="absolute inset-0 h-full w-full object-cover object-center contrast-110 saturate-125 brightness-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#17191E] via-[#17191E]/60 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#17191E]/90 via-transparent to-transparent" />
 
-                  {/* Hero Card Text Content */}
-                  <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[#34D399]">
-                      TOP RATED THIS MONTH
-                    </p>
-                    <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] text-[#E6E1EA] drop-shadow-md md:text-[46px]">
-                      {hero.title}
-                    </h2>
-                    <p className="line-clamp-2 text-[14px] leading-relaxed text-[#A0A0A8] drop-shadow">
-                      {hero.bio}
-                    </p>
-                    <div className="flex items-center gap-4 pt-2">
-                      <Button
-                        asChild
-                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#B39ACF] px-6 text-[14px] font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
-                      >
-                        <Link to={`/gamedetails/${hero.slug}`}>
-                          <Info className="size-4 text-[#17191E]" /> Details
-                        </Link>
-                      </Button>
+                    <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[#34D399]">
+                        TOP RATED ON GAMESHELF
+                      </p>
+                      <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] text-[#E6E1EA] drop-shadow-md md:text-[46px]">
+                        {hero.title}
+                      </h2>
+                      <p className="line-clamp-2 text-[14px] leading-relaxed text-[#A0A0A8] drop-shadow">
+                        {hero.bio}
+                      </p>
+                      <div className="flex items-center gap-4 pt-2">
+                        <Button
+                          asChild
+                          className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#B39ACF] px-6 text-[14px] font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
+                        >
+                          <Link to={`/gamedetails/${hero.slug}`}>
+                            <Info className="size-4 text-[#17191E]" /> Details
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Top Right Controls & Slide Indicators */}
-            <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
-              <span className="text-xs font-medium text-[#E6E1EA]">
-                {heroIndex + 1} / {Math.max(heroGames.length, 1)}
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setHeroIndex((prev) => (prev > 0 ? prev - 1 : heroGames.length - 1))
-                  }
-                  className="size-8 rounded-lg border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] hover:bg-[#20232B]"
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setHeroIndex((prev) =>
-                      prev < heroGames.length - 1 ? prev + 1 : 0
-                    )
-                  }
-                  className="size-8 rounded-lg border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] hover:bg-[#20232B]"
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
+                ))}
               </div>
-            </div>
-          </section>
 
-{/* RPGs Section */}
+              <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
+                <span className="text-xs font-medium text-[#E6E1EA]">
+                  {heroIndex + 1} / {Math.max(heroGames.length, 1)}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setHeroIndex((prev) => (prev > 0 ? prev - 1 : heroGames.length - 1))
+                    }
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] hover:bg-[#20232B]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setHeroIndex((prev) =>
+                        prev < heroGames.length - 1 ? prev + 1 : 0
+                      )
+                    }
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] hover:bg-[#20232B]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 1. More [Genre]s for You (Dynamic Genre Section with Infinite Scroll) */}
           <section className="flex flex-col gap-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
                 <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
-                  More RPGs for you
+                  More {primaryGenre}s for you
                 </h2>
                 <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                  Inspired by your favorite genre
+                  Inspired by your preferred genres
                 </p>
               </div>
 
@@ -535,10 +887,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => {
-                    const el = document.getElementById("rpg-scroll-track");
-                    el?.scrollBy({ left: -el.clientWidth * 0.8, behavior: "smooth" });
-                  }}
+                  onClick={() => scrollGenre(-1)}
                   aria-label="Scroll left"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -547,10 +896,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => {
-                    const el = document.getElementById("rpg-scroll-track");
-                    el?.scrollBy({ left: el.clientWidth * 0.8, behavior: "smooth" });
-                  }}
+                  onClick={() => scrollGenre(1)}
                   aria-label="Scroll right"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -559,20 +905,23 @@ export default function Home() {
               </div>
             </div>
 
-            {rpgGames.length === 0 ? (
+            {genreLoading && genreGames.length === 0 ? (
               <p role="status" className="text-sm text-[#A0A0A8]">
-                Loading RPGs…
+                Loading {primaryGenre}s…
               </p>
+            ) : genreGames.length === 0 ? (
+              <p className="text-sm text-[#A0A0A8]">No games found for this genre.</p>
             ) : (
               <div
-                id="rpg-scroll-track"
+                ref={genreRef}
+                onScroll={(event) => handleRecommendationScroll(event, loadGenrePage)}
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
-                  {rpgGames.map((game) => (
-                   <div
+                  {genreGames.map((game) => (
+                    <div
                       key={game.id}
-                      className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                      className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                     >
                       <GameCard game={game} />
                     </div>
@@ -582,7 +931,7 @@ export default function Home() {
             )}
           </section>
 
-          {/* Top Rated */}
+          {/* 2. Top Rated on GameShelf */}
           {(topRatedLoading || topRatedError || topRatedGames.length > 0) && (
             <section aria-labelledby="top-rated-title" className="flex flex-col gap-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -591,10 +940,10 @@ export default function Home() {
                     id="top-rated-title"
                     className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                   >
-                    Top Rated on GameShelf Players
+                    Top Rated on GameShelf
                   </h2>
                   <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Highest-rated games based on ratings from GameShelf players.
+                    Highest-rated games based on Bayesian weighted community ratings.
                   </p>
                 </div>
 
@@ -625,22 +974,23 @@ export default function Home() {
                   {topRatedError}
                 </p>
               )}
-              {topRatedLoading && (
+              {topRatedLoading && topRatedGames.length === 0 && (
                 <p role="status" className="text-sm text-[#A0A0A8]">
                   Loading top rated games…
                 </p>
               )}
 
-              {!topRatedLoading && !topRatedError && topRatedGames.length > 0 && (
+              {topRatedGames.length > 0 && (
                 <div
                   ref={topRatedRef}
+                  onScroll={(event) => handleRecommendationScroll(event, loadTopRatedPage)}
                   className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   <div className="flex gap-5">
                     {topRatedGames.map((game) => (
-                     <div
+                      <div
                         key={game.id}
-                        className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                        className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                       >
                         <GameCard game={game} />
                       </div>
@@ -651,7 +1001,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* Recommended for You */}
+          {/* 3. Recommended for You (K-Means Taste Engine) */}
           <section aria-labelledby="taste-recommendations-title" className="flex flex-col gap-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
@@ -700,7 +1050,7 @@ export default function Home() {
               </p>
             )}
 
-            {recommendationsLoading && (
+            {recommendationsLoading && recommendedGames.length === 0 && (
               <p role="status" className="text-sm text-[#A0A0A8]">
                 Loading recommendations…
               </p>
@@ -712,14 +1062,15 @@ export default function Home() {
               </p>
             )}
 
-            {!recommendationsLoading && !recommendationsError && recommendedGames.length > 0 && (
+            {recommendedGames.length > 0 && (
               <div
                 ref={recommendedRef}
+                onScroll={(event) => handleRecommendationScroll(event, loadTastePage)}
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
                   {recommendedGames.map((game) => (
-                   <div
+                    <div
                       key={game.id}
                       className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                     >
@@ -731,7 +1082,65 @@ export default function Home() {
             )}
           </section>
 
-{/* Players Like You */}
+          {/* 4. Because You Played [Game] (Cosine Similarity with Infinite Scroll) */}
+          {user && (similarLoading || similarGames.length > 0) && (
+            <section className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
+                    Because you played {likedGameTitle}
+                  </h2>
+                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                    Titles with matching mechanics and thematic elements.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollSimilar(-1)}
+                    aria-label="Scroll left"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => scrollSimilar(1)}
+                    aria-label="Scroll right"
+                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {similarLoading && similarGames.length === 0 ? (
+                <p role="status" className="text-sm text-[#A0A0A8]">Loading similar games…</p>
+              ) : (
+                <div
+                  ref={similarRef}
+                  onScroll={(event) => handleRecommendationScroll(event, loadSimilarPage)}
+                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  <div className="flex gap-5">
+                    {similarGames.map((game) => (
+                      <div
+                        key={game.id}
+                        className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                      >
+                        <GameCard game={game} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* 5. Players Like You (SVD Collaborative Filtering) */}
           {user && (
             <section aria-labelledby="players-like-you-title" className="flex flex-col gap-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -776,7 +1185,7 @@ export default function Home() {
                 </p>
               )}
 
-              {playersLoading && (
+              {playersLoading && playersGames.length === 0 && (
                 <p role="status" className="text-sm text-[#A0A0A8]">
                   Loading Players Like You…
                 </p>
@@ -788,16 +1197,17 @@ export default function Home() {
                 </p>
               )}
 
-              {!playersLoading && !playersError && playersGames.length > 0 && (
+              {playersGames.length > 0 && (
                 <div
                   ref={playersRef}
+                  onScroll={(event) => handleRecommendationScroll(event, loadPlayersPage)}
                   className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   <div className="flex gap-5">
                     {playersGames.map((game) => (
                       <div
                         key={game.id}
-                        className="w-[300px] sm:w-[340px] md:w-[360px] shrink-0 snap-start"
+                        className="w-[300px] h-full sm:w-[340px] md:w-[360px] shrink-0 snap-start"
                       >
                         <GameCard game={game} />
                       </div>
@@ -808,7 +1218,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* Your Friends Also Play */}
+          {/* 6. Your Friends Also Play */}
           {user && !friendsLoading && friendsGames.length > 0 && (
             <section aria-labelledby="friends-also-play-title" className="flex flex-col gap-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -854,7 +1264,7 @@ export default function Home() {
                   {friendsGames.map((game) => (
                     <div
                       key={game.id}
-                      className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                      className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                     >
                       <GameCard game={game} />
                     </div>
@@ -864,7 +1274,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* Community Playlists Section */}
+          {/* 7. Community Playlists Section */}
           <section id="community-playlists" aria-labelledby="community-playlists-title" className="flex flex-col gap-5">
             <div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

@@ -25,22 +25,31 @@ export interface PlayersLikeYouItem {
 }
 
 export interface PlayersLikeYouResponse {
-  // "personalized" = real SVD picks. "popular" = labelled fallback (do not show as SVD).
   source: "personalized" | "popular";
   algorithm: "svd" | "popularity";
   fallback_reason?: "login_required" | "model_not_ready" | "not_enough_activity";
+  count?: number;
+  has_more?: boolean;
   results: PlayersLikeYouItem[];
 }
 
 export async function getPlayersLikeYou(
   limit = 20,
+  offset = 0,
   signal?: AbortSignal
 ): Promise<PlayersLikeYouResponse> {
-  const response = await fetch(`${API_BASE}/players-like-you/?limit=${limit}`, {
-    credentials: "include",
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!response.ok) throw new Error(`players-like-you failed: ${response.status}`);
+  const response = await fetch(
+    `${API_BASE}/players-like-you/?limit=${limit}&offset=${offset}`,
+    {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`players-like-you failed: ${response.status}`);
+  }
+
   return response.json();
 }
