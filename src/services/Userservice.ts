@@ -40,6 +40,7 @@ export interface UserProfile {
   favorites?: UserFavoriteGameEntry[];
   reviews_count: number;
   birth_day: string | null;
+  hide_mature: boolean;
   playlists_count?: number;
   playlists?: Playlist[];
 

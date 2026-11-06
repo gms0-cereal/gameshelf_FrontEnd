@@ -36,6 +36,8 @@ import Settings from "@/pages/Settings";
 
 const queryClient = new QueryClient();
 
+import BirthdayPrompt from "@/components/layout/BirthdayPrompt";
+
 const App = () => (
   <Provider store={store}> {/* <--- 3. Wrap your providers with Redux */}
     <QueryClientProvider client={queryClient}>
@@ -79,6 +81,7 @@ const App = () => (
               {/* Settings Route */}
               <Route path="/settings" element={<Settings />} />
             </Routes>
+              <BirthdayPrompt />
             </SettingsProvider>
           </AuthProvider>
         </BrowserRouter>

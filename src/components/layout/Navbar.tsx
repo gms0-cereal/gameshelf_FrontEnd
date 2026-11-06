@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import gameShelfLogo from "../logo/Gameshelf_Logo.png";
 import {
   Library,
   Search,
@@ -197,15 +198,11 @@ export default function Navbar() {
             aria-label="GameShelf home"
             className="flex shrink-0 items-center gap-2.5 text-[#E6E1EA]"
           >
-            <Library
-              className="size-[26px] shrink-0 text-[#B39ACF]"
-              strokeWidth={1.7}
-              aria-hidden="true"
+            <img
+              src={gameShelfLogo}
+              alt="GameShelf"
+              className="h-[36px] w-auto shrink-0"
             />
-
-            <span className="text-[21px] font-bold leading-[25px] tracking-[-0.6px] text-[#E6E1EA]">
-              GAMESHELF
-            </span>
           </Link>
 
           <ul className="flex items-center gap-6 text-sm leading-[17px]">

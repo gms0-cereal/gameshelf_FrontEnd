@@ -46,6 +46,7 @@ export interface AuthUser {
   birth_day: string | null; // Fixed from Date
   friends_visibility: string;
   created_at: string;
+  hide_mature: boolean;
 }
 
 export async function getCsrf(): Promise<void> {

@@ -1,6 +1,10 @@
 import { useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { RotateCcw } from "lucide-react";
 import InfoPage from "@/components/layout/Infopage";
+import api from "@/lib/api"; // your axios instance
+import { useAuth } from "@/context/AuthContext";
+import { BIRTHDAY_PATH, ageFrom, getBirthday } from "@/lib/birthday";
 import {
   PAGE_SIZES,
   SORT_OPTIONS,
@@ -12,6 +16,8 @@ import {
 } from "@/context/Settingscontext";
 
 type Choice<T> = { value: T; label: string; hint?: string };
+
+const ME_URL = "/users/me/"; // change to your real "update current user" endpoint
 
 const VISIBILITY: Choice<Visibility>[] = [
   { value: "public", label: "Public", hint: "Shown on Community Playlists" },
@@ -88,16 +94,43 @@ function OptionGroup<T extends string | number>({
   );
 }
 
-/** Switch for hiding 18+ games. Turning the filter off asks for an age confirmation first. */
+/** "Hide 18+ games" switch. Saved to the account and enforced by the server. */
 function MatureFilter() {
-  const { settings, update } = useSettings();
+  const { user, refreshUser } = useAuth(); // rename if your context uses different names
   const [confirming, setConfirming] = useState(false);
-  const hiding = settings.hideMature;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const age = ageFrom(getBirthday(user));
+  const hasBirthday = age !== null;
+  const isAdult = age !== null && age >= 18;
+
+  // Locked ON for guests, users with no birthday, and users under 18.
+  const locked = !user || !isAdult;
+  const hiding = locked || user?.hide_mature !== false;
+
+  async function save(hide: boolean) {
+    setSaving(true);
+    setError("");
+    try {
+      await api.patch(ME_URL, { hide_mature: hide });
+      await refreshUser();
+      setConfirming(false);
+    } catch (e: any) {
+      setError(e?.response?.data?.hide_mature?.[0] ?? "Couldn't save this. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function toggle() {
-    if (hiding) setConfirming(true);
-    else update({ hideMature: true });
+    if (locked || saving) return;
+    if (hiding) setConfirming(true); // turning the filter OFF asks first
+    else save(true); // turning it ON is immediate
   }
+
+  const linkClass =
+    "inline-flex h-9 w-fit items-center rounded-xl bg-[#B39ACF] px-4 text-xs font-bold text-[#17101F] transition-colors hover:bg-[#C2ADE0]";
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,8 +140,8 @@ function MatureFilter() {
             Hide 18+ games
           </p>
           <p className="max-w-md text-[11px] leading-4 text-[#A0A0A8]">
-            Removes games rated 18+ from playlists and recommendations. Ratings come from the game's store listing,
-            so a few games may be missing one.
+            Removes games rated 18+ from search, browse, playlists and recommendations. Ratings come from the
+            game's store listing, so a few games may be missing one.
           </p>
         </div>
 
@@ -117,10 +150,11 @@ function MatureFilter() {
           role="switch"
           aria-checked={hiding}
           aria-labelledby="mature-label"
+          aria-disabled={locked || saving}
           onClick={toggle}
-          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]/50 ${
-            hiding ? "border-[#B39ACF] bg-[#B39ACF]" : "border-[#554363] bg-[#000000]"
-          }`}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]/50 ${
+            locked || saving ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+          } ${hiding ? "border-[#B39ACF] bg-[#B39ACF]" : "border-[#554363] bg-[#000000]"}`}
         >
           <span
             aria-hidden="true"
@@ -135,21 +169,53 @@ function MatureFilter() {
         {hiding ? "18+ games are hidden." : "18+ games are shown."}
       </p>
 
-      {confirming && (
-        <div role="group" aria-label="Confirm your age" className="flex flex-col gap-3 rounded-xl border border-[#554363] bg-[#000000] p-4">
+      {/* Not logged in */}
+      {!user && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-[#554363] bg-[#000000] p-4">
           <p className="text-xs leading-5 text-[#C9C4CF]">
-            Showing 18+ games is only for adults. Are you 18 or older?
+            Log in and add your birthday to choose whether to see 18+ games. Until then they stay hidden.
+          </p>
+          <Link to="/login" className={linkClass}>
+            Log in
+          </Link>
+        </div>
+      )}
+
+      {/* Logged in, no birthday yet: send them to Edit Profile */}
+      {user && !hasBirthday && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-[#B39ACF]/60 bg-[#B39ACF]/10 p-4">
+          <p className="text-xs leading-5 text-[#E6E1EA]">
+            Add your birthday in Edit Profile so we can confirm your age. 18+ games stay hidden until you do.
+          </p>
+          <Link to={BIRTHDAY_PATH} className={linkClass}>
+            Go to Edit Profile
+          </Link>
+        </div>
+      )}
+
+      {/* Has a birthday, but under 18 */}
+      {user && hasBirthday && !isAdult && (
+        <p className="text-[11px] leading-4 text-[#A0A0A8]">18+ games are always hidden for accounts under 18.</p>
+      )}
+
+      {/* Adult turning the filter off */}
+      {confirming && (
+        <div
+          role="group"
+          aria-label="Show 18+ games"
+          className="flex flex-col gap-3 rounded-xl border border-[#554363] bg-[#000000] p-4"
+        >
+          <p className="text-xs leading-5 text-[#C9C4CF]">
+            18+ games can contain mature content. Show them in search, playlists and recommendations?
           </p>
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => {
-                update({ hideMature: false });
-                setConfirming(false);
-              }}
-              className="inline-flex h-9 cursor-pointer items-center rounded-xl bg-[#B39ACF] px-4 text-xs font-bold text-[#17101F] transition-colors hover:bg-[#C2ADE0]"
+              disabled={saving}
+              onClick={() => save(false)}
+              className="inline-flex h-9 cursor-pointer items-center rounded-xl bg-[#B39ACF] px-4 text-xs font-bold text-[#17101F] transition-colors hover:bg-[#C2ADE0] disabled:opacity-60"
             >
-              Yes, I'm 18 or older
+              Show 18+ games
             </button>
             <button
               type="button"
@@ -161,6 +227,12 @@ function MatureFilter() {
           </div>
         </div>
       )}
+
+      {error && (
+        <p role="alert" className="text-[11px] text-[#E07A7A]">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -169,7 +241,7 @@ export default function Settings() {
   const { settings, update, reset } = useSettings();
 
   return (
-    <InfoPage title="Settings" intro="Adjust how GameShelf looks and what it shows you on this device.">
+    <InfoPage title="Settings" intro="Adjust how GameShelf looks and what it shows you.">
       <Card title="Appearance" description="Changes apply across the whole site as soon as you pick them.">
         <OptionGroup
           legend="Text size"
@@ -194,7 +266,7 @@ export default function Settings() {
         />
       </Card>
 
-      <Card title="Content" description="Control which games appear for you.">
+      <Card title="Content" description="Control which games appear for you. Saved to your account.">
         <MatureFilter />
       </Card>
 
@@ -234,7 +306,9 @@ export default function Settings() {
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-[11px] text-[#77717F]">Changes save automatically and apply to this browser only.</p>
+        <p className="text-[11px] text-[#77717F]">
+          Display and playlist settings save automatically and apply to this browser only.
+        </p>
         <button
           type="button"
           onClick={reset}
