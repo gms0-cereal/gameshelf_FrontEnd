@@ -1,7 +1,17 @@
+
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { Check, Loader2, Plus, Search, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Gamepad2,
+  Loader2,
+  Plus,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -17,24 +27,51 @@ import {
 const AFTER_SAVE_PATH = "/home";
 const MAX_LIKED_GAMES = 20;
 const MAX_TAGS = 30;
+const VISIBLE_GENRES = 40;
 const VISIBLE_TAGS = 40;
 
-// GameShelf palette
 const COLORS = {
   background: "#000000",
-  surface: "#17191E",
-  surfaceRaised: "#20232B",
+  surface: "#141419",
+  surfaceRaised: "#1D1D25",
   border: "#302438",
   borderHover: "#554363",
   lavender: "#B39ACF",
   lavenderLight: "#C2ADE0",
+  purpleSurface: "#302438",
+  cyan: "#38BDF8",
+  cyanSurface: "#102B38",
+  emerald: "#34D399",
+  emeraldSurface: "#102D25",
+  gold: "#FBBF24",
   text: "#E6E1EA",
   muted: "#A0A0A8",
-  cyan: "#38BDF8",
-  emerald: "#34D399",
-  gold: "#FBBF24",
+  subtle: "#777780",
   error: "#E58B91",
   errorSurface: "#2B171C",
+} as const;
+
+type Accent = "purple" | "cyan" | "emerald";
+
+const ACCENTS = {
+  purple: {
+    selected: "border-[#B39ACF] bg-[#302438] text-[#E6E1EA]",
+    idle: "border-[#302438] bg-[#1D1D25] text-[#A0A0A8] hover:border-[#554363] hover:text-[#E6E1EA]",
+    icon: "text-[#C2ADE0]",
+    focus: "focus-visible:ring-[#C2ADE0]",
+  },
+  cyan: {
+    selected: "border-[#38BDF8]/70 bg-[#102B38] text-[#D8F3FF]",
+    idle: "border-[#263B47] bg-[#1D1D25] text-[#A0A0A8] hover:border-[#38BDF8]/50 hover:text-[#D8F3FF]",
+    icon: "text-[#38BDF8]",
+    focus: "focus-visible:ring-[#38BDF8]",
+  },
+  emerald: {
+    selected: "border-[#34D399]/70 bg-[#102D25] text-[#D5F8E9]",
+    idle: "border-[#263B38] bg-[#1D1D25] text-[#A0A0A8] hover:border-[#34D399]/50 hover:text-[#D5F8E9]",
+    icon: "text-[#34D399]",
+    focus: "focus-visible:ring-[#34D399]",
+  },
 } as const;
 
 function toggleSelection(list: string[], value: string) {
@@ -45,9 +82,11 @@ function toggleSelection(list: string[], value: string) {
 
 function toText(value: unknown): string | undefined {
   if (typeof value === "string") return value;
+
   if (Array.isArray(value) && typeof value[0] === "string") {
     return value.join(" ");
   }
+
   return undefined;
 }
 
@@ -78,26 +117,28 @@ function Chip({
   active,
   onClick,
   children,
+  accent = "purple",
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
+  accent?: Accent;
 }) {
+  const style = ACCENTS[accent];
+
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border px-3.5 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE0] ${
-        active
-          ? "border-[#B39ACF] bg-[#302438] text-[#E6E1EA]"
-          : "border-[#302438] bg-[#20232B] text-[#A0A0A8] hover:border-[#554363] hover:text-[#E6E1EA]"
+      className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 ${style.focus} ${
+        active ? style.selected : style.idle
       }`}
     >
       {active && (
         <Check
-          className="size-3.5 text-[#C2ADE0]"
-          strokeWidth={1.7}
+          className={`size-3.5 shrink-0 ${style.icon}`}
+          strokeWidth={2}
           aria-hidden="true"
         />
       )}
@@ -107,17 +148,104 @@ function Chip({
 }
 
 function Step({
+  number,
   title,
+  description,
+  accent = "purple",
   children,
 }: {
+  number: string;
   title: string;
+  description: string;
+  accent?: Accent;
   children: ReactNode;
 }) {
+  const accentColor = {
+    purple: COLORS.lavender,
+    cyan: COLORS.cyan,
+    emerald: COLORS.emerald,
+  }[accent];
+
   return (
-    <section className="rounded-xl border border-[#302438] bg-[#17191E] p-6">
-      <h3 className="text-base font-semibold text-[#E6E1EA]">{title}</h3>
-      <div className="mt-4">{children}</div>
+    <section className="rounded-2xl border border-[#302438] bg-[#141419] p-5 sm:p-6">
+      <div className="flex items-start gap-3">
+        <span
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
+          style={{
+            backgroundColor: `${accentColor}18`,
+            color: accentColor,
+          }}
+        >
+          {number}
+        </span>
+
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-[#E6E1EA]">{title}</h3>
+          <p className="mt-1 text-xs leading-5 text-[#A0A0A8]">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5">{children}</div>
     </section>
+  );
+}
+
+function SearchField({
+  id,
+  value,
+  onChange,
+  placeholder,
+  label,
+  accent = "purple",
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  label: string;
+  accent?: Accent;
+}) {
+  const iconColor = {
+    purple: "text-[#B39ACF]",
+    cyan: "text-[#38BDF8]",
+    emerald: "text-[#34D399]",
+  }[accent];
+
+  return (
+    <div className="relative">
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+
+      <input
+        id={id}
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="h-11 w-full rounded-xl border border-[#302438] bg-black pl-10 pr-10 text-xs text-[#E6E1EA] outline-none transition-colors placeholder:text-[#777780] focus:border-[#554363] focus:ring-1 focus:ring-[#B39ACF]/30"
+      />
+
+      <Search
+        className={`pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 ${iconColor}`}
+        strokeWidth={1.8}
+        aria-hidden="true"
+      />
+
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label={`Clear ${label.toLowerCase()}`}
+          className="absolute right-3 top-1/2 flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-[#777780] transition-colors hover:text-[#E6E1EA]"
+        >
+          <X className="size-3.5" aria-hidden="true" />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -142,8 +270,33 @@ function Cover({
   ) : (
     <div
       aria-hidden="true"
-      className={`bg-gradient-to-br from-[#302438] to-[#20232B] ${className}`}
+      className={`bg-gradient-to-br from-[#302438] via-[#20232B] to-[#101014] ${className}`}
     />
+  );
+}
+
+function SelectionSummary({
+  label,
+  count,
+  accent,
+}: {
+  label: string;
+  count: number;
+  accent: Accent;
+}) {
+  const color = {
+    purple: COLORS.lavender,
+    cyan: COLORS.cyan,
+    emerald: COLORS.emerald,
+  }[accent];
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-[#302438] bg-black/50 px-3 py-2">
+      <span className="text-[11px] text-[#A0A0A8]">{label}</span>
+      <span className="text-xs font-semibold tabular-nums" style={{ color }}>
+        {count}
+      </span>
+    </div>
   );
 }
 
@@ -153,12 +306,16 @@ export default function ChooseInterest() {
 
   const [genres, setGenres] = useState<string[]>([]);
   const [platforms, setPlatforms] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [liked, setLiked] = useState<PickerGame[]>([]);
 
+  const [genreQuery, setGenreQuery] = useState("");
+  const [tagQuery, setTagQuery] = useState("");
   const [query, setQuery] = useState("");
+
   const [results, setResults] = useState<PickerGame[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [liked, setLiked] = useState<PickerGame[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -168,10 +325,8 @@ export default function ChooseInterest() {
 
   const [options, setOptions] = useState<TasteOptionsResponse | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagQuery, setTagQuery] = useState("");
 
-  // Restore the user's saved preferences and load available options.
+  // Restore saved preferences and load available options.
   useEffect(() => {
     if (authLoading || !user) return;
 
@@ -238,6 +393,25 @@ export default function ChooseInterest() {
     }
   }, [authLoading, user, navigate]);
 
+  // Search genres. Selected genres remain visible while searching.
+  const visibleGenres = useMemo(() => {
+    if (!options) return [];
+
+    const search = genreQuery.trim().toLowerCase();
+
+    const names = (options.genres ?? [])
+      .map((genre) => genre.name)
+      .filter((name) => !search || name.toLowerCase().includes(search));
+
+    return search ? names.slice(0, 100) : names.slice(0, VISIBLE_GENRES);
+  }, [options, genreQuery]);
+
+  const chipGenres = useMemo(
+    () => Array.from(new Set([...genres, ...visibleGenres])),
+    [genres, visibleGenres]
+  );
+
+  // Search tags. The backend controls which tags are available.
   const visibleTags = useMemo(() => {
     if (!options) return [];
 
@@ -247,10 +421,9 @@ export default function ChooseInterest() {
       .map((tag) => tag.name)
       .filter((name) => !search || name.toLowerCase().includes(search));
 
-    return search ? names.slice(0, 60) : names.slice(0, VISIBLE_TAGS);
+    return search ? names.slice(0, 100) : names.slice(0, VISIBLE_TAGS);
   }, [options, tagQuery]);
 
-  // Previously selected tags remain visible even when they do not match the search.
   const chipTags = useMemo(
     () => Array.from(new Set([...tags, ...visibleTags])),
     [tags, visibleTags]
@@ -260,6 +433,11 @@ export default function ChooseInterest() {
     () => new Set(liked.map((game) => game.appid)),
     [liked]
   );
+
+  function toggleGenre(name: string) {
+    setGenres((current) => toggleSelection(current, name));
+    setError(null);
+  }
 
   function toggleTag(name: string) {
     if (!tags.includes(name) && tags.length >= MAX_TAGS) {
@@ -271,19 +449,24 @@ export default function ChooseInterest() {
     setError(null);
   }
 
+  function togglePlatform(value: string) {
+    setPlatforms((current) => toggleSelection(current, value));
+    setError(null);
+  }
+
   function toggleLiked(game: PickerGame) {
-    setLiked((current) => {
-      if (current.some((item) => item.appid === game.appid)) {
-        return current.filter((item) => item.appid !== game.appid);
-      }
+    const alreadyAdded = liked.some((item) => item.appid === game.appid);
 
-      if (current.length >= MAX_LIKED_GAMES) {
-        toast.error(`You can pick up to ${MAX_LIKED_GAMES} games.`);
-        return current;
-      }
+    if (!alreadyAdded && liked.length >= MAX_LIKED_GAMES) {
+      toast.error(`You can pick up to ${MAX_LIKED_GAMES} games.`);
+      return;
+    }
 
-      return [...current, game];
-    });
+    setLiked((current) =>
+      alreadyAdded
+        ? current.filter((item) => item.appid !== game.appid)
+        : [...current, game]
+    );
 
     setError(null);
   }
@@ -363,6 +546,9 @@ export default function ChooseInterest() {
   const saveDisabled =
     submitting || preferencesLoading || Boolean(profileError);
 
+  const totalSelections =
+    genres.length + tags.length + liked.length + platforms.length;
+
   return (
     <div className="min-h-screen bg-black text-[#E6E1EA]">
       <div
@@ -372,35 +558,45 @@ export default function ChooseInterest() {
         <Navbar />
 
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-9 md:px-8 xl:px-16">
-          <div className="flex flex-col gap-4">
-            <p className="text-[10px] uppercase tracking-[1px] text-[#B39ACF]">
+          {/* Page heading */}
+          <header className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-[#B39ACF]">
+              <Sparkles className="size-3.5" aria-hidden="true" />
               Make it yours
-            </p>
+            </div>
 
-            <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
-              Choose Interests
-            </h1>
-          </div>
-
-          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-            {/* Left: the form */}
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-4">
-                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
-                  Find your next favorite game.
-                </h2>
-
-                <p className="text-[13px] text-[#A0A0A8]">
-                  Select genres and games you enjoy. You can change these later.
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <h1 className="text-3xl font-semibold tracking-tight text-[#E6E1EA] sm:text-4xl">
+                  Build your taste profile.
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#A0A0A8]">
+                  Tell us what you enjoy. We'll use your interests to help
+                  uncover games worth adding to your shelf.
                 </p>
               </div>
 
+              <div className="flex w-fit items-center gap-2 rounded-xl border border-[#302438] bg-[#141419] px-3.5 py-2.5">
+                <Gamepad2 className="size-4 text-[#B39ACF]" />
+                <span className="text-xs text-[#A0A0A8]">
+                  Your selections
+                </span>
+                <span className="text-sm font-semibold tabular-nums text-[#E6E1EA]">
+                  {totalSelections}
+                </span>
+              </div>
+            </div>
+          </header>
+
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
+            {/* Main form */}
+            <div className="flex min-w-0 flex-col gap-5">
               {preferencesLoading && (
                 <p
                   role="status"
-                  className="flex items-center gap-2 text-xs text-[#A0A0A8]"
+                  className="flex items-center gap-2 rounded-xl border border-[#302438] bg-[#141419] px-4 py-3 text-xs text-[#A0A0A8]"
                 >
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-4 animate-spin text-[#B39ACF]" />
                   Loading your saved preferences…
                 </p>
               )}
@@ -408,13 +604,43 @@ export default function ChooseInterest() {
               {profileError && (
                 <p
                   role="alert"
-                  className="rounded-lg border border-[#E58B91]/30 bg-[#2B171C] px-3 py-2 text-xs text-[#E58B91]"
+                  className="rounded-xl border border-[#E58B91]/30 bg-[#2B171C] px-4 py-3 text-xs leading-5 text-[#E58B91]"
                 >
                   {profileError}
                 </p>
               )}
 
-              <Step title="1. Favorite genres">
+              {/* Selection overview */}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <SelectionSummary
+                  label="Genres"
+                  count={genres.length}
+                  accent="purple"
+                />
+                <SelectionSummary
+                  label="Tags"
+                  count={tags.length}
+                  accent="cyan"
+                />
+                <SelectionSummary
+                  label="Platforms"
+                  count={platforms.length}
+                  accent="emerald"
+                />
+                <SelectionSummary
+                  label="Liked games"
+                  count={liked.length}
+                  accent="purple"
+                />
+              </div>
+
+              {/* 1. Genres */}
+              <Step
+                number="01"
+                title="Favorite genres"
+                description="Choose the kinds of games you usually enjoy. These help shape genre-based recommendations."
+                accent="purple"
+              >
                 {optionsError && (
                   <p role="alert" className="mb-3 text-xs text-[#E58B91]">
                     {optionsError}
@@ -422,72 +648,157 @@ export default function ChooseInterest() {
                 )}
 
                 {!options && !optionsError && (
-                  <p role="status" className="text-xs text-[#A0A0A8]">
+                  <p role="status" className="mb-3 text-xs text-[#A0A0A8]">
                     Loading genres from Steam…
                   </p>
                 )}
 
+                <SearchField
+                  id="genre-search"
+                  value={genreQuery}
+                  onChange={setGenreQuery}
+                  placeholder="Search genres: RPG, Strategy, Adventure…"
+                  label="Search genres"
+                  accent="purple"
+                />
+
+                {genres.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {genres.map((name) => (
+                      <Chip
+                        key={`selected-${name}`}
+                        active
+                        accent="purple"
+                        onClick={() => toggleGenre(name)}
+                      >
+                        {name}
+                        <X className="ml-0.5 size-3 text-[#C2ADE0]" />
+                      </Chip>
+                    ))}
+                  </div>
+                )}
+
                 <div
-                  className="flex flex-wrap gap-2"
+                  className="mt-4 flex flex-wrap gap-2"
                   role="group"
-                  aria-label="Favorite genres"
+                  aria-label="Available genres"
                 >
-                  {options?.genres.map(({ name }) => (
-                    <Chip
-                      key={name}
-                      active={genres.includes(name)}
-                      onClick={() => {
-                        setGenres((current) =>
-                          toggleSelection(current, name)
-                        );
-                        setError(null);
-                      }}
+                  {chipGenres
+                    .filter((name) => !genres.includes(name))
+                    .map((name) => (
+                      <Chip
+                        key={name}
+                        active={false}
+                        accent="purple"
+                        onClick={() => toggleGenre(name)}
+                      >
+                        {name}
+                      </Chip>
+                    ))}
+                </div>
+
+                {genreQuery.trim() && visibleGenres.length === 0 && (
+                  <p className="mt-3 text-xs text-[#A0A0A8]">
+                    No genres found. Try another search.
+                  </p>
+                )}
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="text-[11px] text-[#777780]">
+                    {genres.length} selected
+                  </p>
+                  {genreQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setGenreQuery("")}
+                      className="cursor-pointer text-[11px] text-[#B39ACF] hover:text-[#C2ADE0]"
                     >
-                      {name}
-                    </Chip>
-                  ))}
+                      Clear search
+                    </button>
+                  )}
                 </div>
               </Step>
 
-              <Step title="2. Favorite tags">
-                <input
-                  type="search"
+              {/* 2. Tags */}
+              <Step
+                number="02"
+                title="Favorite tags"
+                description="Get more specific. Tags help the recommendation system understand the themes, mechanics, and experiences you like."
+                accent="cyan"
+              >
+                <SearchField
+                  id="tag-search"
                   value={tagQuery}
-                  onChange={(event) => setTagQuery(event.target.value)}
+                  onChange={setTagQuery}
                   placeholder="Search tags: Souls-like, Roguelike, Co-op…"
-                  aria-label="Search tags"
-                  autoComplete="off"
-                  className="h-11 w-full rounded-lg border border-[#302438] bg-black px-3.5 text-xs text-[#E6E1EA] outline-none placeholder:text-[#777780] focus:border-[#B39ACF] focus:ring-1 focus:ring-[#B39ACF]/30"
+                  label="Search tags"
+                  accent="cyan"
                 />
 
+                {tags.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {tags.map((name) => (
+                      <Chip
+                        key={`selected-${name}`}
+                        active
+                        accent="cyan"
+                        onClick={() => toggleTag(name)}
+                      >
+                        {name}
+                        <X className="ml-0.5 size-3 text-[#38BDF8]" />
+                      </Chip>
+                    ))}
+                  </div>
+                )}
+
                 <div
-                  className="mt-3 flex flex-wrap gap-2"
+                  className="mt-4 flex flex-wrap gap-2"
                   role="group"
-                  aria-label="Favorite tags"
+                  aria-label="Available tags"
                 >
-                  {chipTags.map((name) => (
-                    <Chip
-                      key={name}
-                      active={tags.includes(name)}
-                      onClick={() => toggleTag(name)}
-                    >
-                      {name}
-                    </Chip>
-                  ))}
+                  {chipTags
+                    .filter((name) => !tags.includes(name))
+                    .map((name) => (
+                      <Chip
+                        key={name}
+                        active={false}
+                        accent="cyan"
+                        onClick={() => toggleTag(name)}
+                      >
+                        {name}
+                      </Chip>
+                    ))}
                 </div>
 
                 {tagQuery.trim() && visibleTags.length === 0 && (
                   <p className="mt-3 text-xs text-[#A0A0A8]">
-                    No tags found.
+                    No tags found. Try another search.
                   </p>
                 )}
 
-                <p className="mt-3 text-[11px] text-[#777780]">
-                  {tags.length}/{MAX_TAGS} tags selected
-                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[11px] text-[#777780]">
+                    {tags.length}/{MAX_TAGS} tags selected
+                  </p>
+                  {tagQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setTagQuery("")}
+                      className="cursor-pointer text-[11px] text-[#38BDF8] hover:text-[#7DD3FC]"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
               </Step>
 
-              <Step title="3. Preferred platforms">
+              {/* 3. Platforms */}
+              <Step
+                number="03"
+                title="Preferred platforms"
+                description="Choose the platforms you play on. Recommendations will be filtered to games that support your selected platforms."
+                accent="emerald"
+              >
                 <div
                   className="flex flex-wrap gap-2"
                   role="group"
@@ -497,54 +808,53 @@ export default function ChooseInterest() {
                     <Chip
                       key={value}
                       active={platforms.includes(value)}
-                      onClick={() =>
-                        setPlatforms((current) =>
-                          toggleSelection(current, value)
-                        )
-                      }
+                      accent="emerald"
+                      onClick={() => togglePlatform(value)}
                     >
                       {label}
                     </Chip>
                   ))}
                 </div>
+
+                <p className="mt-4 text-[11px] text-[#777780]">
+                  {platforms.length === 0
+                    ? "No platform preference. We'll keep recommendations unrestricted."
+                    : `${platforms.length} platform${platforms.length === 1 ? "" : "s"} selected.`}
+                </p>
               </Step>
 
-              <Step title="4. Games you like">
-                <label
-                  htmlFor="liked-search"
-                  className="text-xs font-semibold text-[#E6E1EA]"
-                >
-                  Search and select games
-                </label>
+              {/* 4. Liked games */}
+              <Step
+                number="04"
+                title="Games you like"
+                description="Add games you've enjoyed. These help power recommendations based on games you've played or liked."
+                accent="purple"
+              >
+                <SearchField
+                  id="liked-search"
+                  value={query}
+                  onChange={setQuery}
+                  placeholder="Search Steam: Hollow Knight, Stardew Valley…"
+                  label="Search Steam games"
+                  accent="purple"
+                />
 
-                <div className="relative mt-2">
-                  <input
-                    id="liked-search"
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Hollow Knight, Stardew Valley…"
-                    autoComplete="off"
-                    className="h-11 w-full rounded-lg border border-[#302438] bg-black pl-3.5 pr-10 text-xs text-[#E6E1EA] outline-none placeholder:text-[#777780] focus:border-[#B39ACF] focus:ring-1 focus:ring-[#B39ACF]/30"
-                  />
-
-                  <Search
-                    className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#38BDF8]"
-                    strokeWidth={1.7}
-                    aria-hidden="true"
-                  />
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-[11px] text-[#777780]">
+                    Search for at least two characters.
+                  </p>
+                  <p className="text-[11px] tabular-nums text-[#B39ACF]">
+                    {liked.length}/{MAX_LIKED_GAMES} games
+                  </p>
                 </div>
 
                 {searching && (
                   <p
                     role="status"
-                    className="mt-3 flex items-center gap-2 text-xs text-[#A0A0A8]"
+                    className="mt-4 flex items-center gap-2 text-xs text-[#A0A0A8]"
                   >
-                    <Loader2
-                      className="size-3.5 animate-spin text-[#38BDF8]"
-                      aria-hidden="true"
-                    />
-                    Searching…
+                    <Loader2 className="size-4 animate-spin text-[#38BDF8]" />
+                    Searching Steam…
                   </p>
                 )}
 
@@ -558,16 +868,16 @@ export default function ChooseInterest() {
                   !searching &&
                   !searchError &&
                   results.length === 0 && (
-                    <p className="mt-3 text-xs text-[#A0A0A8]">
-                      No games found.
+                    <p className="mt-4 text-xs text-[#A0A0A8]">
+                      No games found. Try a different title.
                     </p>
                   )}
 
-                {/* Search results */}
+                {/* Steam search results */}
                 {results.length > 0 && (
                   <ul
-                    className="mt-3 grid gap-2 sm:grid-cols-2"
-                    aria-label="Search results"
+                    className="mt-4 grid gap-2 sm:grid-cols-2"
+                    aria-label="Steam search results"
                   >
                     {results.slice(0, 6).map((game) => {
                       const added = likedIds.has(game.appid);
@@ -578,24 +888,23 @@ export default function ChooseInterest() {
                             type="button"
                             onClick={() => toggleLiked(game)}
                             aria-pressed={added}
-                            className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border p-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE0] ${
+                            className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE0] ${
                               added
                                 ? "border-[#B39ACF] bg-[#302438]/60"
-                                : "border-[#302438] bg-[#20232B] hover:border-[#554363]"
+                                : "border-[#302438] bg-[#1D1D25] hover:border-[#554363]"
                             }`}
                           >
                             <Cover
                               src={game.cover}
-                              className="h-10 w-[72px] shrink-0 rounded-md"
+                              className="h-11 w-[76px] shrink-0 rounded-lg"
                             />
 
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-xs font-medium text-[#E6E1EA]">
                                 {game.title}
                               </span>
-
-                              <span className="block text-[10px] text-[#A0A0A8]">
-                                {added ? "Added" : "Add to liked games"}
+                              <span className="mt-1 block text-[10px] text-[#A0A0A8]">
+                                {added ? "Already selected" : "Add to liked games"}
                               </span>
                             </span>
 
@@ -619,34 +928,46 @@ export default function ChooseInterest() {
 
                 {/* Selected games */}
                 {liked.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-xs text-[#A0A0A8]">
-                      Your liked games ({liked.length}/{MAX_LIKED_GAMES})
-                    </p>
+                  <div className="mt-6 border-t border-[#302438] pt-5">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-semibold text-[#E6E1EA]">
+                          Your liked games
+                        </h4>
+                        <p className="mt-1 text-[10px] text-[#777780]">
+                          Select the X button to remove a game.
+                        </p>
+                      </div>
+                      <span className="text-[11px] tabular-nums text-[#B39ACF]">
+                        {liked.length}/{MAX_LIKED_GAMES}
+                      </span>
+                    </div>
 
-                    <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       {liked.map((game) => (
                         <li
                           key={game.appid}
-                          className="relative overflow-hidden rounded-lg border border-[#302438] bg-[#20232B]"
+                          className="group relative overflow-hidden rounded-xl border border-[#302438] bg-[#1D1D25]"
                         >
                           <Cover
                             src={game.cover}
-                            className="h-20 w-full"
+                            className="h-24 w-full transition-transform duration-300 group-hover:scale-[1.02]"
                           />
 
-                          <p className="truncate p-2.5 text-xs font-medium text-[#E6E1EA]">
-                            {game.title}
-                          </p>
+                          <div className="flex min-w-0 items-center justify-between gap-2 p-3">
+                            <p className="truncate text-xs font-medium text-[#E6E1EA]">
+                              {game.title}
+                            </p>
 
-                          <button
-                            type="button"
-                            onClick={() => toggleLiked(game)}
-                            aria-label={`Remove ${game.title}`}
-                            className="absolute right-1.5 top-1.5 flex size-6 cursor-pointer items-center justify-center rounded-md border border-white/10 bg-black/75 text-[#E6E1EA] transition-colors hover:border-[#E58B91]/50 hover:bg-[#2B171C] hover:text-[#E58B91]"
-                          >
-                            <X className="size-3.5" aria-hidden="true" />
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleLiked(game)}
+                              aria-label={`Remove ${game.title}`}
+                              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[#302438] bg-black text-[#A0A0A8] transition-colors hover:border-[#E58B91]/50 hover:text-[#E58B91]"
+                            >
+                              <X className="size-3.5" aria-hidden="true" />
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -654,33 +975,34 @@ export default function ChooseInterest() {
                 )}
               </Step>
 
+              {/* Save error */}
               {error && (
                 <p
                   role="alert"
-                  className="rounded-lg border border-[#E58B91]/30 bg-[#2B171C] px-3 py-2 text-[13px] text-[#E58B91]"
+                  className="rounded-xl border border-[#E58B91]/30 bg-[#2B171C] px-4 py-3 text-xs leading-5 text-[#E58B91]"
                 >
                   {error}
                 </p>
               )}
 
-              <div className="flex items-center gap-5">
+              {/* Actions */}
+              <div className="flex flex-wrap items-center gap-4 border-t border-[#302438] pt-5">
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saveDisabled}
-                  className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg bg-[#B39ACF] px-5 text-[13px] font-semibold text-[#17101F] transition-colors hover:bg-[#C2ADE0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE0] focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-[#B39ACF] px-5 text-xs font-semibold text-[#17101F] transition-colors hover:bg-[#C2ADE0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE0] focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {submitting && (
-                    <Loader2
-                      className="size-4 animate-spin"
-                      aria-hidden="true"
-                    />
+                  {submitting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Check className="size-4" />
                   )}
 
                   {preferencesLoading
-                    ? "Loading…"
+                    ? "Loading preferences…"
                     : submitting
-                      ? "Saving…"
+                      ? "Saving preferences…"
                       : "Save Preferences"}
                 </button>
 
@@ -693,38 +1015,106 @@ export default function ChooseInterest() {
               </div>
             </div>
 
-            {/* Right: artwork + copy */}
-            <aside className="flex flex-col gap-5 lg:sticky lg:top-6">
-              {heroFailed ? (
-                <div
-                  aria-hidden="true"
-                  className="aspect-[4/3] w-full rounded-xl bg-gradient-to-br from-[#302438] via-[#20232B] to-[#17191E]"
-                />
-              ) : (
-                <img
-                  src="/images/choose-interests.png"
-                  alt=""
-                  onError={() => setHeroFailed(true)}
-                  className="aspect-[4/3] w-full rounded-xl object-cover"
-                />
-              )}
+            {/* Right sidebar */}
+            <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
+              <div className="overflow-hidden rounded-2xl border border-[#302438] bg-[#141419]">
+                {heroFailed ? (
+                  <div
+                    aria-hidden="true"
+                    className="aspect-[4/3] w-full bg-gradient-to-br from-[#302438] via-[#20232B] to-[#101014]"
+                  />
+                ) : (
+                  <img
+                    src="/images/choose-interests.png"
+                    alt=""
+                    onError={() => setHeroFailed(true)}
+                    className="aspect-[4/3] w-full object-cover"
+                  />
+                )}
 
-              <div className="flex flex-col gap-3">
-                <p className="text-[9px] uppercase tracking-[1px] text-[#B39ACF]">
-                  A little taste. A better shelf.
-                </p>
+                <div className="p-5">
+                  <p className="flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[1.5px] text-[#B39ACF]">
+                    <Sparkles className="size-3" />
+                    A little taste. A better shelf.
+                  </p>
 
-                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
-                  Great games, more you.
-                </h2>
+                  <h2 className="mt-3 text-xl font-semibold tracking-tight text-[#E6E1EA]">
+                    Great games, more you.
+                  </h2>
 
-                <p className="text-xs leading-5 text-[#A0A0A8]">
-                  Your favorite genres and liked games help us find adventures
-                  worth your time.
-                </p>
+                  <p className="mt-2 text-xs leading-5 text-[#A0A0A8]">
+                    Your interests help GameShelf discover games that fit your
+                    taste, not just what's popular.
+                  </p>
+                </div>
+              </div>
 
-                <p className="text-xs leading-5 text-[#A0A0A8]">
-                  Your preferences can always evolve with you.
+              {/* How recommendations work */}
+              <div className="rounded-2xl border border-[#302438] bg-[#141419] p-5">
+                <h3 className="text-xs font-semibold text-[#E6E1EA]">
+                  How your preferences help
+                </h3>
+
+                <div className="mt-4 flex flex-col gap-4">
+                  <div className="flex gap-3">
+                    <span className="mt-0.5 size-2 shrink-0 rounded-full bg-[#B39ACF]" />
+                    <div>
+                      <p className="text-xs font-medium text-[#E6E1EA]">
+                        Favorite genres
+                      </p>
+                      <p className="mt-1 text-[11px] leading-4 text-[#A0A0A8]">
+                        Helps find more games in genres you enjoy.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="mt-0.5 size-2 shrink-0 rounded-full bg-[#38BDF8]" />
+                    <div>
+                      <p className="text-xs font-medium text-[#E6E1EA]">
+                        Favorite tags
+                      </p>
+                      <p className="mt-1 text-[11px] leading-4 text-[#A0A0A8]">
+                        Helps K-Means understand your broader game preferences.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="mt-0.5 size-2 shrink-0 rounded-full bg-[#C2ADE0]" />
+                    <div>
+                      <p className="text-xs font-medium text-[#E6E1EA]">
+                        Liked games
+                      </p>
+                      <p className="mt-1 text-[11px] leading-4 text-[#A0A0A8]">
+                        Helps find games related to titles you already enjoy.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <span className="mt-0.5 size-2 shrink-0 rounded-full bg-[#34D399]" />
+                    <div>
+                      <p className="text-xs font-medium text-[#E6E1EA]">
+                        Platforms
+                      </p>
+                      <p className="mt-1 text-[11px] leading-4 text-[#A0A0A8]">
+                        Keeps recommendations compatible with your setup.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#302438] bg-[#141419] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <ChevronDown className="size-3.5 text-[#B39ACF]" />
+                  <p className="text-[11px] font-medium text-[#E6E1EA]">
+                    Your profile can change anytime.
+                  </p>
+                </div>
+                <p className="mt-1 pl-5 text-[10px] leading-4 text-[#777780]">
+                  Update your selections whenever your gaming tastes evolve.
                 </p>
               </div>
             </aside>

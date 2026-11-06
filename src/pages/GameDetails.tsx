@@ -977,7 +977,11 @@ export default function GameDetails() {
                         )}
                       </div>
                     ) : (
-                      <ThirdPartyReviews appid={appid!} />
+                       <ThirdPartyReviews
+                      appId={game.steam_appid}
+                      gameName={game.name}
+                    />
+
                     )}
                   </CardContent>
                 </Card>
