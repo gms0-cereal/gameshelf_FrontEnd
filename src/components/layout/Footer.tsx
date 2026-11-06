@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-
+import gameShelfLogo from "../logo/Gameshelf_Logo.png";
 const links = [
   ["About", "/about"],
   ["Contact", "/contact"],
@@ -15,7 +15,11 @@ export default function Footer() {
         to="/"
         className="text-base leading-[19px] text-[#e0deeb]"
       >
-        GameShelf
+        <img
+              src={gameShelfLogo}
+              alt="GameShelf"
+              className="h-[36px] w-auto shrink-0"
+            />
       </Link>
 
       <nav
