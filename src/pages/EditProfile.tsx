@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Gamepad2,
@@ -58,9 +58,28 @@ type ProfileForm = {
   age?: number | null;
 };
 
+function calculateAge(dateString: string): number {
+  const today = new Date();
+  const birthDate = new Date(dateString);
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  return age;
+}
+
 export default function EditProfile() {
   const { user, loading, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Set when the user arrives from the "Set your birthday first" modal.
+  const wantsBirthday = (location.state as { focusBirthday?: boolean } | null)
+    ?.focusBirthday;
 
   const [form, setForm] = useState<ProfileForm>({
     nickname: "",
@@ -96,7 +115,11 @@ export default function EditProfile() {
   const [showBirthdayModal, setShowBirthdayModal] = useState(false);
   const [tempBirthDate, setTempBirthDate] = useState("");
   const [confirmBirthdayStep, setConfirmBirthdayStep] = useState(false);
+  const [birthdaySaving, setBirthdaySaving] = useState(false);
+  const [birthdayError, setBirthdayError] = useState("");
 
+  // Fill the whole form once per user (not on every refreshUser call),
+  // so unsaved edits aren't wiped when the user reloads in the background.
   useEffect(() => {
     if (!user) return;
 
@@ -108,13 +131,36 @@ export default function EditProfile() {
       gender: user.gender ?? "",
       pronouns: user.pronouns ?? "",
       friends_visibility: user.friends_visibility ?? "public",
-      birth_day: (user as any).birth_day ?? "",
-      age: user.age ?? null,
+      birth_day: user.birth_day ?? "",
+      age: user.birth_day ? calculateAge(user.birth_day) : user.age ?? null,
     });
 
     setAvatarPreview(user.avatar_url ?? "");
     setBannerPreview(user.banner_url ?? "");
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Keep only the birthday in sync when it changes after saving.
+  useEffect(() => {
+    if (!user) return;
+    setForm((current) => ({
+      ...current,
+      birth_day: user.birth_day ?? "",
+      age: user.birth_day ? calculateAge(user.birth_day) : current.age ?? null,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.birth_day]);
+
+  // Arrived from the "Set your birthday first" modal: open the birthday dialog right away.
+  useEffect(() => {
+    if (wantsBirthday && user && !user.birth_day) {
+      setTempBirthDate("");
+      setConfirmBirthdayStep(false);
+      setBirthdayError("");
+      setShowBirthdayModal(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsBirthday, user?.id]);
 
   function updateField(field: keyof ProfileForm, value: any) {
     setForm((current) => ({
@@ -183,31 +229,41 @@ export default function EditProfile() {
     setCropTarget(null);
   }
 
-  function calculateAge(dateString: string): number {
-    const today = new Date();
-    const birthDate = new Date(dateString);
-
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-
-    return age;
-  }
-
-  function handleBirthdayConfirm() {
-    if (!tempBirthDate) return;
-
-    const calculated = calculateAge(tempBirthDate);
-
-    updateField("birth_day", tempBirthDate);
-    updateField("age", calculated);
-
+  function closeBirthdayModal() {
+    if (birthdaySaving) return;
     setShowBirthdayModal(false);
     setConfirmBirthdayStep(false);
-    setTempBirthDate("");
+    setBirthdayError("");
+  }
+
+  // Saves the birthday to the account right away (it can only be set once).
+  async function handleBirthdayConfirm() {
+    if (!tempBirthDate || birthdaySaving) return;
+
+    setBirthdaySaving(true);
+    setBirthdayError("");
+
+    try {
+      const payload = new FormData();
+      payload.append("birth_day", tempBirthDate);
+
+      await api.patch("/users/me/", payload);
+      await refreshUser(); // the "Set your birthday first" modal closes once the user has a birthday
+
+      setShowBirthdayModal(false);
+      setConfirmBirthdayStep(false);
+      setTempBirthDate("");
+    } catch (err: any) {
+      const data = err?.response?.data;
+      const message =
+        data?.birth_day?.[0] ||
+        data?.detail ||
+        "Couldn't save your birthday. Please try again.";
+      setBirthdayError(message);
+      setConfirmBirthdayStep(false);
+    } finally {
+      setBirthdaySaving(false);
+    }
   }
 
   async function handleSteamImport(e: FormEvent) {
@@ -256,10 +312,6 @@ export default function EditProfile() {
 
       if (form.birth_day) {
         payload.append("birth_day", form.birth_day);
-      }
-
-      if (form.age !== null && form.age !== undefined) {
-        payload.append("age", String(form.age));
       }
 
       if (avatarUpload) {
@@ -314,6 +366,8 @@ export default function EditProfile() {
       </div>
     );
   }
+
+  const savedBirthday = form.birth_day || user.birth_day || "";
 
   return (
     <div className="min-h-screen w-full bg-[#09090B]">
@@ -465,12 +519,13 @@ export default function EditProfile() {
                     </h3>
                   </div>
 
-                  {!form.birth_day && !(user as any)?.birth_day && (
+                  {!savedBirthday && (
                     <Button
                       type="button"
                       onClick={() => {
-                        setTempBirthDate(form.birth_day || "");
+                        setTempBirthDate("");
                         setConfirmBirthdayStep(false);
+                        setBirthdayError("");
                         setShowBirthdayModal(true);
                       }}
                       className={`h-9 px-4 text-xs ${PRIMARY_BUTTON}`}
@@ -481,8 +536,8 @@ export default function EditProfile() {
                 </div>
 
                 <p className="text-xs leading-relaxed text-[#A7A2B5]">
-                  {form.birth_day || (user as any)?.birth_day
-                    ? `Current age: ${form.age ?? calculateAge(form.birth_day || (user as any).birth_day)} years old (exact birthday is kept private, locked 🔒)`
+                  {savedBirthday
+                    ? `Current age: ${form.age ?? calculateAge(savedBirthday)} years old (exact birthday is kept private, locked 🔒)`
                     : "No birthday set. Click to select your birthday."}
                 </p>
               </div>
@@ -698,8 +753,8 @@ export default function EditProfile() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm fade-in-0"
-          onClick={() => setShowBirthdayModal(false)}
+          className="fixed inset-0 z-[110] flex animate-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm fade-in-0"
+          onClick={closeBirthdayModal}
         >
           <div
             className="w-full max-w-md animate-in rounded-2xl border border-[#343640] bg-[#202127] p-6 text-[#F2F0F7] shadow-2xl zoom-in-95"
@@ -711,7 +766,7 @@ export default function EditProfile() {
                 : "Set Your Birthday"}
             </h3>
 
-            {user?.birth_day ? (
+            {user.birth_day ? (
               <div className="mt-4 flex flex-col gap-4">
                 <p className="text-sm text-[#A7A2B5]">
                   Your birthday has already been set and cannot be changed.
@@ -721,7 +776,7 @@ export default function EditProfile() {
                 <div className="mt-2 flex justify-end">
                   <Button
                     type="button"
-                    onClick={() => setShowBirthdayModal(false)}
+                    onClick={closeBirthdayModal}
                     className={PRIMARY_BUTTON}
                   >
                     Close
@@ -733,7 +788,8 @@ export default function EditProfile() {
                 <p className="text-xs leading-relaxed text-[#A7A2B5]">
                   Select your date of birth using the calendar below. Your
                   exact birthday remains private, and your age is calculated
-                  automatically. Note: This can only be set once.
+                  automatically. We use it to decide whether 18+ games can be
+                  shown. Note: This can only be set once.
                 </p>
 
                 <div className="flex flex-col gap-2">
@@ -756,11 +812,17 @@ export default function EditProfile() {
                   </p>
                 )}
 
+                {birthdayError && (
+                  <p role="alert" className="text-xs text-[#FF8A7A]">
+                    {birthdayError}
+                  </p>
+                )}
+
                 <div className="mt-4 flex justify-end gap-3">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowBirthdayModal(false)}
+                    onClick={closeBirthdayModal}
                     className={OUTLINE_BUTTON}
                   >
                     Cancel
@@ -771,7 +833,10 @@ export default function EditProfile() {
                     disabled={
                       !tempBirthDate || calculateAge(tempBirthDate) < 5
                     }
-                    onClick={() => setConfirmBirthdayStep(true)}
+                    onClick={() => {
+                      setBirthdayError("");
+                      setConfirmBirthdayStep(true);
+                    }}
                     className={PRIMARY_BUTTON}
                   >
                     Next
@@ -811,6 +876,7 @@ export default function EditProfile() {
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={birthdaySaving}
                     onClick={() => setConfirmBirthdayStep(false)}
                     className={OUTLINE_BUTTON}
                   >
@@ -819,10 +885,11 @@ export default function EditProfile() {
 
                   <Button
                     type="button"
+                    disabled={birthdaySaving}
                     onClick={handleBirthdayConfirm}
                     className={PRIMARY_BUTTON}
                   >
-                    Confirm & Save
+                    {birthdaySaving ? "Saving..." : "Confirm & Save"}
                   </Button>
                 </div>
               </div>
