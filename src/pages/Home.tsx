@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { type TargetAndTransition, type Variants, motion } from "framer-motion";;
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
@@ -25,7 +26,6 @@ import {
 import {
   getFriends,
   getFavoriteGames,
-  type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 
 import api from "@/lib/api";
@@ -37,6 +37,36 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   plan_to_play: { label: "Plan to Play", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
   dropped: { label: "Dropped", className: "bg-[#2B171C] text-[#E58B91] border border-[#E58B91]/40" },
   unplayed: { label: "Unplayed", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
+};
+
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { duration: 0.5, ease: "easeOut" } as TargetAndTransition["transition"]
+  },
+};
+
+const carouselContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const cardItemVariants: Variants = {
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: { duration: 0.35, ease: "easeOut" } as TargetAndTransition["transition"]
+  },
 };
 
 function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSummary {
@@ -213,111 +243,110 @@ export default function Home() {
   const GENRE_PAGE_SIZE = 24;
 
   // 1. Fetch User Taste Profile & Dynamically Rotate Genres / Liked Games by Time Slots
+  useEffect(() => {
+    let cancelled = false;
+    let rotationInterval: ReturnType<typeof setInterval> | undefined;
 
-    useEffect(() => {
-      let cancelled = false;
-      let rotationInterval: ReturnType<typeof setInterval> | undefined;
+    async function loadPreferences() {
+      try {
+        const [profileResult, favoritesResult] = await Promise.allSettled([
+          getTasteProfile(),
+          getFavoriteGames(),
+        ]);
 
-      async function loadPreferences() {
-        try {
-          const [profileResult, favoritesResult] = await Promise.allSettled([
-            getTasteProfile(),
-            getFavoriteGames(),
-          ]);
+        if (cancelled) return;
 
-          if (cancelled) return;
+        const profile =
+          profileResult.status === "fulfilled"
+            ? profileResult.value
+            : null;
 
-          const profile =
-            profileResult.status === "fulfilled"
-              ? profileResult.value
-              : null;
+        const favorites =
+          favoritesResult.status === "fulfilled"
+            ? favoritesResult.value
+            : [];
 
-          const favorites =
-            favoritesResult.status === "fulfilled"
-              ? favoritesResult.value
-              : [];
+        // Rotate primary genre every 2 hours
+        if (profile?.genres?.length) {
+          const now = Date.now();
+          const twoHours = 1000 * 60 * 60 * 2;
+          const genreIndex =
+            Math.floor(now / twoHours) % profile.genres.length;
 
-          // Rotate primary genre every 2 hours
-          if (profile?.genres?.length) {
-            const now = Date.now();
-            const twoHours = 1000 * 60 * 60 * 2;
-            const genreIndex =
-              Math.floor(now / twoHours) % profile.genres.length;
+          setPrimaryGenre(profile.genres[genreIndex]);
+        }
 
-            setPrimaryGenre(profile.genres[genreIndex]);
-          }
+        // Combine Taste Profile liked games and User Favorite Games
+        const likedGames = (profile?.liked_games ?? []).map((game) => ({
+          appid: game.appid,
+          title: game.title,
+        }));
 
-          // Combine Taste Profile liked games and User Favorite Games
-          const likedGames = (profile?.liked_games ?? []).map((game) => ({
-            appid: game.appid,
+        const favoriteGames = favorites
+          .filter((game) => game.steam_app_id != null)
+          .map((game) => ({
+            appid: game.steam_app_id!,
             title: game.title,
           }));
 
-          const favoriteGames = favorites
-            .filter((game) => game.steam_app_id != null)
-            .map((game) => ({
-              appid: game.steam_app_id!,
-              title: game.title,
-            }));
+        // Remove duplicates using Steam app ID
+        const combinedGames = Array.from(
+          new Map(
+            [...likedGames, ...favoriteGames].map((game) => [
+              game.appid,
+              game,
+            ])
+          ).values()
+        );
 
-          // Remove duplicates using Steam app ID
-          const combinedGames = Array.from(
-            new Map(
-              [...likedGames, ...favoriteGames].map((game) => [
-                game.appid,
-                game,
-              ])
-            ).values()
+        if (combinedGames.length > 0) {
+          let currentAppId: number | null = null;
+
+          const pickRandomLikedGame = () => {
+            const availableGames =
+              combinedGames.length > 1
+                ? combinedGames.filter(
+                    (game) => game.appid !== currentAppId
+                  )
+                : combinedGames;
+
+            const selected =
+              availableGames[
+                Math.floor(Math.random() * availableGames.length)
+              ];
+
+            currentAppId = selected.appid;
+
+            setLikedGameTitle(selected.title);
+            setLikedGameAppId(selected.appid);
+          };
+
+          // Pick immediately, then rotate every 30 minutes
+          pickRandomLikedGame();
+
+          rotationInterval = setInterval(
+            pickRandomLikedGame,
+            30 * 60 * 1000
           );
-
-          if (combinedGames.length > 0) {
-            let currentAppId: number | null = null;
-
-            const pickRandomLikedGame = () => {
-              const availableGames =
-                combinedGames.length > 1
-                  ? combinedGames.filter(
-                      (game) => game.appid !== currentAppId
-                    )
-                  : combinedGames;
-
-              const selected =
-                availableGames[
-                  Math.floor(Math.random() * availableGames.length)
-                ];
-
-              currentAppId = selected.appid;
-
-              setLikedGameTitle(selected.title);
-              setLikedGameAppId(selected.appid);
-            };
-
-            // Pick immediately, then rotate every 30 minutes
-            pickRandomLikedGame();
-
-            rotationInterval = setInterval(
-              pickRandomLikedGame,
-              30 * 60 * 1000
-            );
-          } else {
-            setLikedGameTitle("Counter-Strike 2");
-            setLikedGameAppId(730);
-          }
-        } catch {
-          if (!cancelled) {
-            setLikedGameTitle("Counter-Strike 2");
-            setLikedGameAppId(730);
-          }
+        } else {
+          setLikedGameTitle("Counter-Strike 2");
+          setLikedGameAppId(730);
+        }
+      } catch {
+        if (!cancelled) {
+          setLikedGameTitle("Counter-Strike 2");
+          setLikedGameAppId(730);
         }
       }
+    }
 
-      void loadPreferences();
+    void loadPreferences();
 
-      return () => {
-        cancelled = true;
-        if (rotationInterval) clearInterval(rotationInterval);
-      };
-    }, [user?.id]);
+    return () => {
+      cancelled = true;
+      if (rotationInterval) clearInterval(rotationInterval);
+    };
+  }, [user?.id]);
 
   // 2. Infinite Scroll: Dynamic Genre Section ("More [Genre]s for You")
   const loadGenrePage = useCallback(async () => {
@@ -429,11 +458,9 @@ export default function Home() {
         return [...prev, ...uniqueNewSummaries];
       });
 
-      // FIX: Advance offset by the full requested batch size, not the filtered results length!
       similarOffset.current += PAGE_SIZE;
       similarHasMore.current = simData.has_more ?? results.length === PAGE_SIZE;
 
-      // Auto-fetch next page if deduplication stripped away too many items in this batch
       if (addedCount < 5 && similarHasMore.current) {
         similarLoadingRef.current = false;
         void loadSimilarPage();
@@ -450,7 +477,6 @@ export default function Home() {
   useEffect(() => {
     if (!likedGameAppId) return;
 
-    // Reset pagination for the newly selected reference game
     similarOffset.current = 0;
     similarHasMore.current = true;
     similarLoadingRef.current = false;
@@ -503,21 +529,21 @@ export default function Home() {
     }
   }, [user?.id]);
 
- useEffect(() => {
-  tasteOffset.current = 0;
-  tasteHasMore.current = true;
-  tasteLoadingRef.current = false;
-  setRecommendedGames([]);
-  setRecommendationsError(null);
+  useEffect(() => {
+    tasteOffset.current = 0;
+    tasteHasMore.current = true;
+    tasteLoadingRef.current = false;
+    setRecommendedGames([]);
+    setRecommendationsError(null);
 
-  if (!user) {
-    setRecommendationsLoading(false);
-    return;
-  }
+    if (!user) {
+      setRecommendationsLoading(false);
+      return;
+    }
 
-  setRecommendationsLoading(true);
-  void loadTastePage();
-}, [user?.id, loadTastePage]);
+    setRecommendationsLoading(true);
+    void loadTastePage();
+  }, [user?.id, loadTastePage]);
 
   // 5. Infinite Scroll: Players Like You (SVD)
   const loadPlayersPage = useCallback(async () => {
@@ -566,7 +592,6 @@ export default function Home() {
       setPlayersLoading(false);
     }
   }, [user?.id]);
-
 
   useEffect(() => {
     playersOffset.current = 0;
@@ -775,18 +800,26 @@ export default function Home() {
         <Navbar />
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           {/* Welcome header */}
-          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+          <motion.div 
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex min-h-[65px] flex-wrap items-center justify-between gap-4"
+          >
             <div className="flex flex-col gap-2">
               <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">
                 WELCOME BACK, {user?.nickname || user?.username || "Player"}
               </p>
               <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">Home</h1>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Hero Banner (Dynamic Top Bayesian Rated Games) */}
+          {/* Hero Banner */}
           {heroGames.length > 0 && (
-            <section
+            <motion.section
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
               className="relative min-h-[420px] w-full overflow-hidden rounded-2xl bg-[#17191E] border border-[#302438] xl:h-[440px]"
@@ -864,11 +897,17 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-            </section>
+            </motion.section>
           )}
 
-          {/* 1. More [Genre]s for You (Dynamic Genre Section with Infinite Scroll) */}
-          <section className="flex flex-col gap-5">
+          {/* 1. More [Genre]s for You */}
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="flex flex-col gap-5"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
                 <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
@@ -908,28 +947,39 @@ export default function Home() {
             ) : genreGames.length === 0 ? (
               <p className="text-sm text-[#A0A0A8]">No games found for this genre.</p>
             ) : (
-              <div
+              <motion.div
                 ref={genreRef}
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
                 onScroll={(event) => handleRecommendationScroll(event, loadGenrePage)}
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
                   {genreGames.map((game) => (
-                    <div
+                    <motion.div
                       key={game.id}
+                      variants={cardItemVariants}
                       className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                     >
                       <GameCard game={game} />
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
-          </section>
+          </motion.section>
 
           {/* 2. Top Rated on GameShelf */}
           {(topRatedLoading || topRatedError || topRatedGames.length > 0) && (
-            <section aria-labelledby="top-rated-title" className="flex flex-col gap-5">
+            <motion.section 
+              variants={sectionVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-50px" }}
+              aria-labelledby="top-rated-title" 
+              className="flex flex-col gap-5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col">
                   <h2
@@ -977,28 +1027,39 @@ export default function Home() {
               )}
 
               {topRatedGames.length > 0 && (
-                <div
+                <motion.div
                   ref={topRatedRef}
+                  variants={carouselContainerVariants}
+                  initial="hidden"
+                  animate="visible"
                   onScroll={(event) => handleRecommendationScroll(event, loadTopRatedPage)}
                   className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   <div className="flex gap-5">
                     {topRatedGames.map((game) => (
-                      <div
+                      <motion.div
                         key={game.id}
+                        variants={cardItemVariants}
                         className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                       >
                         <GameCard game={game} />
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               )}
-            </section>
+            </motion.section>
           )}
 
-          {/* 3. Recommended for You (K-Means Taste Engine) */}
-          <section aria-labelledby="taste-recommendations-title" className="flex flex-col gap-5">
+          {/* 3. Recommended for You */}
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            aria-labelledby="taste-recommendations-title" 
+            className="flex flex-col gap-5"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
                 <h2
@@ -1059,28 +1120,38 @@ export default function Home() {
             )}
 
             {recommendedGames.length > 0 && (
-              <div
+              <motion.div
                 ref={recommendedRef}
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
                 onScroll={(event) => handleRecommendationScroll(event, loadTastePage)}
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
                   {recommendedGames.map((game) => (
-                    <div
+                    <motion.div
                       key={game.id}
+                      variants={cardItemVariants}
                       className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                     >
                       <GameCard game={game} />
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
-          </section>
+          </motion.section>
 
-          {/* 4. Because You Played [Game] (Cosine Similarity with Infinite Scroll) */}
+          {/* 4. Because You Played */}
           {user && (similarLoading || similarGames.length > 0) && (
-            <section className="flex flex-col gap-5">
+            <motion.section 
+              variants={sectionVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-50px" }}
+              className="flex flex-col gap-5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col">
                   <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
@@ -1116,29 +1187,40 @@ export default function Home() {
               {similarLoading && similarGames.length === 0 ? (
                 <p role="status" className="text-sm text-[#A0A0A8]">Loading similar games…</p>
               ) : (
-                <div
+                <motion.div
                   ref={similarRef}
+                  variants={carouselContainerVariants}
+                  initial="hidden"
+                  animate="visible"
                   onScroll={(event) => handleRecommendationScroll(event, loadSimilarPage)}
                   className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   <div className="flex gap-5">
                     {similarGames.map((game) => (
-                      <div
+                      <motion.div
                         key={game.id}
+                        variants={cardItemVariants}
                         className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                       >
                         <GameCard game={game} />
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               )}
-            </section>
+            </motion.section>
           )}
 
-          {/* 5. Players Like You (SVD Collaborative Filtering) */}
+          {/* 5. Players Like You */}
           {user && (
-            <section aria-labelledby="players-like-you-title" className="flex flex-col gap-5">
+            <motion.section 
+              variants={sectionVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-50px" }}
+              aria-labelledby="players-like-you-title" 
+              className="flex flex-col gap-5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col">
                   <h2
@@ -1194,29 +1276,40 @@ export default function Home() {
               )}
 
               {playersGames.length > 0 && (
-                <div
+                <motion.div
                   ref={playersRef}
+                  variants={carouselContainerVariants}
+                  initial="hidden"
+                  animate="visible"
                   onScroll={(event) => handleRecommendationScroll(event, loadPlayersPage)}
                   className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   <div className="flex gap-5">
                     {playersGames.map((game) => (
-                      <div
+                      <motion.div
                         key={game.id}
+                        variants={cardItemVariants}
                         className="w-[300px] h-full sm:w-[340px] md:w-[360px] shrink-0 snap-start"
                       >
                         <GameCard game={game} />
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               )}
-            </section>
+            </motion.section>
           )}
 
           {/* 6. Your Friends Also Play */}
           {user && !friendsLoading && friendsGames.length > 0 && (
-            <section aria-labelledby="friends-also-play-title" className="flex flex-col gap-5">
+            <motion.section 
+              variants={sectionVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-50px" }}
+              aria-labelledby="friends-also-play-title" 
+              className="flex flex-col gap-5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col">
                   <h2
@@ -1252,26 +1345,38 @@ export default function Home() {
                 </div>
               </div>
 
-              <div
+              <motion.div
                 ref={friendsPlayRef}
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
                   {friendsGames.map((game) => (
-                    <div
+                    <motion.div
                       key={game.id}
+                      variants={cardItemVariants}
                       className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                     >
                       <GameCard game={game} />
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
-            </section>
+              </motion.div>
+            </motion.section>
           )}
 
           {/* 7. Community Playlists Section */}
-          <section id="community-playlists" aria-labelledby="community-playlists-title" className="flex flex-col gap-5">
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            id="community-playlists" 
+            aria-labelledby="community-playlists-title" 
+            className="flex flex-col gap-5"
+          >
             <div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1324,13 +1429,21 @@ export default function Home() {
             )}
 
             {!playlistsLoading && !playlistsError && communityPlaylists.length > 0 && (
-              <div ref={carouselRef} className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <motion.div 
+                ref={carouselRef} 
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
+                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {communityPlaylists.map((playlist) => (
-                  <PlaylistCarouselCard key={playlist.id} playlist={playlist} />
+                  <motion.div key={playlist.id} variants={cardItemVariants}>
+                    <PlaylistCarouselCard playlist={playlist} />
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
-          </section>
+          </motion.section>
         </main>
         <Footer />
       </div>
