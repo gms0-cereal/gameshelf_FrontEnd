@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, memo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
   ArrowRight,
@@ -20,8 +20,11 @@ import { useAuth } from "@/context/AuthContext";
 import {
   PLAYLIST_GAMES_FIELD,
   createPlaylist,
+  getPlaylist,
   searchSteamGames,
+  updatePlaylist,
   type PickerGame,
+  type PlaylistGame,
   type Visibility,
 } from "@/services/playlistService";
 
@@ -92,6 +95,17 @@ function limitWords(text: string, max: number) {
   return text.slice(0, (last.index ?? 0) + last[0].length);
 }
 
+/** A game saved in a playlist -> the shape the picker and selected list use. */
+function toPickerGame(game: PlaylistGame): PickerGame | null {
+  if (!game.steam_appid) return null; // can't be saved again without a Steam id
+  return {
+    appid: game.steam_appid,
+    title: game.title,
+    cover: game.cover_url ?? "",
+    subtitle: game.genres.length > 0 ? game.genres.join(" / ") : undefined,
+  };
+}
+
 type FieldErrors = Partial<Record<"title" | "description" | "games", string>>;
 
 function toText(value: unknown): string | undefined {
@@ -158,6 +172,13 @@ Cover.displayName = "Cover";
 export default function CreatePlaylist() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // /playlists/new has no :id (create). /playlists/:id/edit has one (edit).
+  const { id } = useParams<{ id?: string }>();
+  const isEdit = id !== undefined;
+  const playlistId = Number(id);
+  const username = user?.username;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -177,13 +198,72 @@ export default function CreatePlaylist() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
+  // Edit mode: loading the existing playlist
+  const [loadingPlaylist, setLoadingPlaylist] = useState(isEdit);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [skippedGames, setSkippedGames] = useState(0);
+
   const dragIndex = useRef<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate("/login", { replace: true, state: { from: "/playlists/new" } });
+      navigate("/login", { replace: true, state: { from: location.pathname } });
     }
-  }, [authLoading, user, navigate]);
+  }, [authLoading, user, navigate, location.pathname]);
+
+  // Edit mode: fetch the playlist and fill in every field.
+  useEffect(() => {
+    if (!isEdit) return;
+
+    if (!Number.isInteger(playlistId)) {
+      setLoadError("Playlist not found.");
+      setLoadingPlaylist(false);
+      return;
+    }
+    if (!username) return; // wait for sign-in (the effect above redirects if there is none)
+
+    let cancelled = false;
+    setLoadingPlaylist(true);
+    setLoadError(null);
+
+    getPlaylist(playlistId)
+      .then((playlist) => {
+        if (cancelled) return;
+
+        const ownsIt =
+          playlist.is_owner === true ||
+          playlist.owner?.username?.toLowerCase() === username.toLowerCase();
+
+        // Only the owner can edit; everyone else goes back to the playlist.
+        if (!ownsIt) {
+          navigate(`/playlists/${encodeURIComponent(playlist.owner.username)}/${playlist.id}`, { replace: true });
+          return;
+        }
+
+        const games = [...playlist.games].sort((a, b) => a.position - b.position);
+        const pickable = games.map(toPickerGame).filter((g): g is PickerGame => g !== null);
+
+        setTitle(playlist.title);
+        setDescription(playlist.description ?? "");
+        setVisibility(playlist.visibility);
+        setSelected(pickable);
+        setSkippedGames(games.length - pickable.length);
+        setLoadingPlaylist(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(
+          isAxiosError(err) && err.response?.status === 404
+            ? "This playlist doesn't exist or is private."
+            : "Couldn't load this playlist. Please try again."
+        );
+        setLoadingPlaylist(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, playlistId, username, navigate]);
 
   async function loadSuggestions() {
     const requestId = ++suggestionRequest.current;
@@ -284,15 +364,25 @@ export default function CreatePlaylist() {
     setError(null);
     if (Object.keys(errs).length) return;
 
+    const input = {
+      title: title.trim(),
+      description: description.trim(),
+      visibility,
+      steamAppIds: selected.map((g) => g.appid),
+    };
+
     setSubmitting(true);
     try {
-      await createPlaylist({
-        title: title.trim(),
-        description: description.trim(),
-        visibility,
-        steamAppIds: selected.map((g) => g.appid),
-      });
-      navigate(AFTER_CREATE_PATH);
+      if (isEdit) {
+        await updatePlaylist(playlistId, input);
+        // Back to the playlist; its page shows the "Playlist updated." toast.
+        navigate(`/playlists/${encodeURIComponent(username ?? "")}/${playlistId}`, {
+          state: { toast: "Playlist updated." },
+        });
+      } else {
+        await createPlaylist(input);
+        navigate(AFTER_CREATE_PATH);
+      }
     } catch (err) {
       const parsed = parseApiError(err);
       setError(parsed.general ?? null);
@@ -307,6 +397,33 @@ export default function CreatePlaylist() {
   const showSkeletons = !isSearching && suggestionsLoading;
   const descriptionWords = countWords(description);
 
+  // Edit mode: show a loader (or an error) until the playlist is ready.
+  if (isEdit && (loadingPlaylist || loadError)) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#000000] font-sans text-[#E6E1EA]">
+        <Navbar />
+        <main className="mx-auto w-full flex-1 px-5 py-8 md:px-8 xl:px-16">
+          {loadingPlaylist ? (
+            <div className="flex flex-col items-center justify-center py-24 text-[#A0A0A8]">
+              <Loader2 className="size-6 animate-spin text-[#B39ACF]" aria-hidden="true" />
+              <p role="status" className="mt-2 text-sm">Loading your playlist...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-start gap-4">
+              <p role="alert" className="rounded-xl border border-[#E58B91] bg-[#E58B91]/15 px-4 py-3 text-sm text-[#E58B91]">
+                {loadError}
+              </p>
+              <Link to="/playlists" className="text-xs font-semibold text-[#B39ACF] hover:underline">
+                Back to playlists
+              </Link>
+            </div>
+          )}
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-[#000000] font-sans text-[#E6E1EA]">
       <Navbar />
@@ -318,12 +435,14 @@ export default function CreatePlaylist() {
               PLAYER CURATED COLLECTIONS
             </p>
             <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
-              Create Game Playlist
+              {isEdit ? "Edit Game Playlist" : "Create Game Playlist"}
             </h1>
           </div>
         </div>
         <p className="mt-2 text-[14px] text-[#A0A0A8]">
-          Great games deserve good company. Build a collection worth sharing.
+          {isEdit
+            ? "Update the details, add games, remove games, or change their order."
+            : "Great games deserve good company. Build a collection worth sharing."}
         </p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.35fr_1fr] items-start">
@@ -577,6 +696,13 @@ export default function CreatePlaylist() {
               )}
             </section>
 
+            {skippedGames > 0 && (
+              <p className="rounded-xl border border-[#554363] bg-[#17191E] px-3 py-2 text-[13px] text-[#A0A0A8]">
+                {skippedGames} {skippedGames === 1 ? "game" : "games"} in this playlist can't be edited here and will
+                be removed when you save.
+              </p>
+            )}
+
             {error && (
               <p
                 role="alert"
@@ -607,10 +733,18 @@ export default function CreatePlaylist() {
                 >
                   {submitting ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : isEdit ? (
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
                   ) : (
                     <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                   )}
-                  {submitting ? "Creating…" : "Create playlist"}
+                  {submitting
+                    ? isEdit
+                      ? "Saving…"
+                      : "Creating…"
+                    : isEdit
+                      ? "Save changes"
+                      : "Create playlist"}
                 </button>
               </div>
             </div>
@@ -621,7 +755,7 @@ export default function CreatePlaylist() {
               <span className="inline-flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5 text-[#B39ACF]" aria-hidden="true" /> Community preview
               </span>
-              <span>Not published yet</span>
+              <span>{isEdit ? "Unsaved changes" : "Not published yet"}</span>
             </div>
 
             <div className="mt-5 flex items-center gap-3">
@@ -674,7 +808,9 @@ export default function CreatePlaylist() {
 
             <div className="mt-5 border-t border-[#302438] pt-4 text-xs text-[#77717F]">
               {visibility === "public"
-                ? "Ready for the community when you create it."
+                ? isEdit
+                  ? "Visible to the community once you save."
+                  : "Ready for the community when you create it."
                 : "Only you will be able to see this playlist."}
             </div>
           </aside>

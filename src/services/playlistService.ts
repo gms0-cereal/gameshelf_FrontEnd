@@ -44,6 +44,10 @@ export interface Playlist {
   games: PlaylistGame[];
   created_at: string;
   updated_at: string;
+  // Sent by the server when it knows who is asking
+  is_owner?: boolean;
+  is_liked?: boolean;
+  has_copied?: boolean;
 }
 
 export interface PaginatedPlaylists {
@@ -57,6 +61,9 @@ export interface CreatePlaylistInput {
   visibility: Visibility;
   steamAppIds: number[]; // order = playlist order
 }
+
+// Editing sends the same fields as creating.
+export type UpdatePlaylistInput = CreatePlaylistInput;
 
 // Your list endpoints return { count, results }; this also accepts a plain array.
 function extractResults<T>(data: unknown): T[] {
@@ -134,6 +141,18 @@ export async function createPlaylist(input: CreatePlaylistInput) {
   return data;
 }
 
+// ─── Edit (social app: PUT /social/playlists/<id>/edit/, owner only) ──────────
+// Replaces the title, description, visibility and the whole game list/order.
+export async function updatePlaylist(id: number, input: UpdatePlaylistInput) {
+  const { data } = await api.put<{ id: number; title: string }>(`/social/playlists/${id}/edit/`, {
+    title: input.title,
+    description: input.description,
+    visibility: input.visibility,
+    [PLAYLIST_GAMES_FIELD]: input.steamAppIds,
+  });
+  return data;
+}
+
 export const copyPlaylist = async (id: number): Promise<Playlist> => {
   const { data } = await api.post(`/social/playlists/${id}/copy/`); // match your router prefix
   return data;
@@ -195,4 +214,3 @@ export async function getPlaylist(id: number): Promise<Playlist> {
   const { data } = await api.get<Playlist>(`/social/playlists/${id}/`);
   return data;
 }
-

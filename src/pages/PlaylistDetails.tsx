@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, memo } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { Copy, Heart, LayoutGrid, List, Loader2 } from "lucide-react";
+import { Check, Copy, Heart, Info, LayoutGrid, List, Loader2, Pencil, X } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import { timeAgo } from "../components/playlists/PlaylistCards";
@@ -14,6 +14,7 @@ import {
 } from "../services/playlistService";
 import MiniProfileCard from "@/components/social/MiniProfileCard";
 import { getUserProfile, type UserProfile } from "../services/Userservice";
+import { useAuth } from "@/context/AuthContext";
 
 const steamCover = (appid: number) =>
   `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
@@ -29,6 +30,57 @@ const SORTS = [
   { value: "title_desc", label: "Title (Z–A)" },
 ] as const;
 type Sort = (typeof SORTS)[number]["value"];
+
+/* ----------------------------- Toasts ----------------------------- */
+
+type ToastKind = "success" | "error" | "info";
+type ToastItem = { id: number; kind: ToastKind; message: string };
+
+const TOAST_STYLES: Record<ToastKind, string> = {
+  success: "border-[#34D399] text-[#34D399]",
+  error: "border-[#E58B91] text-[#E58B91]",
+  info: "border-[#B39ACF] text-[#B39ACF]",
+};
+
+function ToastViewport({
+  toasts,
+  onDismiss,
+}: {
+  toasts: ToastItem[];
+  onDismiss: (id: number) => void;
+}) {
+  return (
+    <div
+      className="pointer-events-none fixed bottom-6 right-6 z-[100] flex w-[calc(100%-3rem)] max-w-sm flex-col gap-2"
+      role="status"
+      aria-live="polite"
+    >
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto flex items-start gap-3 rounded-xl border bg-[#17191E] px-4 py-3 text-[13px] shadow-lg ${TOAST_STYLES[t.kind]}`}
+        >
+          {t.kind === "success" ? (
+            <Check className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          ) : (
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          )}
+          <p className="flex-1 text-[#E6E1EA]">{t.message}</p>
+          <button
+            type="button"
+            onClick={() => onDismiss(t.id)}
+            aria-label="Dismiss notification"
+            className="text-[#A0A0A8] hover:text-[#E6E1EA]"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* --------------------------- Small pieces -------------------------- */
 
 /** Cover image, with a soft gradient if it fails to load or is missing. */
 const Cover = memo(({ src, className }: { src?: string | null; className: string }) => {
@@ -94,15 +146,36 @@ function GameLink({ game, className, children }: { game: PlaylistGame; className
   );
 }
 
+/* Remember (per browser) that this user already copied a playlist. */
+const copiedKey = (playlistId: number) => `playlist-copied:${playlistId}`;
+const readCopied = (playlistId: number) => {
+  try {
+    return localStorage.getItem(copiedKey(playlistId)) === "1";
+  } catch {
+    return false;
+  }
+};
+const writeCopied = (playlistId: number) => {
+  try {
+    localStorage.setItem(copiedKey(playlistId), "1");
+  } catch {
+    /* storage unavailable – the server check still applies */
+  }
+};
+
+/* ------------------------------ Page ------------------------------- */
+
 const PlaylistDetail = () => {
   const { id, username } = useParams<{ id: string; username?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user: currentUser } = useAuth();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [liking, setLiking] = useState(false);
   const [copying, setCopying] = useState(false);
-  const [copyError, setCopyError] = useState<string | null>(null);
+  const [alreadyCopied, setAlreadyCopied] = useState(false);
 
   const [sort, setSort] = useState<Sort>("order");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -111,6 +184,30 @@ const PlaylistDetail = () => {
 
   const [showMiniProfile, setShowMiniProfile] = useState(false);
   const profileCardRef = useRef<HTMLDivElement>(null);
+
+  // Toasts
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const dismissToast = useCallback((tid: number) => {
+    setToasts((t) => t.filter((x) => x.id !== tid));
+  }, []);
+  const pushToast = useCallback(
+    (kind: ToastKind, message: string) => {
+      const tid = Date.now() + Math.random();
+      setToasts((t) => [...t, { id: tid, kind, message }]);
+      window.setTimeout(() => dismissToast(tid), 4000);
+    },
+    [dismissToast]
+  );
+
+  // Toast handed over by another page (e.g. "Playlist updated." after editing)
+  useEffect(() => {
+    const message = (location.state as { toast?: string } | null)?.toast;
+    if (message) {
+      pushToast("success", message);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close mini profile when clicking outside of it
   useEffect(() => {
@@ -162,10 +259,15 @@ const PlaylistDetail = () => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setCopyError(null);
+    setAlreadyCopied(readCopied(playlistId));
 
     getPlaylist(playlistId)
-      .then((data) => !cancelled && setPlaylist(data))
+      .then((data) => {
+        if (cancelled) return;
+        setPlaylist(data);
+        // Prefer the server's answer if it provides one
+        if ((data as any).has_copied) setAlreadyCopied(true);
+      })
       .catch((err) => {
         if (cancelled) return;
         setError(
@@ -216,23 +318,38 @@ const PlaylistDetail = () => {
     }
   };
 
-  // Copy this playlist into the viewer's own library, then open the new copy.
+  // Copy this playlist into the viewer's own library (once only), then open the new copy.
   const handleCopy = async () => {
     if (!playlist || copying) return;
     const playlistId = Number(id);
     if (!Number.isInteger(playlistId)) return;
 
+    if (alreadyCopied) {
+      pushToast("info", "You can only copy a playlist once. Check your library for your copy.");
+      return;
+    }
+
     setCopying(true);
-    setCopyError(null);
     try {
       const created = await copyPlaylist(playlistId);
+      writeCopied(playlistId);
+      setAlreadyCopied(true);
+      pushToast("success", "Playlist copied to your library!");
       const newOwner = created.owner?.username;
       if (newOwner) {
         navigate(`/playlists/${encodeURIComponent(newOwner)}/${created.id}`);
       }
     } catch (err) {
-      const detail = isAxiosError(err) ? err.response?.data?.detail : null;
-      setCopyError(detail || "Couldn't copy this playlist. Please try again.");
+      const status = isAxiosError(err) ? err.response?.status : undefined;
+      const detail: string | undefined = isAxiosError(err) ? err.response?.data?.detail : undefined;
+      // The server rejects a second copy (409 / "already copied" message)
+      if (status === 409 || (detail && /already|once/i.test(detail))) {
+        writeCopied(playlistId);
+        setAlreadyCopied(true);
+        pushToast("info", "You can only copy a playlist once. Check your library for your copy.");
+      } else {
+        pushToast("error", detail || "Couldn't copy this playlist. Please try again.");
+      }
     } finally {
       setCopying(false);
     }
@@ -262,9 +379,21 @@ const PlaylistDetail = () => {
   const shownGenres = showAllGenres ? genreCounts : genreCounts.slice(0, TOP_GENRES_SHOWN);
   const hiddenGenres = genreCounts.length - TOP_GENRES_SHOWN;
   const isLiked = Boolean((playlist as any)?.is_liked);
-  const isOwner = Boolean((playlist as any)?.is_owner);
-  // Anyone can copy a playlist that isn't theirs (no like required)
+  // Owner if the server says so, or if the signed-in user is the playlist's owner.
+  // The second check makes sure a freshly made copy always shows the add/edit buttons.
+  const isOwner =
+    Boolean((playlist as any)?.is_owner) ||
+    (!!currentUser?.username &&
+      !!ownerUsername &&
+      currentUser.username.toLowerCase() === ownerUsername.toLowerCase());
+  // Anyone can copy a playlist that isn't theirs (once)
   const canCopy = !isOwner;
+
+  // Hand the playlist to the create page so it opens already filled in
+  // (title, description, visibility and games). The page can also load it by id.
+  const editLinkProps = playlist
+    ? { to: `/playlists/${playlist.id}/edit`, state: { playlist } }
+    : null;
 
   if (
     playlist &&
@@ -374,23 +503,35 @@ const PlaylistDetail = () => {
                       type="button"
                       onClick={handleCopy}
                       disabled={copying}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#B39ACF] bg-[#B39ACF] px-4 py-2.5 text-[13px] font-semibold text-[#17191E] transition-colors hover:bg-[#B39ACF]/85 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                      aria-disabled={alreadyCopied}
+                      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+                        alreadyCopied
+                          ? "border-[#554363] bg-[#17191E] text-[#A0A0A8]"
+                          : "border-[#B39ACF] bg-[#B39ACF] text-[#17191E] hover:bg-[#B39ACF]/85"
+                      }`}
                     >
                       {copying ? (
                         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      ) : alreadyCopied ? (
+                        <Check className="size-4" aria-hidden="true" />
                       ) : (
                         <Copy className="size-4" aria-hidden="true" />
                       )}
-                      <span>{copying ? "Copying..." : "Make a copy"}</span>
+                      <span>{copying ? "Copying..." : alreadyCopied ? "Already copied" : "Make a copy"}</span>
                     </button>
                   )}
-                </div>
 
-                {copyError && (
-                  <p role="alert" className="mt-3 text-[12px] text-[#E58B91]">
-                    {copyError}
-                  </p>
-                )}
+                  {/* Owner only: opens the create page already filled in with this playlist. */}
+                  {isOwner && editLinkProps && (
+                    <Link
+                      {...editLinkProps}
+                      className="inline-flex items-center gap-2 rounded-xl border border-[#302438] bg-[#17191E] px-4 py-2.5 text-[13px] font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
+                    >
+                      <Pencil className="size-4 text-[#B39ACF]" aria-hidden="true" />
+                      <span>Edit playlist</span>
+                    </Link>
+                  )}
+                </div>
               </div>
 
               <aside aria-label="Top genres" className="rounded-2xl border border-[#302438] bg-[#17191E] p-6 shadow-none">
@@ -528,6 +669,8 @@ const PlaylistDetail = () => {
       </main>
 
       <Footer />
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 };
