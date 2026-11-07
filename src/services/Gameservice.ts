@@ -27,6 +27,16 @@ export interface Paginated<T> {
   results: T[];
 }
 
+export interface PopularGameItem {
+  appid: number;
+  name: string;
+  header_image: string;
+  popularity_score: number;
+  short_description?: string;
+  community_rating?: number | null;
+  rating_count?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Steam list
 // ---------------------------------------------------------------------------
@@ -466,4 +476,20 @@ export async function getTopRatedGames(
   });
 
   return data;
+}
+
+export async function fetchPopularNowGames(
+  days = 31,
+  signal?: AbortSignal
+): Promise<PopularGameItem[]> {
+  const response = await fetch(`/api/v1/games/steam/popular/?days=${days}`, {
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch popular games");
+  }
+
+  const data = await response.json();
+  return data.results ?? [];
 }

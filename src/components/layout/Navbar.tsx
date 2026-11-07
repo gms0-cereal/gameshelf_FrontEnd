@@ -34,6 +34,38 @@ const menuItems = [
 const menuItemClass =
   "block w-full px-4 py-2.5 text-left text-sm text-[#E6E1EA] hover:bg-[#20232B] focus:bg-[#20232B] focus:outline-none transition-colors";
 
+// Helper to check if user is 18+ based on birth_day
+function isUserAdult(birthDayStr: string | null | undefined): boolean {
+  if (!birthDayStr) return false;
+  const birthDate = new Date(birthDayStr);
+  if (isNaN(birthDate.getTime())) return false;
+  
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 18;
+}
+
+// Check if a game matches adult/mature tags or names
+function isAdultGame(game: PickerGame & { genres?: string[]; tags?: string[] }) {
+  const adultKeywords = ["hentai", "sexual content", "nudity", "adult content"];
+  
+  const matchesGenre = game.genres?.some((g) => 
+    adultKeywords.some((kw) => g.toLowerCase().includes(kw))
+  );
+  const matchesTag = game.tags?.some((t) => 
+    adultKeywords.some((kw) => t.toLowerCase().includes(kw))
+  );
+  const matchesTitle = adultKeywords.some((kw) => 
+    game.title.toLowerCase().includes(kw)
+  );
+
+  return matchesGenre || matchesTag || matchesTitle;
+}
+
 export default function Navbar() {
   const { user, loading, logoutUser } = useAuth();
   const navigate = useNavigate();
@@ -108,7 +140,19 @@ export default function Navbar() {
 
       try {
         const games = await searchSteamGames(query, controller.signal);
-        if (!cancelled) setSearchResults(games.slice(0, 8));
+        if (!cancelled) {
+          const userCanViewAdult = user?.birth_day && isUserAdult(user.birth_day);
+
+          // Quietly filter out adult games if the user isn't 18+ or has no birthday set
+          const filteredGames = games.filter((game) => {
+            if (isAdultGame(game) && !userCanViewAdult) {
+              return false; // Quietly hide it
+            }
+            return true;
+          });
+
+          setSearchResults(filteredGames.slice(0, 8));
+        }
       } catch {
         if (!cancelled && !controller.signal.aborted) {
           setSearchResults([]);
@@ -124,7 +168,7 @@ export default function Navbar() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [searchQuery]);
+  }, [searchQuery, user]);
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(

@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
 import {
+  fetchPopularNowGames,
   getMyGameList,
   getTopRatedGames,
   type SteamGameCard,
@@ -746,7 +747,7 @@ export default function Home() {
     };
   }, []);
 
-  const topRatedGames = useMemo(
+const topRatedGames = useMemo(
     () =>
       topRatedCards.map((card) => {
         const summary = toGameSummary(card, userListMap.get(String(card.appid)));
@@ -764,11 +765,51 @@ export default function Home() {
     [topRatedCards, userListMap]
   );
 
-  const heroGames = useMemo(() => {
-    return topRatedGames.slice(0, 10);
-  }, [topRatedGames]);
+ 
+  
+// Rename state variables to avoid collisions with your useMemo
+  const [heroGames, setHeroGames] = useState<any[]>([]);
 
   useEffect(() => {
+      async function loadPageData() {
+        try {
+          // 1. Fetch Popular Now items for the Hero Banner
+          const popularItems = await fetchPopularNowGames(31);
+          const popularAppIds = popularItems.slice(0, 5).map(item => item.appid);
+          
+          if (popularAppIds.length > 0) {
+            // Use your existing game service helper or ensure the full /api/v1/ prefix is used
+            const response = await fetch(`/api/v1/games/steam/summaries/?appids=${popularAppIds.join(",")}`);
+            if (!response.ok) throw new Error("Network response was not ok");
+            const data = await response.json();
+            const summaries = data.results || [];
+
+            const formattedHeroGames = summaries.map((card: any) => ({
+              id: card.appid,
+              slug: card.appid,
+              title: card.name,
+              cover: card.header_image,
+              score: card.community_rating ?? null,
+              bio: card.short_description || "",
+            }));
+            setHeroGames(formattedHeroGames);
+          }
+
+          // 2. Fetch All-Time Top Rated items for the separate section
+          const topRatedRes = await fetch(`/api/v1/games/steam/top-rated/?limit=20`);
+          if (!topRatedRes.ok) throw new Error("Network response was not ok");
+          const topRatedData = await topRatedRes.json();
+          setTopRatedCards(topRatedData.results || []);
+          
+        } catch (err) {
+          console.error("Failed to load game sections", err);
+        }
+      }
+
+      loadPageData();
+    }, [userListMap]);
+
+   useEffect(() => {
     if (heroGames.length <= 1 || isHovered) return;
 
     const timer = setInterval(() => {
@@ -845,7 +886,7 @@ export default function Home() {
 
                     <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
                       <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[#34D399]">
-                        TOP RATED ON GAMESHELF
+                        POPULAR THIS MONTH ON GAMESHELF
                       </p>
                       <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] text-[#E6E1EA] drop-shadow-md md:text-[46px]">
                         {hero.title}
