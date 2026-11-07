@@ -900,7 +900,181 @@ export default function Home() {
             </motion.section>
           )}
 
-          {/* 1. More [Genre]s for You */}
+      {/* 1. Recommended for You */}
+        <motion.section 
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          aria-labelledby="taste-recommendations-title" 
+          className="flex flex-col gap-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <h2
+                id="taste-recommendations-title"
+                className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+              >
+                Recommended for You
+              </h2>
+              <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                Games selected based on your genres, platforms, and liked games.
+              </p>
+              <Link
+                to="/interests"
+                className="mt-1 text-[13px] leading-4 text-[#B39ACF] hover:underline"
+              >
+                Tune your suggestions: edit genres and liked games →
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollRecommended(-1)}
+                aria-label="Scroll left"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollRecommended(1)}
+                aria-label="Scroll right"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+
+          {recommendationsError && (
+            <p role="alert" className="text-sm text-[#E58B91]">
+              {recommendationsError}
+            </p>
+          )}
+
+          {recommendationsLoading && recommendedGames.length === 0 && (
+            <p role="status" className="text-sm text-[#A0A0A8]">
+              Loading recommendations…
+            </p>
+          )}
+
+          {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
+            <p className="text-sm text-[#A0A0A8]">
+              No recommendations yet. Update your interests to get personalized suggestions.
+            </p>
+          )}
+
+          {recommendedGames.length > 0 && (
+            <motion.div
+              ref={recommendedRef}
+              variants={carouselContainerVariants}
+              initial="hidden"
+              animate="visible"
+              onScroll={(event) => handleRecommendationScroll(event, loadTastePage)}
+              className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="flex gap-5">
+                {recommendedGames.map((game) => (
+                  <motion.div
+                    key={game.id}
+                    variants={cardItemVariants}
+                    className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                  >
+                    <GameCard game={game} />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </motion.section>
+
+        {/* 2. Top Rated on GameShelf */}
+        {(topRatedLoading || topRatedError || topRatedGames.length > 0) && (
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            aria-labelledby="top-rated-title" 
+            className="flex flex-col gap-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <h2
+                  id="top-rated-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+                >
+                  Top Rated on GameShelf
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                  Highest-rated games based on Bayesian weighted community ratings.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollTopRated(-1)}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollTopRated(1)}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            {topRatedError && (
+              <p role="alert" className="text-sm text-[#E58B91]">
+                {topRatedError}
+              </p>
+            )}
+            {topRatedLoading && topRatedGames.length === 0 && (
+              <p role="status" className="text-sm text-[#A0A0A8]">
+                Loading top rated games…
+              </p>
+            )}
+
+            {topRatedGames.length > 0 && (
+              <motion.div
+                ref={topRatedRef}
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
+                onScroll={(event) => handleRecommendationScroll(event, loadTopRatedPage)}
+                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div className="flex gap-5">
+                  {topRatedGames.map((game) => (
+                    <motion.div
+                      key={game.id}
+                      variants={cardItemVariants}
+                      className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                    >
+                      <GameCard game={game} />
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </motion.section>
+        )}
+
+        {/* 3. Because You Played */}
+        {user && (similarLoading || similarGames.length > 0) && (
           <motion.section 
             variants={sectionVariants}
             initial="hidden"
@@ -911,10 +1085,10 @@ export default function Home() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
                 <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
-                  More {primaryGenre}s for you
+                  Because you played {likedGameTitle}
                 </h2>
                 <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                  Inspired by your preferred genres
+                  Titles with matching mechanics and thematic elements.
                 </p>
               </div>
 
@@ -922,7 +1096,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => scrollGenre(-1)}
+                  onClick={() => scrollSimilar(-1)}
                   aria-label="Scroll left"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -931,7 +1105,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => scrollGenre(1)}
+                  onClick={() => scrollSimilar(1)}
                   aria-label="Scroll right"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -940,23 +1114,19 @@ export default function Home() {
               </div>
             </div>
 
-            {genreLoading && genreGames.length === 0 ? (
-              <p role="status" className="text-sm text-[#A0A0A8]">
-                Loading {primaryGenre}s…
-              </p>
-            ) : genreGames.length === 0 ? (
-              <p className="text-sm text-[#A0A0A8]">No games found for this genre.</p>
+            {similarLoading && similarGames.length === 0 ? (
+              <p role="status" className="text-sm text-[#A0A0A8]">Loading similar games…</p>
             ) : (
               <motion.div
-                ref={genreRef}
+                ref={similarRef}
                 variants={carouselContainerVariants}
                 initial="hidden"
                 animate="visible"
-                onScroll={(event) => handleRecommendationScroll(event, loadGenrePage)}
+                onScroll={(event) => handleRecommendationScroll(event, loadSimilarPage)}
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
-                  {genreGames.map((game) => (
+                  {similarGames.map((game) => (
                     <motion.div
                       key={game.id}
                       variants={cardItemVariants}
@@ -969,121 +1139,107 @@ export default function Home() {
               </motion.div>
             )}
           </motion.section>
+        )}
 
-          {/* 2. Top Rated on GameShelf */}
-          {(topRatedLoading || topRatedError || topRatedGames.length > 0) && (
-            <motion.section 
-              variants={sectionVariants}
+        {/* 4. More [Genre]s for You */}
+        <motion.section 
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
+                More {primaryGenre}s for you
+              </h2>
+              <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                Inspired by your preferred genres
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollGenre(-1)}
+                aria-label="Scroll left"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollGenre(1)}
+                aria-label="Scroll right"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+
+          {genreLoading && genreGames.length === 0 ? (
+            <p role="status" className="text-sm text-[#A0A0A8]">
+              Loading {primaryGenre}s…
+            </p>
+          ) : genreGames.length === 0 ? (
+            <p className="text-sm text-[#A0A0A8]">No games found for this genre.</p>
+          ) : (
+            <motion.div
+              ref={genreRef}
+              variants={carouselContainerVariants}
               initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-50px" }}
-              aria-labelledby="top-rated-title" 
-              className="flex flex-col gap-5"
+              animate="visible"
+              onScroll={(event) => handleRecommendationScroll(event, loadGenrePage)}
+              className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2
-                    id="top-rated-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+              <div className="flex gap-5">
+                {genreGames.map((game) => (
+                  <motion.div
+                    key={game.id}
+                    variants={cardItemVariants}
+                    className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                   >
-                    Top Rated on GameShelf
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Highest-rated games based on Bayesian weighted community ratings.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollTopRated(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollTopRated(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+                    <GameCard game={game} />
+                  </motion.div>
+                ))}
               </div>
-
-              {topRatedError && (
-                <p role="alert" className="text-sm text-[#E58B91]">
-                  {topRatedError}
-                </p>
-              )}
-              {topRatedLoading && topRatedGames.length === 0 && (
-                <p role="status" className="text-sm text-[#A0A0A8]">
-                  Loading top rated games…
-                </p>
-              )}
-
-              {topRatedGames.length > 0 && (
-                <motion.div
-                  ref={topRatedRef}
-                  variants={carouselContainerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  onScroll={(event) => handleRecommendationScroll(event, loadTopRatedPage)}
-                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  <div className="flex gap-5">
-                    {topRatedGames.map((game) => (
-                      <motion.div
-                        key={game.id}
-                        variants={cardItemVariants}
-                        className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
-                      >
-                        <GameCard game={game} />
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </motion.section>
+            </motion.div>
           )}
+        </motion.section>
 
-          {/* 3. Recommended for You */}
+        {/* 5. Players Like You */}
+        {user && (
           <motion.section 
             variants={sectionVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
-            aria-labelledby="taste-recommendations-title" 
+            aria-labelledby="players-like-you-title" 
             className="flex flex-col gap-5"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
                 <h2
-                  id="taste-recommendations-title"
+                  id="players-like-you-title"
                   className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                 >
-                  Recommended for You
+                  Players Like You
                 </h2>
                 <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                  Games selected based on your genres, platforms, and liked games.
+                  Discover games you may enjoy based on the preferences and ratings of players with
+                  similar gaming tastes.
                 </p>
-                <Link
-                  to="/interests"
-                  className="mt-1 text-[13px] leading-4 text-[#B39ACF] hover:underline"
-                >
-                  Tune your suggestions: edit genres and liked games →
-                </Link>
               </div>
 
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => scrollRecommended(-1)}
+                  onClick={() => scrollPlayers(-1)}
                   aria-label="Scroll left"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -1092,7 +1248,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => scrollRecommended(1)}
+                  onClick={() => scrollPlayers(1)}
                   aria-label="Scroll right"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -1101,39 +1257,39 @@ export default function Home() {
               </div>
             </div>
 
-            {recommendationsError && (
+            {playersError && (
               <p role="alert" className="text-sm text-[#E58B91]">
-                {recommendationsError}
+                {playersError}
               </p>
             )}
 
-            {recommendationsLoading && recommendedGames.length === 0 && (
+            {playersLoading && playersGames.length === 0 && (
               <p role="status" className="text-sm text-[#A0A0A8]">
-                Loading recommendations…
+                Loading Players Like You…
               </p>
             )}
 
-            {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
+            {!playersLoading && !playersError && playersGames.length === 0 && (
               <p className="text-sm text-[#A0A0A8]">
-                No recommendations yet. Update your interests to get personalized suggestions.
+                No player suggestions yet. Rate more games to connect with players who share your tastes.
               </p>
             )}
 
-            {recommendedGames.length > 0 && (
+            {playersGames.length > 0 && (
               <motion.div
-                ref={recommendedRef}
+                ref={playersRef}
                 variants={carouselContainerVariants}
                 initial="hidden"
                 animate="visible"
-                onScroll={(event) => handleRecommendationScroll(event, loadTastePage)}
+                onScroll={(event) => handleRecommendationScroll(event, loadPlayersPage)}
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
-                  {recommendedGames.map((game) => (
+                  {playersGames.map((game) => (
                     <motion.div
                       key={game.id}
                       variants={cardItemVariants}
-                      className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                      className="w-[300px] h-full sm:w-[340px] md:w-[360px] shrink-0 snap-start"
                     >
                       <GameCard game={game} />
                     </motion.div>
@@ -1142,231 +1298,74 @@ export default function Home() {
               </motion.div>
             )}
           </motion.section>
+        )}
 
-          {/* 4. Because You Played */}
-          {user && (similarLoading || similarGames.length > 0) && (
-            <motion.section 
-              variants={sectionVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-50px" }}
-              className="flex flex-col gap-5"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
-                    Because you played {likedGameTitle}
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Titles with matching mechanics and thematic elements.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollSimilar(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollSimilar(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {similarLoading && similarGames.length === 0 ? (
-                <p role="status" className="text-sm text-[#A0A0A8]">Loading similar games…</p>
-              ) : (
-                <motion.div
-                  ref={similarRef}
-                  variants={carouselContainerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  onScroll={(event) => handleRecommendationScroll(event, loadSimilarPage)}
-                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        {/* 6. Your Friends Also Play */}
+        {user && !friendsLoading && friendsGames.length > 0 && (
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            aria-labelledby="friends-also-play-title" 
+            className="flex flex-col gap-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <h2
+                  id="friends-also-play-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                 >
-                  <div className="flex gap-5">
-                    {similarGames.map((game) => (
-                      <motion.div
-                        key={game.id}
-                        variants={cardItemVariants}
-                        className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
-                      >
-                        <GameCard game={game} />
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </motion.section>
-          )}
-
-          {/* 5. Players Like You */}
-          {user && (
-            <motion.section 
-              variants={sectionVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-50px" }}
-              aria-labelledby="players-like-you-title" 
-              className="flex flex-col gap-5"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2
-                    id="players-like-you-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
-                  >
-                    Players Like You
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Discover games you may enjoy based on the preferences and ratings of players with
-                    similar gaming tastes.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollPlayers(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollPlayers(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+                  Your Friends Also Play
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                  Explore the favorite games of the players on your friends list.
+                </p>
               </div>
 
-              {playersError && (
-                <p role="alert" className="text-sm text-[#E58B91]">
-                  {playersError}
-                </p>
-              )}
-
-              {playersLoading && playersGames.length === 0 && (
-                <p role="status" className="text-sm text-[#A0A0A8]">
-                  Loading Players Like You…
-                </p>
-              )}
-
-              {!playersLoading && !playersError && playersGames.length === 0 && (
-                <p className="text-sm text-[#A0A0A8]">
-                  No player suggestions yet. Rate more games to connect with players who share your tastes.
-                </p>
-              )}
-
-              {playersGames.length > 0 && (
-                <motion.div
-                  ref={playersRef}
-                  variants={carouselContainerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  onScroll={(event) => handleRecommendationScroll(event, loadPlayersPage)}
-                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollFriendsPlay(-1)}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
-                  <div className="flex gap-5">
-                    {playersGames.map((game) => (
-                      <motion.div
-                        key={game.id}
-                        variants={cardItemVariants}
-                        className="w-[300px] h-full sm:w-[340px] md:w-[360px] shrink-0 snap-start"
-                      >
-                        <GameCard game={game} />
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </motion.section>
-          )}
-
-          {/* 6. Your Friends Also Play */}
-          {user && !friendsLoading && friendsGames.length > 0 && (
-            <motion.section 
-              variants={sectionVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-50px" }}
-              aria-labelledby="friends-also-play-title" 
-              className="flex flex-col gap-5"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2
-                    id="friends-also-play-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
-                  >
-                    Your Friends Also Play
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Explore the favorite games of the players on your friends list.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollFriendsPlay(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollFriendsPlay(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollFriendsPlay(1)}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
               </div>
+            </div>
 
-              <motion.div
-                ref={friendsPlayRef}
-                variants={carouselContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                <div className="flex gap-5">
-                  {friendsGames.map((game) => (
-                    <motion.div
-                      key={game.id}
-                      variants={cardItemVariants}
-                      className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
-                    >
-                      <GameCard game={game} />
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            </motion.section>
-          )}
-
+            <motion.div
+              ref={friendsPlayRef}
+              variants={carouselContainerVariants}
+              initial="hidden"
+              animate="visible"
+              className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="flex gap-5">
+                {friendsGames.map((game) => (
+                  <motion.div
+                    key={game.id}
+                    variants={cardItemVariants}
+                    className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                  >
+                    <GameCard game={game} />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.section>
+        )}
           {/* 7. Community Playlists Section */}
           <motion.section 
             variants={sectionVariants}

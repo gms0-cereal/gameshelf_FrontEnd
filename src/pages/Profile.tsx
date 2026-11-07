@@ -717,7 +717,7 @@ export default function Profile() {
               <MiniProfileCard
                 user={selectedFriend}
                 position={modalPosition}
-                openUpward={openUpward}
+                side="openupward"
                 isFriendsTab
               />
             </div>
