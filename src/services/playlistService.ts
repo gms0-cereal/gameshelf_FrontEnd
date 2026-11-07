@@ -10,7 +10,7 @@ export type Visibility = "public" | "unlisted" | "private";
 export interface PickerGame {
   appid: number;
   title: string;
-  cover: string;
+  cover: string | null;
   subtitle?: string; // e.g. "Adventure / Platformer"
 }
 

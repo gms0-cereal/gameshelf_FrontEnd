@@ -366,19 +366,15 @@ export default function Home() {
   }, [primaryGenre, userListMap]);
 
   useEffect(() => {
-      const oneHour = 1000 * 60 * 60;
-      // Use a larger range (e.g., up to 10 pages deep) multiplied by the hour slot to truly get fresh items
-      const randomWindowSlot = Math.floor(Date.now() / oneHour) % 5;
-      const hourlyBatchOffset = randomWindowSlot * GENRE_PAGE_SIZE;
+    genreOffset.current = 0;
+    genreHasMore.current = true;
+    genreLoadingRef.current = false;
 
-      genreOffset.current = hourlyBatchOffset;
-      genreHasMore.current = true;
-      genreLoadingRef.current = false;
-      setGenreGames([]);
-      setGenreLoading(true);
+    setGenreGames([]);
+    setGenreLoading(true);
 
-      void loadGenrePage();
-    }, [primaryGenre, loadGenrePage]);
+    void loadGenrePage();
+  }, [primaryGenre, loadGenrePage]);
 
   // 3. Infinite Scroll: Cosine Similarity Section ("Because you played...")
   const loadSimilarPage = useCallback(async () => {
