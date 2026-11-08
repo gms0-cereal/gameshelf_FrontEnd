@@ -8,7 +8,7 @@ export const Dashboard: React.FC = () => {
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="text-[11px] font-bold tracking-wider uppercase text-purple-400">
+          <span className="text-[11px] font-bold tracking-wider uppercase text-[#bda6e4]">
             GAMESHELF OPERATIONS
           </span>
           <h1 className="text-3xl font-bold text-white mt-1">Dashboard</h1>
@@ -25,25 +25,25 @@ export const Dashboard: React.FC = () => {
 
       {/* Metrics 4 Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#151024] border border-[#261e3b] p-5 rounded-xl">
+        <div className="bg-[#222228] border border-[#454650] p-5 rounded-xl">
           <p className="text-xs text-slate-400 font-medium">Catalogue games</p>
           <h2 className="text-3xl font-bold text-white mt-2">32</h2>
           <p className="text-xs text-slate-500 mt-3">28 published · 3 drafts · 1 archived</p>
         </div>
 
-        <div className="bg-[#151024] border border-[#261e3b] p-5 rounded-xl">
+        <div className="bg-[#222228] border border-[#454650] p-5 rounded-xl">
           <p className="text-xs text-slate-400 font-medium">Rating records</p>
           <h2 className="text-3xl font-bold text-white mt-2">2,480</h2>
           <p className="text-xs text-slate-500 mt-3">+312 this month · 12 held for review</p>
         </div>
 
-        <div className="bg-[#151024] border border-[#261e3b] p-5 rounded-xl">
+        <div className="bg-[#222228] border border-[#454650] p-5 rounded-xl">
           <p className="text-xs text-slate-400 font-medium">Community reviews</p>
           <h2 className="text-3xl font-bold text-white mt-2">384</h2>
           <p className="text-xs text-slate-500 mt-3">366 published · +54 this month</p>
         </div>
 
-        <div className="bg-[#151024] border border-[#261e3b] p-5 rounded-xl">
+        <div className="bg-[#222228] border border-[#454650] p-5 rounded-xl">
           <p className="text-xs text-slate-400 font-medium">Moderation queue</p>
           <h2 className="text-3xl font-bold text-white mt-2">18</h2>
           <p className="text-xs text-slate-500 mt-3">12 pending · 4 flagged · 2 escalated</p>
@@ -51,13 +51,13 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Community Activity Graph Section */}
-      <div className="bg-[#151024] border border-[#261e3b] p-6 rounded-xl space-y-4">
+      <div className="bg-[#222228] border border-[#454650] p-6 rounded-xl space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-white">Community activity</h3>
             <p className="text-xs text-slate-400 mt-0.5">01–14 Oct 2026 · Daily submissions</p>
           </div>
-          <button className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 font-medium transition">
+          <button className="inline-flex items-center gap-1.5 text-xs text-[#bda6e4] hover:text-[#d6c6f1] font-medium transition">
             View analytics
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
@@ -81,8 +81,8 @@ export const Dashboard: React.FC = () => {
             {/* Ambient Background Gradient Glow */}
             <defs>
               <linearGradient id="purpleGlow" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#a855f7" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+                <stop offset="0%" stopColor="#bda6e4" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#bda6e4" stopOpacity="0" />
               </linearGradient>
             </defs>
 
@@ -96,7 +96,7 @@ export const Dashboard: React.FC = () => {
             <path
               d="M 0 160 Q 250 20 500 120 T 1000 90"
               fill="none"
-              stroke="#a855f7"
+              stroke="#bda6e4"
               strokeWidth="4"
               strokeLinecap="round"
             />
@@ -105,7 +105,7 @@ export const Dashboard: React.FC = () => {
             <path
               d="M 0 180 Q 250 70 500 150 T 1000 130"
               fill="none"
-              stroke="#f59e0b"
+              stroke="#e5d28a"
               strokeWidth="2.5"
               strokeDasharray="6 6"
               strokeLinecap="round"
