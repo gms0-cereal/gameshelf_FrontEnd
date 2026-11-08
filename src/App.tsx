@@ -25,6 +25,8 @@ import { SettingsProvider } from "./context/Settingscontext";
 // Admin Dashboard Imports
 import { Dashboard } from "./pages/admin/Dashboard";
 import { Games } from "./pages/admin/Games";
+import { PlatformAnalytics } from "./pages/admin/PlatformAnalytics";
+import { SystemLogs } from "./pages/admin/SystemLogs";
 import Discover from "./pages/Discover";
 //Legal Stuff
 import About from "@/pages/About";
@@ -72,6 +74,8 @@ const App = () => (
               {/* Admin Routes */}
               <Route path="/admin" element={<Dashboard />} />
               <Route path="/admin/games" element={<Games />} />
+              <Route path="/admin/analytics" element={<PlatformAnalytics />} />
+              <Route path="/admin/logs" element={<SystemLogs />} />
               {/* Legal Routes */}
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
