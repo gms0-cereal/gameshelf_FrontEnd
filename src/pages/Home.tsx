@@ -775,7 +775,7 @@ const topRatedGames = useMemo(
         try {
           // 1. Fetch Popular Now items for the Hero Banner
           const popularItems = await fetchPopularNowGames(31);
-          const popularAppIds = popularItems.slice(0, 5).map(item => item.appid);
+          const popularAppIds = popularItems.slice(0, 10).map(item => item.appid);
           
           if (popularAppIds.length > 0) {
             // Use your existing game service helper or ensure the full /api/v1/ prefix is used
