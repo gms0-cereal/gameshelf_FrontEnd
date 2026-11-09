@@ -197,7 +197,7 @@ export default function Navbar() {
     <header className="w-full bg-[#17191E] border-b border-[#302438]">
       <nav
         aria-label="Main navigation"
-        className="mx-auto flex min-h-[88px] w-full max-w-[1440px] items-center justify-between px-5 py-4 md:px-8 xl:h-[88px] xl:px-16"
+        className="mx-auto flex min-h-[88px] w-full items-center justify-between px-5 py-4 md:px-8 xl:h-[88px] xl:px-16"
       >
         {/* Left side: Brand + Nav Links */}
         <div className="flex items-center gap-8 xl:gap-10">

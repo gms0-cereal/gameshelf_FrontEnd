@@ -493,3 +493,90 @@ export async function fetchPopularNowGames(
   const data = await response.json();
   return data.results ?? [];
 }
+
+
+// ---------------------------------------------------------------------------
+// Mature content (18+) gate. Frontend only: a game is mature if it has one of
+// the 4 adult tags; the user's age comes from their birthday (birth_day).
+// ---------------------------------------------------------------------------
+export type AgeGateCode = "login_required" | "birthday_required" | "age_restricted";
+
+/** The 4 adult tags (same names as the adult entries in GENRE_TAGS), lowercase. */
+export const ADULT_TAGS = new Set([
+  "hentai",
+  "sexual content",
+  "nudity",
+  "adult content",
+]);
+
+const ADULT_AGE = 18;
+
+type Named = string | { description?: string; name?: string } | null | undefined;
+
+/** Anything shaped like a game from your API (details, Discover card, playlist game...). */
+export interface MatureCheckable {
+  genres?: unknown;
+  tags?: unknown;
+}
+
+function tagNames(list: unknown): string[] {
+  if (!Array.isArray(list)) return [];
+  return (list as Named[])
+    .map((item) => (typeof item === "string" ? item : item?.description ?? item?.name ?? ""))
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** Does this game have one of the 4 adult tags? */
+export function isMatureGame(game: MatureCheckable | null | undefined): boolean {
+  if (!game) return false;
+  return [...tagNames(game.genres), ...tagNames(game.tags)].some((name) => ADULT_TAGS.has(name));
+}
+
+/** Is this genre filter value (from Discover) one of the adult tags? */
+export function isAdultGenreSlug(slug: string | null | undefined): boolean {
+  return !!slug && ADULT_TAGS.has(slug.trim().toLowerCase());
+}
+
+export function ageFromBirthday(birth?: string | null): number | null {
+  if (!birth) return null;
+  const b = new Date(birth);
+  if (Number.isNaN(b.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const beforeBirthday =
+    now.getMonth() < b.getMonth() ||
+    (now.getMonth() === b.getMonth() && now.getDate() < b.getDate());
+  if (beforeBirthday) age -= 1;
+  return age;
+}
+
+/** null = allowed to view mature content, otherwise the reason it is blocked. */
+export function getAgeGate(user: AuthUser | null | undefined): AgeGateCode | null {
+  if (!user) return "login_required";
+  const age = ageFromBirthday(user.birth_day);
+  if (age === null) return "birthday_required"; // birthday not set yet: can't view
+  if (age < ADULT_AGE) return "age_restricted"; // under 18: can't view
+  return null;
+}
+
+/** For a single game page: is this game blocked for the current user? */
+export function useMatureGate(game: MatureCheckable | null | undefined) {
+  const { user, loading } = useAuth();
+
+  if (!isMatureGame(game)) return { gate: null as AgeGateCode | null, checking: false };
+  if (loading) return { gate: null as AgeGateCode | null, checking: true };
+  return { gate: getAgeGate(user), checking: false };
+}
+
+/** For lists (Discover, playlists, Home): removes mature games unless the user is 18+. */
+export function useMatureFilter() {
+  const { user, loading } = useAuth();
+  const allowed = !loading && getAgeGate(user) === null;
+
+  return useCallback(
+    <T extends MatureCheckable>(items: T[]): T[] =>
+      allowed ? items : items.filter((item) => !isMatureGame(item)),
+    [allowed],
+  );
+}

@@ -35,7 +35,7 @@ import Help from "@/pages/Help";
 import PrivacyPolicy from "@/pages/Privacypolicy";
 import Terms from "@/pages/Terms";
 import Settings from "@/pages/Settings";
-import BirthdayPrompt from "@/components/layout/BirthdayPrompt";
+
 
 const queryClient = new QueryClient();
 
@@ -60,6 +60,9 @@ const App = () => (
               <Route path="/playlists/new" element={<CreatePlaylist />} />
               <Route path="/playlists/:username/:id" element={<PlaylistDetails />} />
               <Route path="/playlists" element={<CommunityPlaylists />} />
+              <Route path="/playlists/new" element={<CreatePlaylist />} />
+              <Route path="/playlists/:id/edit" element={<CreatePlaylist />} />
+              <Route path="/playlists/:username/:id" element={<PlaylistDetails />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/friends" element={<Friends />} />
@@ -84,7 +87,7 @@ const App = () => (
               {/* Settings Route */}
               <Route path="/settings" element={<Settings />} />
             </Routes>
-              <BirthdayPrompt />
+              
             </SettingsProvider>
           </AuthProvider>
         </BrowserRouter>

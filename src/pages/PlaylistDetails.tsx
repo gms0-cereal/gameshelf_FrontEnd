@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { Check, Copy, Heart, Info, LayoutGrid, List, Loader2, Pencil, X } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -23,6 +24,9 @@ const coverFor = (g: PlaylistGame) =>
   g.cover_url ?? (g.steam_appid ? steamCover(g.steam_appid) : null);
 
 const TOP_GENRES_SHOWN = 10;
+
+// Same toast (by key) can only appear once per this many milliseconds.
+const TOAST_COOLDOWN_MS = 30_000;
 
 const SORTS = [
   { value: "order", label: "Curated (author's order)" },
@@ -55,27 +59,34 @@ function ToastViewport({
       role="status"
       aria-live="polite"
     >
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`pointer-events-auto flex items-start gap-3 rounded-xl border bg-[#17191E] px-4 py-3 text-[13px] shadow-lg ${TOAST_STYLES[t.kind]}`}
-        >
-          {t.kind === "success" ? (
-            <Check className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          ) : (
-            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          )}
-          <p className="flex-1 text-[#E6E1EA]">{t.message}</p>
-          <button
-            type="button"
-            onClick={() => onDismiss(t.id)}
-            aria-label="Dismiss notification"
-            className="text-[#A0A0A8] hover:text-[#E6E1EA]"
+      <AnimatePresence initial={false}>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            layout
+            initial={{ opacity: 0, y: 24, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 40, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 380, damping: 28 }}
+            className={`pointer-events-auto flex items-start gap-3 rounded-xl border bg-[#17191E] px-4 py-3 text-[13px] shadow-lg ${TOAST_STYLES[t.kind]}`}
           >
-            <X className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      ))}
+            {t.kind === "success" ? (
+              <Check className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            )}
+            <p className="flex-1 text-[#E6E1EA]">{t.message}</p>
+            <button
+              type="button"
+              onClick={() => onDismiss(t.id)}
+              aria-label="Dismiss notification"
+              className="text-[#A0A0A8] hover:text-[#E6E1EA]"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
@@ -199,6 +210,24 @@ const PlaylistDetail = () => {
     [dismissToast]
   );
 
+  // Throttled toasts: the same key can only show once per TOAST_COOLDOWN_MS.
+  const lastToastAt = useRef<Record<string, number>>({});
+  const pushThrottledToast = useCallback(
+    (key: string, kind: ToastKind, message: string) => {
+      const now = Date.now();
+      if (now - (lastToastAt.current[key] ?? 0) < TOAST_COOLDOWN_MS) return false;
+      lastToastAt.current[key] = now;
+      pushToast(kind, message);
+      return true;
+    },
+    [pushToast]
+  );
+
+  // Copy button animation controls (used for the "already copied" shake)
+  const copyControls = useAnimationControls();
+  const shakeCopyButton = () =>
+    copyControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.4 } });
+
   // Toast handed over by another page (e.g. "Playlist updated." after editing)
   useEffect(() => {
     const message = (location.state as { toast?: string } | null)?.toast;
@@ -259,6 +288,9 @@ const PlaylistDetail = () => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPlaylist(null); // don't show the previous playlist while the new one loads
+    setMiniProfileUser(null); // don't reuse the previous owner's profile card
+    setShowMiniProfile(false);
     setAlreadyCopied(readCopied(playlistId));
 
     getPlaylist(playlistId)
@@ -319,13 +351,20 @@ const PlaylistDetail = () => {
   };
 
   // Copy this playlist into the viewer's own library (once only), then open the new copy.
+  // The "already copied" / error toasts are throttled so spam-clicking doesn't flood the screen;
+  // the button still shakes on every click so the user gets feedback.
   const handleCopy = async () => {
     if (!playlist || copying) return;
     const playlistId = Number(id);
     if (!Number.isInteger(playlistId)) return;
 
     if (alreadyCopied) {
-      pushToast("info", "You can only copy a playlist once. Check your library for your copy.");
+      shakeCopyButton();
+      pushThrottledToast(
+        "already-copied",
+        "info",
+        "You can only copy a playlist once. Check your library for your copy."
+      );
       return;
     }
 
@@ -346,9 +385,14 @@ const PlaylistDetail = () => {
       if (status === 409 || (detail && /already|once/i.test(detail))) {
         writeCopied(playlistId);
         setAlreadyCopied(true);
-        pushToast("info", "You can only copy a playlist once. Check your library for your copy.");
+        shakeCopyButton();
+        pushThrottledToast(
+          "already-copied",
+          "info",
+          "You can only copy a playlist once. Check your library for your copy."
+        );
       } else {
-        pushToast("error", detail || "Couldn't copy this playlist. Please try again.");
+        pushThrottledToast("copy-error", "error", detail || "Couldn't copy this playlist. Please try again.");
       }
     } finally {
       setCopying(false);
@@ -397,6 +441,7 @@ const PlaylistDetail = () => {
 
   if (
     playlist &&
+    playlist.id === Number(id) && // ignore stale data from the previous route
     ownerUsername &&
     username?.toLowerCase() !== ownerUsername.toLowerCase()
   ) {
@@ -499,26 +544,52 @@ const PlaylistDetail = () => {
 
                   {/* Copy button: shown on every playlist that belongs to someone else */}
                   {canCopy && (
-                    <button
+                    <motion.button
                       type="button"
                       onClick={handleCopy}
                       disabled={copying}
                       aria-disabled={alreadyCopied}
+                      animate={copyControls}
+                      whileHover={!alreadyCopied && !copying ? { scale: 1.04 } : undefined}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 20 }}
                       className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
                         alreadyCopied
                           ? "border-[#554363] bg-[#17191E] text-[#A0A0A8]"
                           : "border-[#B39ACF] bg-[#B39ACF] text-[#17191E] hover:bg-[#B39ACF]/85"
                       }`}
                     >
-                      {copying ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                      ) : alreadyCopied ? (
-                        <Check className="size-4" aria-hidden="true" />
-                      ) : (
-                        <Copy className="size-4" aria-hidden="true" />
-                      )}
-                      <span>{copying ? "Copying..." : alreadyCopied ? "Already copied" : "Make a copy"}</span>
-                    </button>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                          key={copying ? "copying" : alreadyCopied ? "copied" : "idle"}
+                          initial={{ opacity: 0, scale: 0.4, rotate: -90 }}
+                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                          exit={{ opacity: 0, scale: 0.4, rotate: 90 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                          className="inline-flex"
+                        >
+                          {copying ? (
+                            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                          ) : alreadyCopied ? (
+                            <Check className="size-4" aria-hidden="true" />
+                          ) : (
+                            <Copy className="size-4" aria-hidden="true" />
+                          )}
+                        </motion.span>
+                      </AnimatePresence>
+
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                          key={copying ? "copying" : alreadyCopied ? "copied" : "idle"}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          {copying ? "Copying..." : alreadyCopied ? "Already copied" : "Make a copy"}
+                        </motion.span>
+                      </AnimatePresence>
+                    </motion.button>
                   )}
 
                   {/* Owner only: opens the create page already filled in with this playlist. */}

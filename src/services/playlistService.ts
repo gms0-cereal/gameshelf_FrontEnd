@@ -141,10 +141,13 @@ export async function createPlaylist(input: CreatePlaylistInput) {
   return data;
 }
 
-// ─── Edit (social app: PUT /social/playlists/<id>/edit/, owner only) ──────────
+// ─── Edit (social app: PUT /social/playlists/<id>/, owner only) ───────────────
 // Replaces the title, description, visibility and the whole game list/order.
+// NOTE: the old URL ended in /edit/, which your Django backend doesn't have (404).
+// If this returns 405 Method Not Allowed, the detail view is read-only and an
+// update view needs to be added in Django.
 export async function updatePlaylist(id: number, input: UpdatePlaylistInput) {
-  const { data } = await api.put<{ id: number; title: string }>(`/social/playlists/${id}/edit/`, {
+  const { data } = await api.put<{ id: number; title: string }>(`/social/playlists/${id}/`, {
     title: input.title,
     description: input.description,
     visibility: input.visibility,
