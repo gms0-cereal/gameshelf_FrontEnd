@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { type TargetAndTransition, type Variants, motion } from "framer-motion";;
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ChevronLeft, ChevronRight, Info, ListMusic } from "lucide-react";
 import {
+  fetchPopularNowGames,
   getMyGameList,
   getTopRatedGames,
   type SteamGameCard,
@@ -25,7 +27,6 @@ import {
 import {
   getFriends,
   getFavoriteGames,
-  type UserFavoriteGameEntry,
 } from "@/services/Userservice";
 
 import api from "@/lib/api";
@@ -37,6 +38,36 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   plan_to_play: { label: "Plan to Play", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
   dropped: { label: "Dropped", className: "bg-[#2B171C] text-[#E58B91] border border-[#E58B91]/40" },
   unplayed: { label: "Unplayed", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
+};
+
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { duration: 0.5, ease: "easeOut" } as TargetAndTransition["transition"]
+  },
+};
+
+const carouselContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const cardItemVariants: Variants = {
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: { duration: 0.35, ease: "easeOut" } as TargetAndTransition["transition"]
+  },
 };
 
 function toGameSummary(card: SteamGameCard, userEntry?: UserGameEntry): GameSummary {
@@ -213,111 +244,110 @@ export default function Home() {
   const GENRE_PAGE_SIZE = 24;
 
   // 1. Fetch User Taste Profile & Dynamically Rotate Genres / Liked Games by Time Slots
+  useEffect(() => {
+    let cancelled = false;
+    let rotationInterval: ReturnType<typeof setInterval> | undefined;
 
-    useEffect(() => {
-      let cancelled = false;
-      let rotationInterval: ReturnType<typeof setInterval> | undefined;
+    async function loadPreferences() {
+      try {
+        const [profileResult, favoritesResult] = await Promise.allSettled([
+          getTasteProfile(),
+          getFavoriteGames(),
+        ]);
 
-      async function loadPreferences() {
-        try {
-          const [profileResult, favoritesResult] = await Promise.allSettled([
-            getTasteProfile(),
-            getFavoriteGames(),
-          ]);
+        if (cancelled) return;
 
-          if (cancelled) return;
+        const profile =
+          profileResult.status === "fulfilled"
+            ? profileResult.value
+            : null;
 
-          const profile =
-            profileResult.status === "fulfilled"
-              ? profileResult.value
-              : null;
+        const favorites =
+          favoritesResult.status === "fulfilled"
+            ? favoritesResult.value
+            : [];
 
-          const favorites =
-            favoritesResult.status === "fulfilled"
-              ? favoritesResult.value
-              : [];
+        // Rotate primary genre every 2 hours
+        if (profile?.genres?.length) {
+          const now = Date.now();
+          const twoHours = 1000 * 60 * 60 * 2;
+          const genreIndex =
+            Math.floor(now / twoHours) % profile.genres.length;
 
-          // Rotate primary genre every 2 hours
-          if (profile?.genres?.length) {
-            const now = Date.now();
-            const twoHours = 1000 * 60 * 60 * 2;
-            const genreIndex =
-              Math.floor(now / twoHours) % profile.genres.length;
+          setPrimaryGenre(profile.genres[genreIndex]);
+        }
 
-            setPrimaryGenre(profile.genres[genreIndex]);
-          }
+        // Combine Taste Profile liked games and User Favorite Games
+        const likedGames = (profile?.liked_games ?? []).map((game) => ({
+          appid: game.appid,
+          title: game.title,
+        }));
 
-          // Combine Taste Profile liked games and User Favorite Games
-          const likedGames = (profile?.liked_games ?? []).map((game) => ({
-            appid: game.appid,
+        const favoriteGames = favorites
+          .filter((game) => game.steam_app_id != null)
+          .map((game) => ({
+            appid: game.steam_app_id!,
             title: game.title,
           }));
 
-          const favoriteGames = favorites
-            .filter((game) => game.steam_app_id != null)
-            .map((game) => ({
-              appid: game.steam_app_id!,
-              title: game.title,
-            }));
+        // Remove duplicates using Steam app ID
+        const combinedGames = Array.from(
+          new Map(
+            [...likedGames, ...favoriteGames].map((game) => [
+              game.appid,
+              game,
+            ])
+          ).values()
+        );
 
-          // Remove duplicates using Steam app ID
-          const combinedGames = Array.from(
-            new Map(
-              [...likedGames, ...favoriteGames].map((game) => [
-                game.appid,
-                game,
-              ])
-            ).values()
+        if (combinedGames.length > 0) {
+          let currentAppId: number | null = null;
+
+          const pickRandomLikedGame = () => {
+            const availableGames =
+              combinedGames.length > 1
+                ? combinedGames.filter(
+                    (game) => game.appid !== currentAppId
+                  )
+                : combinedGames;
+
+            const selected =
+              availableGames[
+                Math.floor(Math.random() * availableGames.length)
+              ];
+
+            currentAppId = selected.appid;
+
+            setLikedGameTitle(selected.title);
+            setLikedGameAppId(selected.appid);
+          };
+
+          // Pick immediately, then rotate every 30 minutes
+          pickRandomLikedGame();
+
+          rotationInterval = setInterval(
+            pickRandomLikedGame,
+            30 * 60 * 1000
           );
-
-          if (combinedGames.length > 0) {
-            let currentAppId: number | null = null;
-
-            const pickRandomLikedGame = () => {
-              const availableGames =
-                combinedGames.length > 1
-                  ? combinedGames.filter(
-                      (game) => game.appid !== currentAppId
-                    )
-                  : combinedGames;
-
-              const selected =
-                availableGames[
-                  Math.floor(Math.random() * availableGames.length)
-                ];
-
-              currentAppId = selected.appid;
-
-              setLikedGameTitle(selected.title);
-              setLikedGameAppId(selected.appid);
-            };
-
-            // Pick immediately, then rotate every 30 minutes
-            pickRandomLikedGame();
-
-            rotationInterval = setInterval(
-              pickRandomLikedGame,
-              30 * 60 * 1000
-            );
-          } else {
-            setLikedGameTitle("Counter-Strike 2");
-            setLikedGameAppId(730);
-          }
-        } catch {
-          if (!cancelled) {
-            setLikedGameTitle("Counter-Strike 2");
-            setLikedGameAppId(730);
-          }
+        } else {
+          setLikedGameTitle("Counter-Strike 2");
+          setLikedGameAppId(730);
+        }
+      } catch {
+        if (!cancelled) {
+          setLikedGameTitle("Counter-Strike 2");
+          setLikedGameAppId(730);
         }
       }
+    }
 
-      void loadPreferences();
+    void loadPreferences();
 
-      return () => {
-        cancelled = true;
-        if (rotationInterval) clearInterval(rotationInterval);
-      };
-    }, [user?.id]);
+    return () => {
+      cancelled = true;
+      if (rotationInterval) clearInterval(rotationInterval);
+    };
+  }, [user?.id]);
 
   // 2. Infinite Scroll: Dynamic Genre Section ("More [Genre]s for You")
   const loadGenrePage = useCallback(async () => {
@@ -429,11 +459,9 @@ export default function Home() {
         return [...prev, ...uniqueNewSummaries];
       });
 
-      // FIX: Advance offset by the full requested batch size, not the filtered results length!
       similarOffset.current += PAGE_SIZE;
       similarHasMore.current = simData.has_more ?? results.length === PAGE_SIZE;
 
-      // Auto-fetch next page if deduplication stripped away too many items in this batch
       if (addedCount < 5 && similarHasMore.current) {
         similarLoadingRef.current = false;
         void loadSimilarPage();
@@ -450,7 +478,6 @@ export default function Home() {
   useEffect(() => {
     if (!likedGameAppId) return;
 
-    // Reset pagination for the newly selected reference game
     similarOffset.current = 0;
     similarHasMore.current = true;
     similarLoadingRef.current = false;
@@ -503,21 +530,21 @@ export default function Home() {
     }
   }, [user?.id]);
 
- useEffect(() => {
-  tasteOffset.current = 0;
-  tasteHasMore.current = true;
-  tasteLoadingRef.current = false;
-  setRecommendedGames([]);
-  setRecommendationsError(null);
+  useEffect(() => {
+    tasteOffset.current = 0;
+    tasteHasMore.current = true;
+    tasteLoadingRef.current = false;
+    setRecommendedGames([]);
+    setRecommendationsError(null);
 
-  if (!user) {
-    setRecommendationsLoading(false);
-    return;
-  }
+    if (!user) {
+      setRecommendationsLoading(false);
+      return;
+    }
 
-  setRecommendationsLoading(true);
-  void loadTastePage();
-}, [user?.id, loadTastePage]);
+    setRecommendationsLoading(true);
+    void loadTastePage();
+  }, [user?.id, loadTastePage]);
 
   // 5. Infinite Scroll: Players Like You (SVD)
   const loadPlayersPage = useCallback(async () => {
@@ -566,7 +593,6 @@ export default function Home() {
       setPlayersLoading(false);
     }
   }, [user?.id]);
-
 
   useEffect(() => {
     playersOffset.current = 0;
@@ -721,7 +747,7 @@ export default function Home() {
     };
   }, []);
 
-  const topRatedGames = useMemo(
+const topRatedGames = useMemo(
     () =>
       topRatedCards.map((card) => {
         const summary = toGameSummary(card, userListMap.get(String(card.appid)));
@@ -739,11 +765,51 @@ export default function Home() {
     [topRatedCards, userListMap]
   );
 
-  const heroGames = useMemo(() => {
-    return topRatedGames.slice(0, 10);
-  }, [topRatedGames]);
+ 
+  
+// Rename state variables to avoid collisions with your useMemo
+  const [heroGames, setHeroGames] = useState<any[]>([]);
 
   useEffect(() => {
+      async function loadPageData() {
+        try {
+          // 1. Fetch Popular Now items for the Hero Banner
+          const popularItems = await fetchPopularNowGames(31);
+          const popularAppIds = popularItems.slice(0, 10).map(item => item.appid);
+          
+          if (popularAppIds.length > 0) {
+            // Use your existing game service helper or ensure the full /api/v1/ prefix is used
+            const response = await fetch(`/api/v1/games/steam/summaries/?appids=${popularAppIds.join(",")}`);
+            if (!response.ok) throw new Error("Network response was not ok");
+            const data = await response.json();
+            const summaries = data.results || [];
+
+            const formattedHeroGames = summaries.map((card: any) => ({
+              id: card.appid,
+              slug: card.appid,
+              title: card.name,
+              cover: card.header_image,
+              score: card.community_rating ?? null,
+              bio: card.short_description || "",
+            }));
+            setHeroGames(formattedHeroGames);
+          }
+
+          // 2. Fetch All-Time Top Rated items for the separate section
+          const topRatedRes = await fetch(`/api/v1/games/steam/top-rated/?limit=20`);
+          if (!topRatedRes.ok) throw new Error("Network response was not ok");
+          const topRatedData = await topRatedRes.json();
+          setTopRatedCards(topRatedData.results || []);
+          
+        } catch (err) {
+          console.error("Failed to load game sections", err);
+        }
+      }
+
+      loadPageData();
+    }, [userListMap]);
+
+   useEffect(() => {
     if (heroGames.length <= 1 || isHovered) return;
 
     const timer = setInterval(() => {
@@ -775,18 +841,26 @@ export default function Home() {
         <Navbar />
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
           {/* Welcome header */}
-          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+          <motion.div 
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex min-h-[65px] flex-wrap items-center justify-between gap-4"
+          >
             <div className="flex flex-col gap-2">
               <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">
                 WELCOME BACK, {user?.nickname || user?.username || "Player"}
               </p>
               <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">Home</h1>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Hero Banner (Dynamic Top Bayesian Rated Games) */}
+          {/* Hero Banner */}
           {heroGames.length > 0 && (
-            <section
+            <motion.section
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
               className="relative min-h-[420px] w-full overflow-hidden rounded-2xl bg-[#17191E] border border-[#302438] xl:h-[440px]"
@@ -812,7 +886,7 @@ export default function Home() {
 
                     <div className="relative z-10 flex w-full max-w-[640px] flex-col gap-4">
                       <p className="text-[11px] font-semibold uppercase tracking-[2px] text-[#34D399]">
-                        TOP RATED ON GAMESHELF
+                        POPULAR THIS MONTH ON GAMESHELF
                       </p>
                       <h2 className="text-[32px] font-bold leading-tight tracking-[-0.5px] text-[#E6E1EA] drop-shadow-md md:text-[46px]">
                         {hero.title}
@@ -864,165 +938,129 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-            </section>
+            </motion.section>
           )}
 
-          {/* 1. More [Genre]s for You (Dynamic Genre Section with Infinite Scroll) */}
-          <section className="flex flex-col gap-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-col">
-                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
-                  More {primaryGenre}s for you
-                </h2>
-                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                  Inspired by your preferred genres
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => scrollGenre(-1)}
-                  aria-label="Scroll left"
-                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => scrollGenre(1)}
-                  aria-label="Scroll right"
-                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
-              </div>
+      {/* 1. Recommended for You */}
+        <motion.section 
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          aria-labelledby="taste-recommendations-title" 
+          className="flex flex-col gap-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <h2
+                id="taste-recommendations-title"
+                className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+              >
+                Recommended for You
+              </h2>
+              <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                Games selected based on your genres, platforms, and liked games.
+              </p>
+              <Link
+                to="/interests"
+                className="mt-1 text-[13px] leading-4 text-[#B39ACF] hover:underline"
+              >
+                Tune your suggestions: edit genres and liked games →
+              </Link>
             </div>
 
-            {genreLoading && genreGames.length === 0 ? (
-              <p role="status" className="text-sm text-[#A0A0A8]">
-                Loading {primaryGenre}s…
-              </p>
-            ) : genreGames.length === 0 ? (
-              <p className="text-sm text-[#A0A0A8]">No games found for this genre.</p>
-            ) : (
-              <div
-                ref={genreRef}
-                onScroll={(event) => handleRecommendationScroll(event, loadGenrePage)}
-                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollRecommended(-1)}
+                aria-label="Scroll left"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
               >
-                <div className="flex gap-5">
-                  {genreGames.map((game) => (
-                    <div
-                      key={game.id}
-                      className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
-                    >
-                      <GameCard game={game} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollRecommended(1)}
+                aria-label="Scroll right"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
 
-          {/* 2. Top Rated on GameShelf */}
-          {(topRatedLoading || topRatedError || topRatedGames.length > 0) && (
-            <section aria-labelledby="top-rated-title" className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2
-                    id="top-rated-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
-                  >
-                    Top Rated on GameShelf
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Highest-rated games based on Bayesian weighted community ratings.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollTopRated(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollTopRated(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {topRatedError && (
-                <p role="alert" className="text-sm text-[#E58B91]">
-                  {topRatedError}
-                </p>
-              )}
-              {topRatedLoading && topRatedGames.length === 0 && (
-                <p role="status" className="text-sm text-[#A0A0A8]">
-                  Loading top rated games…
-                </p>
-              )}
-
-              {topRatedGames.length > 0 && (
-                <div
-                  ref={topRatedRef}
-                  onScroll={(event) => handleRecommendationScroll(event, loadTopRatedPage)}
-                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  <div className="flex gap-5">
-                    {topRatedGames.map((game) => (
-                      <div
-                        key={game.id}
-                        className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
-                      >
-                        <GameCard game={game} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
+          {recommendationsError && (
+            <p role="alert" className="text-sm text-[#E58B91]">
+              {recommendationsError}
+            </p>
           )}
 
-          {/* 3. Recommended for You (K-Means Taste Engine) */}
-          <section aria-labelledby="taste-recommendations-title" className="flex flex-col gap-5">
+          {recommendationsLoading && recommendedGames.length === 0 && (
+            <p role="status" className="text-sm text-[#A0A0A8]">
+              Loading recommendations…
+            </p>
+          )}
+
+          {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
+            <p className="text-sm text-[#A0A0A8]">
+              No recommendations yet. Update your interests to get personalized suggestions.
+            </p>
+          )}
+
+          {recommendedGames.length > 0 && (
+            <motion.div
+              ref={recommendedRef}
+              variants={carouselContainerVariants}
+              initial="hidden"
+              animate="visible"
+              onScroll={(event) => handleRecommendationScroll(event, loadTastePage)}
+              className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="flex gap-5">
+                {recommendedGames.map((game) => (
+                  <motion.div
+                    key={game.id}
+                    variants={cardItemVariants}
+                    className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                  >
+                    <GameCard game={game} />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </motion.section>
+
+        {/* 2. Top Rated on GameShelf */}
+        {(topRatedLoading || topRatedError || topRatedGames.length > 0) && (
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            aria-labelledby="top-rated-title" 
+            className="flex flex-col gap-5"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
                 <h2
-                  id="taste-recommendations-title"
+                  id="top-rated-title"
                   className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
                 >
-                  Recommended for You
+                  Top Rated on GameShelf
                 </h2>
                 <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                  Games selected based on your genres, platforms, and liked games.
+                  Highest-rated games based on Bayesian weighted community ratings.
                 </p>
-                <Link
-                  to="/interests"
-                  className="mt-1 text-[13px] leading-4 text-[#B39ACF] hover:underline"
-                >
-                  Tune your suggestions: edit genres and liked games →
-                </Link>
               </div>
 
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => scrollRecommended(-1)}
+                  onClick={() => scrollTopRated(-1)}
                   aria-label="Scroll left"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -1031,7 +1069,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => scrollRecommended(1)}
+                  onClick={() => scrollTopRated(1)}
                   aria-label="Scroll right"
                   className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
                 >
@@ -1040,238 +1078,345 @@ export default function Home() {
               </div>
             </div>
 
-            {recommendationsError && (
+            {topRatedError && (
               <p role="alert" className="text-sm text-[#E58B91]">
-                {recommendationsError}
+                {topRatedError}
               </p>
             )}
-
-            {recommendationsLoading && recommendedGames.length === 0 && (
+            {topRatedLoading && topRatedGames.length === 0 && (
               <p role="status" className="text-sm text-[#A0A0A8]">
-                Loading recommendations…
+                Loading top rated games…
               </p>
             )}
 
-            {!recommendationsLoading && !recommendationsError && recommendedGames.length === 0 && (
-              <p className="text-sm text-[#A0A0A8]">
-                No recommendations yet. Update your interests to get personalized suggestions.
-              </p>
-            )}
-
-            {recommendedGames.length > 0 && (
-              <div
-                ref={recommendedRef}
-                onScroll={(event) => handleRecommendationScroll(event, loadTastePage)}
+            {topRatedGames.length > 0 && (
+              <motion.div
+                ref={topRatedRef}
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
+                onScroll={(event) => handleRecommendationScroll(event, loadTopRatedPage)}
                 className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex gap-5">
-                  {recommendedGames.map((game) => (
-                    <div
+                  {topRatedGames.map((game) => (
+                    <motion.div
                       key={game.id}
-                      className="w-[260px] shrink-0 snap-start sm:w-[280px] md:w-[300px]"
-                    >
-                      <GameCard game={game} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* 4. Because You Played [Game] (Cosine Similarity with Infinite Scroll) */}
-          {user && (similarLoading || similarGames.length > 0) && (
-            <section className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
-                    Because you played {likedGameTitle}
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Titles with matching mechanics and thematic elements.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollSimilar(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollSimilar(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {similarLoading && similarGames.length === 0 ? (
-                <p role="status" className="text-sm text-[#A0A0A8]">Loading similar games…</p>
-              ) : (
-                <div
-                  ref={similarRef}
-                  onScroll={(event) => handleRecommendationScroll(event, loadSimilarPage)}
-                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  <div className="flex gap-5">
-                    {similarGames.map((game) => (
-                      <div
-                        key={game.id}
-                        className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
-                      >
-                        <GameCard game={game} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* 5. Players Like You (SVD Collaborative Filtering) */}
-          {user && (
-            <section aria-labelledby="players-like-you-title" className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2
-                    id="players-like-you-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
-                  >
-                    Players Like You
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Discover games you may enjoy based on the preferences and ratings of players with
-                    similar gaming tastes.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollPlayers(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollPlayers(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {playersError && (
-                <p role="alert" className="text-sm text-[#E58B91]">
-                  {playersError}
-                </p>
-              )}
-
-              {playersLoading && playersGames.length === 0 && (
-                <p role="status" className="text-sm text-[#A0A0A8]">
-                  Loading Players Like You…
-                </p>
-              )}
-
-              {!playersLoading && !playersError && playersGames.length === 0 && (
-                <p className="text-sm text-[#A0A0A8]">
-                  No player suggestions yet. Rate more games to connect with players who share your tastes.
-                </p>
-              )}
-
-              {playersGames.length > 0 && (
-                <div
-                  ref={playersRef}
-                  onScroll={(event) => handleRecommendationScroll(event, loadPlayersPage)}
-                  className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  <div className="flex gap-5">
-                    {playersGames.map((game) => (
-                      <div
-                        key={game.id}
-                        className="w-[300px] h-full sm:w-[340px] md:w-[360px] shrink-0 snap-start"
-                      >
-                        <GameCard game={game} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* 6. Your Friends Also Play */}
-          {user && !friendsLoading && friendsGames.length > 0 && (
-            <section aria-labelledby="friends-also-play-title" className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <h2
-                    id="friends-also-play-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
-                  >
-                    Your Friends Also Play
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Explore the favorite games of the players on your friends list.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollFriendsPlay(-1)}
-                    aria-label="Scroll left"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => scrollFriendsPlay(1)}
-                    aria-label="Scroll right"
-                    className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div
-                ref={friendsPlayRef}
-                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                <div className="flex gap-5">
-                  {friendsGames.map((game) => (
-                    <div
-                      key={game.id}
+                      variants={cardItemVariants}
                       className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
                     >
                       <GameCard game={game} />
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
-            </section>
-          )}
+              </motion.div>
+            )}
+          </motion.section>
+        )}
 
+        {/* 3. Because You Played */}
+        {user && (similarLoading || similarGames.length > 0) && (
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="flex flex-col gap-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
+                  Because you played {likedGameTitle}
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                  Titles with matching mechanics and thematic elements.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollSimilar(-1)}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollSimilar(1)}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            {similarLoading && similarGames.length === 0 ? (
+              <p role="status" className="text-sm text-[#A0A0A8]">Loading similar games…</p>
+            ) : (
+              <motion.div
+                ref={similarRef}
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
+                onScroll={(event) => handleRecommendationScroll(event, loadSimilarPage)}
+                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div className="flex gap-5">
+                  {similarGames.map((game) => (
+                    <motion.div
+                      key={game.id}
+                      variants={cardItemVariants}
+                      className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                    >
+                      <GameCard game={game} />
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </motion.section>
+        )}
+
+        {/* 4. More [Genre]s for You */}
+        <motion.section 
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <h2 className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]">
+                More {primaryGenre}s for you
+              </h2>
+              <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                Inspired by your preferred genres
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollGenre(-1)}
+                aria-label="Scroll left"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => scrollGenre(1)}
+                aria-label="Scroll right"
+                className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+
+          {genreLoading && genreGames.length === 0 ? (
+            <p role="status" className="text-sm text-[#A0A0A8]">
+              Loading {primaryGenre}s…
+            </p>
+          ) : genreGames.length === 0 ? (
+            <p className="text-sm text-[#A0A0A8]">No games found for this genre.</p>
+          ) : (
+            <motion.div
+              ref={genreRef}
+              variants={carouselContainerVariants}
+              initial="hidden"
+              animate="visible"
+              onScroll={(event) => handleRecommendationScroll(event, loadGenrePage)}
+              className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="flex gap-5">
+                {genreGames.map((game) => (
+                  <motion.div
+                    key={game.id}
+                    variants={cardItemVariants}
+                    className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                  >
+                    <GameCard game={game} />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </motion.section>
+
+        {/* 5. Players Like You */}
+        {user && (
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            aria-labelledby="players-like-you-title" 
+            className="flex flex-col gap-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <h2
+                  id="players-like-you-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+                >
+                  Players Like You
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                  Discover games you may enjoy based on the preferences and ratings of players with
+                  similar gaming tastes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollPlayers(-1)}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollPlayers(1)}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            {playersError && (
+              <p role="alert" className="text-sm text-[#E58B91]">
+                {playersError}
+              </p>
+            )}
+
+            {playersLoading && playersGames.length === 0 && (
+              <p role="status" className="text-sm text-[#A0A0A8]">
+                Loading Players Like You…
+              </p>
+            )}
+
+            {!playersLoading && !playersError && playersGames.length === 0 && (
+              <p className="text-sm text-[#A0A0A8]">
+                No player suggestions yet. Rate more games to connect with players who share your tastes.
+              </p>
+            )}
+
+            {playersGames.length > 0 && (
+              <motion.div
+                ref={playersRef}
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
+                onScroll={(event) => handleRecommendationScroll(event, loadPlayersPage)}
+                className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div className="flex gap-5">
+                  {playersGames.map((game) => (
+                    <motion.div
+                      key={game.id}
+                      variants={cardItemVariants}
+                      className="w-[300px] h-full sm:w-[340px] md:w-[360px] shrink-0 snap-start"
+                    >
+                      <GameCard game={game} />
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </motion.section>
+        )}
+
+        {/* 6. Your Friends Also Play */}
+        {user && !friendsLoading && friendsGames.length > 0 && (
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            aria-labelledby="friends-also-play-title" 
+            className="flex flex-col gap-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <h2
+                  id="friends-also-play-title"
+                  className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+                >
+                  Your Friends Also Play
+                </h2>
+                <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+                  Explore the favorite games of the players on your friends list.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollFriendsPlay(-1)}
+                  aria-label="Scroll left"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => scrollFriendsPlay(1)}
+                  aria-label="Scroll right"
+                  className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            <motion.div
+              ref={friendsPlayRef}
+              variants={carouselContainerVariants}
+              initial="hidden"
+              animate="visible"
+              className="-mx-1 overflow-x-auto px-1 pt-2 pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="flex gap-5">
+                {friendsGames.map((game) => (
+                  <motion.div
+                    key={game.id}
+                    variants={cardItemVariants}
+                    className="w-[260px] h-full shrink-0 snap-start sm:w-[280px] md:w-[300px]"
+                  >
+                    <GameCard game={game} />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.section>
+        )}
           {/* 7. Community Playlists Section */}
-          <section id="community-playlists" aria-labelledby="community-playlists-title" className="flex flex-col gap-5">
+          <motion.section 
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            id="community-playlists" 
+            aria-labelledby="community-playlists-title" 
+            className="flex flex-col gap-5"
+          >
             <div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1324,13 +1469,21 @@ export default function Home() {
             )}
 
             {!playlistsLoading && !playlistsError && communityPlaylists.length > 0 && (
-              <div ref={carouselRef} className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <motion.div 
+                ref={carouselRef} 
+                variants={carouselContainerVariants}
+                initial="hidden"
+                animate="visible"
+                className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {communityPlaylists.map((playlist) => (
-                  <PlaylistCarouselCard key={playlist.id} playlist={playlist} />
+                  <motion.div key={playlist.id} variants={cardItemVariants}>
+                    <PlaylistCarouselCard playlist={playlist} />
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
-          </section>
+          </motion.section>
         </main>
         <Footer />
       </div>

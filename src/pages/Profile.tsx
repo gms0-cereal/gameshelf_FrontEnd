@@ -94,16 +94,26 @@ function ProfileBanner({
   const displayName =
     profileUser?.nickname?.trim() || profileUser?.username || "Player";
 
+  const hasCustomBanner = Boolean(profileUser?.banner_url);
+
   return (
     <section
       aria-labelledby="player-name"
       className="relative isolate flex min-h-[220px] items-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-6 md:min-h-[260px] md:p-8"
     >
-      <img
-        src={profileUser?.banner_url || "/images/profile-banner.png"}
-        alt=""
-        className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
-      />
+      {hasCustomBanner ? (
+        <img
+          src={profileUser?.banner_url}
+          alt=""
+          className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
+        />
+      ) : (
+        /* Gorgeous multi-stop gradient background when no banner is provided */
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-20 h-full w-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#3a2256] via-[#1d1727] to-[#111318]"
+        />
+      )}
 
       <div
         aria-hidden="true"
@@ -717,7 +727,7 @@ export default function Profile() {
               <MiniProfileCard
                 user={selectedFriend}
                 position={modalPosition}
-                openUpward={openUpward}
+                side="openupward"
                 isFriendsTab
               />
             </div>

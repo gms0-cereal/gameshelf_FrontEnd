@@ -7,10 +7,13 @@ import { type BrowseGame } from "@/services/Gameservice";
 import { Card, CardContent } from "@/components/ui/card";
 import { useBrowseGamesQuery } from "@/store/apiSlice";
 
+
 type Option = { value: string; label: string };
 
 const GENRES: Option[] = [
   { value: "", label: "All genres" },
+
+  // Main genres
   { value: "action", label: "Action" },
   { value: "adventure", label: "Adventure" },
   { value: "casual", label: "Casual" },
@@ -24,8 +27,40 @@ const GENRES: Option[] = [
   { value: "platformer", label: "Platformer" },
   { value: "roguelike", label: "Roguelike" },
   { value: "horror", label: "Horror" },
-];
 
+  // Action and adventure subgenres
+  { value: "action-adventure", label: "Action-Adventure" },
+  { value: "action rpg", label: "Action RPG" },
+  { value: "shooter", label: "Shooter" },
+  { value: "point & click", label: "Point & Click" },
+  { value: "beat 'em up", label: "Beat 'em Up" },
+  { value: "fighting", label: "Fighting" },
+
+  // RPG subgenres
+  { value: "jrpg", label: "JRPG" },
+  { value: "strategy rpg", label: "Strategy RPG" },
+  { value: "visual novel", label: "Visual Novel" },
+  { value: "party-based rpg", label: "Party-Based RPG" },
+  { value: "mmorpg", label: "MMORPG" },
+
+  // Strategy subgenres
+  { value: "turn-based strategy", label: "Turn-Based Strategy" },
+  { value: "rts", label: "RTS" },
+  { value: "tower defense", label: "Tower Defense" },
+  { value: "city builder", label: "City Builder" },
+
+  // Other genres
+  { value: "arcade", label: "Arcade" },
+  { value: "sandbox", label: "Sandbox" },
+  { value: "survival", label: "Survival" },
+  { value: "roguelite", label: "Roguelite" },
+
+  // Adult-oriented tags
+  { value: "hentai", label: "Hentai" },
+  { value: "sexual content", label: "Sexual Content" },
+  { value: "nudity", label: "Nudity" },
+  { value: "adult content", label: "Adult Content" },
+];
 const PLATFORMS: Option[] = [
   { value: "", label: "All" },
   { value: "windows", label: "PC" },
@@ -249,7 +284,7 @@ export default function Discover() {
   const [platform, setPlatform] = useState("");
   const [sort, setSort] = useState("rated");
   const [page, setPage] = useState(1);
-
+  
   useEffect(() => {
     document.title = "Discover Games | GameShelf";
   }, []);
@@ -412,10 +447,10 @@ export default function Discover() {
               </p>
             </div>
 
-            <div className="min-h-[500px]">
+          <div className="min-h-[500px]">
               {loading && !data ? (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                  {Array.from({ length: 8 }).map((_, i) => (
+                  {Array.from({ length: 24 }).map((_, i) => (
                     <div
                       key={i}
                       className="h-[320px] animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]"

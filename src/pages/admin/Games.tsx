@@ -30,14 +30,14 @@ export const Games: React.FC = () => {
           </p>
         </div>
 
-        <button className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition shadow-md shadow-purple-600/20">
+        <button className="inline-flex items-center gap-2 bg-[#6b5a94] hover:bg-[#5d4e82] text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition shadow-md shadow-purple-600/20">
           <Plus className="w-4 h-4" />
           Add New Game
         </button>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-[#151024] border border-[#261e3b] p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-[#222228] border border-[#454650] p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
@@ -45,21 +45,21 @@ export const Games: React.FC = () => {
             placeholder="Search game title or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#181329] text-xs text-slate-200 pl-9 pr-4 py-2 rounded-lg border border-[#2d2545] focus:outline-none focus:border-purple-500 transition"
+            className="w-full bg-[#1a1a20] text-xs text-slate-200 pl-9 pr-4 py-2 rounded-lg border border-[#454650] focus:outline-none focus:border-purple-500 transition"
           />
         </div>
 
-        <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#1f1a30] text-slate-300 border border-[#372d52] hover:bg-[#2b2442] text-xs px-3.5 py-2 rounded-lg transition">
+        <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#343a43] text-slate-300 border border-[#55515f] hover:bg-[#383044] text-xs px-3.5 py-2 rounded-lg transition">
           <Filter className="w-3.5 h-3.5" />
           Filter
         </button>
       </div>
 
       {/* Games Table */}
-      <div className="bg-[#151024] border border-[#261e3b] rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-[#222228] border border-[#454650] rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#1c162e] text-slate-400 font-semibold uppercase border-b border-[#261e3b]">
+            <thead className="bg-[#1a1a20] text-slate-400 font-semibold uppercase border-b border-[#454650]">
               <tr>
                 <th className="px-6 py-3.5">Game ID</th>
                 <th className="px-6 py-3.5">Title</th>
@@ -70,10 +70,10 @@ export const Games: React.FC = () => {
                 <th className="px-6 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#261e3b]">
+            <tbody className="divide-y divide-[#454650]">
               {filteredGames.map((game) => (
                 <tr key={game.id} className="hover:bg-[#1a142c] transition-colors">
-                  <td className="px-6 py-4 font-mono text-purple-400 font-medium">{game.id}</td>
+                  <td className="px-6 py-4 font-mono text-[#bda6e4] font-medium">{game.id}</td>
                   <td className="px-6 py-4 font-semibold text-white">{game.title}</td>
                   <td className="px-6 py-4">{game.category}</td>
                   <td className="px-6 py-4 text-slate-400">{game.developer}</td>
@@ -91,13 +91,13 @@ export const Games: React.FC = () => {
                   <td className="px-6 py-4">{game.rating > 0 ? `⭐ ${game.rating}` : '—'}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 text-slate-400">
-                      <button className="p-1.5 hover:text-white hover:bg-[#251e38] rounded-md transition" title="View Details">
+                      <button className="p-1.5 hover:text-white hover:bg-[#383044] rounded-md transition" title="View Details">
                         <Eye className="w-3.5 h-3.5" />
                       </button>
-                      <button className="p-1.5 hover:text-purple-300 hover:bg-[#251e38] rounded-md transition" title="Edit">
+                      <button className="p-1.5 hover:text-[#d6c6f1] hover:bg-[#383044] rounded-md transition" title="Edit">
                         <Edit className="w-3.5 h-3.5" />
                       </button>
-                      <button className="p-1.5 hover:text-rose-400 hover:bg-[#251e38] rounded-md transition" title="Delete">
+                      <button className="p-1.5 hover:text-rose-400 hover:bg-[#383044] rounded-md transition" title="Delete">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>

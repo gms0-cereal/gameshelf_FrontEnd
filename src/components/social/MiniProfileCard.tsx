@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { getFriends, type SocialUser, type UserFavoriteGameEntry,  } from "@/services/Userservice";
+import { getFriends, type SocialUser, type UserFavoriteGameEntry } from "@/services/Userservice";
 
 type MiniProfileProps = {
   user: SocialUser & {
@@ -23,7 +23,7 @@ type MiniProfileProps = {
     has_incoming_request?: boolean;
   };
   position?: { top: number; left: number };
-  side?: "top" | "bottom"; 
+  side?: "top" | "bottom" | "openupward"; 
   onAddFriend?: () => void;
   onBlock?: () => void;
   onReport?: () => void;
@@ -45,8 +45,8 @@ const FavoriteCover = memo(({ src, title }: { src?: string | null; title: string
       className="h-full w-full object-cover"
     />
   ) : (
-    <div className="flex h-full items-center justify-center bg-[#373646]">
-      <Gamepad2 className="size-4 text-[#8870b6]" />
+    <div className="flex h-full items-center justify-center bg-[#20232B]">
+      <Gamepad2 className="size-4 text-[#B39ACF]" />
     </div>
   );
 });
@@ -60,7 +60,7 @@ export default function MiniProfileCard({
   onReport,
   onMouseLeave,
   onMouseEnter,
-  side,
+  side = "bottom",
   isFriendsTab = false,
 }: MiniProfileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -72,7 +72,6 @@ export default function MiniProfileCard({
   const displayName = user.nickname?.trim() || user.username;
   const favorites = user.favorites ?? [];
   const isPrivate = user.visibility === "private";
-  // You can only send a friend request to a private profile if THEY sent you a request first
   const canAddFriend = !isPrivate || user.has_incoming_request;
 
   // Verify friendship status efficiently
@@ -119,15 +118,14 @@ export default function MiniProfileCard({
     };
   }, [menuOpen]);
 
-  const containerStyle = position
-    ? { top: position.top, left: position.left }
-    : {};
-    
+  const containerStyle = position ? { top: position.top, left: position.left } : {};
+  
   const containerClassName = position
-    ? "fixed z-[9990] w-[310px] pointer-events-auto rounded-2xl border border-[#55516c] bg-[#2a2838] text-[#e0deeb] shadow-2xl animate-in fade-in-0 zoom-in-95"
-    : side === "bottom"
-      ? "absolute left-0 top-full mt-2 z-50 w-[310px] pointer-events-auto rounded-2xl border border-[#55516c] bg-[#2a2838] text-[#e0deeb] shadow-2xl animate-in fade-in-0 zoom-in-95"
-      : "absolute left-0 bottom-full mb-2 z-50 w-[310px] pointer-events-auto rounded-2xl border border-[#55516c] bg-[#2a2838] text-[#e0deeb] shadow-2xl animate-in fade-in-0 zoom-in-95";
+    ? "fixed z-[9990] w-[310px] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95"
+    : side === "top" || side === "openupward"
+      ? "absolute left-0 bottom-full mb-2 z-50 w-[310px] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95"
+      : "absolute left-0 top-full mt-2 z-50 w-[310px] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95";
+
   return (
     <div
       onMouseEnter={onMouseEnter}
@@ -137,7 +135,7 @@ export default function MiniProfileCard({
     >
       {/* Banner Container */}
       <div className="relative h-24 w-full">
-        <div className="absolute inset-0 rounded-t-2xl overflow-hidden bg-[#373646]">
+        <div className="absolute inset-0 rounded-t-2xl overflow-hidden bg-[#20232B]">
           {user.banner_url ? (
             <img
               src={user.banner_url}
@@ -150,9 +148,9 @@ export default function MiniProfileCard({
               }}
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-r from-[#4d3e68] via-[#373646] to-[#2a2838]" />
+            <div className="h-full w-full bg-gradient-to-r from-[#302438] via-[#20232B] to-[#17191E]" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#2a2838] via-transparent to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#17191E] via-transparent to-black/30" />
         </div>
 
         {/* Top-Right Side-by-Side Action Buttons */}
@@ -160,7 +158,7 @@ export default function MiniProfileCard({
           {isFriend ? (
             <div
               title="Already Friends"
-              className="flex h-7 items-center gap-1 rounded-full bg-black/60 px-2.5 text-[11px] font-medium text-[#c2ade7] backdrop-blur-md border border-white/10"
+              className="flex h-7 items-center gap-1 rounded-full bg-black/60 px-2.5 text-[11px] font-medium text-[#B39ACF] backdrop-blur-md border border-white/10"
             >
               <UserCheck className="size-3.5" /> Friends
             </div>
@@ -173,8 +171,8 @@ export default function MiniProfileCard({
                 title={!canAddFriend ? "Private profiles can only send requests, not receive them." : undefined}
                 className={`h-7 gap-1 rounded-full px-3 text-[11px] text-white shadow-md border border-white/10 transition-colors ${
                   canAddFriend
-                    ? "bg-[#8063a8] hover:bg-[#9274bb]"
-                    : "bg-[#373646] text-[#8b86a3] cursor-not-allowed border-transparent"
+                    ? "bg-[#B39ACF] text-[#17191E] hover:bg-[#C2ADE0] font-semibold"
+                    : "bg-[#20232B] text-[#777780] cursor-not-allowed border-transparent"
                 }`}
               >
                 {canAddFriend ? <UserPlus className="size-3.5" /> : <Lock className="size-3" />}
@@ -187,20 +185,20 @@ export default function MiniProfileCard({
             <button
               type="button"
               onClick={() => setMenuOpen((prev) => !prev)}
-              className="flex size-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors backdrop-blur-md border border-white/10"
+              className="flex size-7 items-center justify-center rounded-full bg-black/65 text-[#E6E1EA] hover:bg-black/85 transition-colors backdrop-blur-md border border-white/10"
             >
               <MoreVertical className="size-4" />
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-8 z-[9999] w-36 rounded-xl border border-[#55516c] bg-[#373646] p-1 shadow-2xl">
+              <div className="absolute right-0 top-8 z-[9999] w-36 rounded-xl border border-[#302438] bg-[#20232B] p-1 shadow-2xl">
                 <button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false);
                     onReport?.();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-[#e58d91] hover:bg-[#454256] transition-colors"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-[#E58B91] hover:bg-[#302438] transition-colors"
                 >
                   <ShieldAlert className="size-3.5" /> Report User
                 </button>
@@ -210,7 +208,7 @@ export default function MiniProfileCard({
                     setMenuOpen(false);
                     onBlock?.();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-[#e58d91] hover:bg-[#454256] transition-colors"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-[#E58B91] hover:bg-[#302438] transition-colors"
                 >
                   <Ban className="size-3.5" /> Block User
                 </button>
@@ -223,33 +221,33 @@ export default function MiniProfileCard({
       {/* Avatar & Card Body */}
       <div className="relative px-5 pb-5 pt-0 z-10">
         <div className="-mt-9 mb-2 flex items-end justify-between">
-          <Avatar className="size-16 border-4 border-[#2a2838] bg-[#4d3e68] shrink-0 shadow-md">
+          <Avatar className="size-16 border-4 border-[#17191E] bg-[#302438] shrink-0 shadow-md">
             <AvatarImage
               src={user.avatar_url || undefined}
               alt={displayName}
               className="object-cover"
             />
             <AvatarFallback>
-              <Gamepad2 className="size-6 text-[#c2ade7]" />
+              <Gamepad2 className="size-6 text-[#B39ACF]" />
             </AvatarFallback>
           </Avatar>
         </div>
 
         <div>
           <div className="flex items-center gap-1.5">
-            <h3 className="text-base font-bold text-white truncate">
+            <h3 className="text-base font-bold text-[#E6E1EA] truncate">
               {displayName}
             </h3>
             {isPrivate && (
-              <span title="Private Profile" className="text-[#8b86a3]">
+              <span title="Private Profile" className="text-[#A0A0A8]">
                 <Lock className="size-3.5" />
               </span>
             )}
           </div>
-          <p className="text-xs text-[#b4aec7] truncate">@{user.username}</p>
+          <p className="text-xs text-[#B39ACF] truncate">@{user.username}</p>
         </div>
 
-        <p className="mt-2 text-xs leading-relaxed text-[#d0ccdc] line-clamp-2">
+        <p className="mt-2 text-xs leading-relaxed text-[#A0A0A8] line-clamp-2">
           {isPrivate && !isFriend
             ? "This profile is private."
             : user.bio?.trim() || "No bio provided."}
@@ -258,7 +256,7 @@ export default function MiniProfileCard({
         {/* Favorite Games preview (Hidden for private non-friends) */}
         {!isPrivate || isFriend ? (
           <div className="mt-3">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#b4aec7]">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#B39ACF]">
               Favorite games
             </p>
             <div className="flex gap-2">
@@ -266,25 +264,25 @@ export default function MiniProfileCard({
                 favorites.slice(0, 3).map((game, i) => (
                   <div
                     key={game.id || i}
-                    className="h-12 flex-1 overflow-hidden rounded-lg bg-[#373646]"
+                    className="h-12 flex-1 overflow-hidden rounded-lg bg-[#20232B] border border-[#302438]"
                   >
                     <FavoriteCover src={game.cover_image_url} title={game.title} />
                   </div>
                 ))
               ) : (
-                <p className="text-[11px] text-[#b4aec7]">No favorite games listed.</p>
+                <p className="text-[11px] text-[#A0A0A8]">No favorite games listed.</p>
               )}
             </div>
           </div>
         ) : null}
 
         {/* View Full Profile Button */}
-        <div className="mt-4 pt-3 border-t border-[#55516c]/60">
+        <div className="mt-4 pt-3 border-t border-[#302438]">
           {isPrivate && !isFriend ? (
             <Button
               disabled
               variant="outline"
-              className="w-full h-9 gap-1.5 border-[#55516c] bg-[#2a2838] text-xs font-semibold text-[#8b86a3] cursor-not-allowed"
+              className="w-full h-9 gap-1.5 border-[#302438] bg-[#17191E] text-xs font-semibold text-[#777780] cursor-not-allowed"
             >
               <Lock className="size-3.5" /> Profile is Private
             </Button>
@@ -292,7 +290,7 @@ export default function MiniProfileCard({
             <Button
               asChild
               variant="outline"
-              className="w-full h-9 gap-1.5 border-[#55516c] bg-[#373646] text-xs font-semibold text-[#e0deeb] hover:bg-[#454256] hover:text-white transition-colors"
+              className="w-full h-9 gap-1.5 border-[#302438] bg-[#20232B] text-xs font-semibold text-[#E6E1EA] hover:bg-[#302438] hover:border-[#554363] hover:text-white transition-colors"
             >
               <Link to={`/profile/${encodeURIComponent(user.username)}`}>
                 View Full Profile <ExternalLink className="size-3.5" />

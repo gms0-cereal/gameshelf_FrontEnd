@@ -6,9 +6,9 @@ import {
   type FormEvent,
 } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import gameShelfLogo from "../logo/Gameshelf_Logo.png";
 import {
-  Library,
   Search,
   ChevronDown,
   Gamepad2,
@@ -34,6 +34,36 @@ const menuItems = [
 const menuItemClass =
   "block w-full px-4 py-2.5 text-left text-sm text-[#E6E1EA] hover:bg-[#20232B] focus:bg-[#20232B] focus:outline-none transition-colors";
 
+function isUserAdult(birthDayStr: string | null | undefined): boolean {
+  if (!birthDayStr) return false;
+  const birthDate = new Date(birthDayStr);
+  if (isNaN(birthDate.getTime())) return false;
+  
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 18;
+}
+
+function isAdultGame(game: PickerGame & { genres?: string[]; tags?: string[] }) {
+  const adultKeywords = ["hentai", "sexual content", "nudity", "adult content"];
+  
+  const matchesGenre = game.genres?.some((g) => 
+    adultKeywords.some((kw) => g.toLowerCase().includes(kw))
+  );
+  const matchesTag = game.tags?.some((t) => 
+    adultKeywords.some((kw) => t.toLowerCase().includes(kw))
+  );
+  const matchesTitle = adultKeywords.some((kw) => 
+    game.title.toLowerCase().includes(kw)
+  );
+
+  return matchesGenre || matchesTag || matchesTitle;
+}
+
 export default function Navbar() {
   const { user, loading, logoutUser } = useAuth();
   const navigate = useNavigate();
@@ -50,54 +80,36 @@ export default function Navbar() {
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Close the profile menu when clicking outside.
   useEffect(() => {
     if (!open) return;
-
     const onClick = (e: MouseEvent) => {
       if (!wrapperRef.current?.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-
     document.addEventListener("mousedown", onClick);
-
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-    };
+    return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  // Focus the first menu item when opening the menu.
   useEffect(() => {
     if (open) {
-      menuRef.current
-        ?.querySelector<HTMLElement>('[role="menuitem"]')
-        ?.focus();
+      menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     }
   }, [open]);
 
-  // Ctrl+K / Cmd+K opens search.
   useEffect(() => {
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "k"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         searchRef.current?.focus();
       }
     };
-
     document.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-    };
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
     const query = searchQuery.trim();
-
     if (query.length < 2) return;
 
     let cancelled = false;
@@ -105,10 +117,16 @@ export default function Navbar() {
 
     const timer = setTimeout(async () => {
       setSearchLoading(true);
-
       try {
         const games = await searchSteamGames(query, controller.signal);
-        if (!cancelled) setSearchResults(games.slice(0, 8));
+        if (!cancelled) {
+          const userCanViewAdult = user?.birth_day && isUserAdult(user.birth_day);
+          const filteredGames = games.filter((game) => {
+            if (isAdultGame(game) && !userCanViewAdult) return false;
+            return true;
+          });
+          setSearchResults(filteredGames.slice(0, 8));
+        }
       } catch {
         if (!cancelled && !controller.signal.aborted) {
           setSearchResults([]);
@@ -124,25 +142,17 @@ export default function Navbar() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [searchQuery]);
+  }, [searchQuery, user]);
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(
-      menuRef.current?.querySelectorAll<HTMLElement>(
-        '[role="menuitem"]'
-      ) ?? []
+      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []
     );
-
-    const index = items.indexOf(
-      document.activeElement as HTMLElement
-    );
+    const index = items.indexOf(document.activeElement as HTMLElement);
 
     if (e.key === "Escape") {
       setOpen(false);
-
-      wrapperRef.current
-        ?.querySelector<HTMLButtonElement>("button")
-        ?.focus();
+      wrapperRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       items[(index + 1) % items.length]?.focus();
@@ -156,7 +166,6 @@ export default function Navbar() {
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     const firstResult = searchResults[0];
     if (firstResult) {
       navigate(`/gamedetails/${firstResult.appid}`);
@@ -173,7 +182,6 @@ export default function Navbar() {
   const handleLogout = async () => {
     setLogoutError(null);
     setLoggingOut(true);
-
     try {
       await logoutUser();
       setOpen(false);
@@ -193,33 +201,62 @@ export default function Navbar() {
       >
         {/* Left side: Brand + Nav Links */}
         <div className="flex items-center gap-8 xl:gap-10">
+          
+          {/* ==========================================================
+            LOGO POSITIONING CONTROLS:
+            - Change `translate-y-[...]` to move up/down (e.g. translate-y-[1px])
+            - Change `ml-[...]` or `mr-[...]` to nudge left or right 
+            ========================================================== */}
           <Link
             to="/home"
             aria-label="GameShelf home"
-            className="flex shrink-0 items-center gap-2.5 text-[#E6E1EA]"
+            className="flex items-center text-base leading-[19px] text-[#E6E1EA] shrink-0"
           >
-            <img
+            <motion.img
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               src={gameShelfLogo}
               alt="GameShelf"
-              className="h-[36px] w-auto shrink-0"
+              className="h-[36px] w-auto object-contain select-none"
             />
           </Link>
-
+          
+          {/* Nav Links with Framer Motion feedback */}
           <ul className="flex items-center gap-6 text-sm leading-[17px]">
             {navLinks.map((link) => (
-              <li key={link.label}>
+              <li key={link.label} className="relative">
                 <NavLink
                   to={link.to}
                   end={link.to === "/"}
                   className={({ isActive }) =>
-                    `whitespace-nowrap transition-colors ${
+                    `relative block py-1 whitespace-nowrap transition-colors ${
                       isActive
                         ? "font-semibold text-[#B39ACF]"
                         : "text-[#A0A0A8] hover:text-[#E6E1EA]"
                     }`
                   }
                 >
-                  {link.label}
+                  {({ isActive }) => (
+                    <>
+                      <motion.span
+                        whileTap={{ scale: 0.92 }}
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                        className="inline-block"
+                      >
+                        {link.label}
+                      </motion.span>
+                      
+                      {/* Smooth Framer Motion layout pill indicator for active tab */}
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeTabIndicator"
+                          className="absolute -bottom-1 left-0 right-0 h-[2px] bg-[#B39ACF] rounded-full shadow-[0_0_8px_rgba(179,154,207,0.5)]"
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}
@@ -228,7 +265,6 @@ export default function Navbar() {
 
         {/* Right side: Search bar + Profile */}
         <div className="flex items-center gap-5">
-          {/* Search */}
           <form
             role="search"
             onSubmit={handleSearch}

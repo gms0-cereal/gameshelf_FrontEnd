@@ -36,8 +36,8 @@ export default function Footer() {
           </Link>
         ))}
       </nav>
-
-      <span></span>
+{/* 
+      <span></span> */}
     </footer>
   );
 }
