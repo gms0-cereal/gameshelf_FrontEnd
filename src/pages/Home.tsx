@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback,useInsertionEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useCallback,useInsertionEffect, useRef} from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +17,10 @@ import TopRatedSection from "@/components/games/TopRatedSection";
 import FriendsActivitySection from "@/components/games/FriendsActvitySection";
 import { PlaylistCarouselCard } from "@/components/playlists/PlaylistCards";
 import { getPlaylists, type Playlist } from "@/services/playlistService";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight, ListMusic } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const { user } = useAuth();
@@ -122,6 +125,44 @@ export default function Home() {
     };
   }, []);
 
+  const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" },
+  },
+};
+
+const carouselContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const cardItemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: "easeOut" },
+  },
+};
+const carouselRef = useRef<HTMLDivElement>(null);
+const scrollCarousel = (direction: number) => {
+  if (!carouselRef.current) return;
+
+  carouselRef.current.scrollBy({
+    left: direction * 300,
+    behavior: "smooth",
+  });
+};
+
+const playlistsLoading = false;
+const playlistsError = null;
   return (
     <div className="min-h-screen w-full bg-[#000000]">
       <div
@@ -174,31 +215,112 @@ export default function Home() {
           <FriendsActivitySection />
 
           {/* 7. Community Playlists Section */}
-          {communityPlaylists.length > 0 && (
-            <section aria-labelledby="community-playlists-title" className="flex flex-col gap-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2
-                    id="community-playlists-title"
-                    className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
-                  >
-                    Community Playlists
-                  </h2>
-                  <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
-                    Curated game collections built by players across the platform
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {communityPlaylists.map((playlist) => (
-                  <div key={playlist.id} className="w-[260px] sm:w-[280px] shrink-0 snap-start">
-                    <PlaylistCarouselCard playlist={playlist} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+         
+{/* 7. Community Playlists Section */}
+<motion.section
+  variants={sectionVariants}
+  initial="hidden"
+  whileInView="visible"
+  viewport={{ once: true, margin: "-50px" }}
+  id="community-playlists"
+  aria-labelledby="community-playlists-title"
+  className="flex flex-col gap-5"
+>
+  <div>
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2
+          id="community-playlists-title"
+          className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+        >
+          Community Playlists
+        </h2>
+        <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
+          Discover what other players are curating
+        </p>
+        <Link
+          to="/playlists"
+          className="text-[13px] text-[#B39ACF] hover:underline"
+        >
+          View more →
+        </Link>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Link
+          to="/playlists/new"
+          className="mr-2 rounded-xl bg-[#B39ACF] px-4 py-2.5 text-[13px] font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
+        >
+          Create playlist
+        </Link>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => scrollCarousel(-1)}
+          aria-label="Scroll left"
+          className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:border-[#554363] hover:bg-[#20232B]"
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => scrollCarousel(1)}
+          aria-label="Scroll right"
+          className="size-8 rounded-lg border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:border-[#554363] hover:bg-[#20232B]"
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  </div>
+
+  {playlistsLoading && (
+    <p role="status" className="text-sm text-[#A0A0A8]">
+      Loading community playlists…
+    </p>
+  )}
+
+  {playlistsError && (
+    <p role="alert" className="text-sm text-[#E58B91]">
+      {playlistsError}
+    </p>
+  )}
+
+  {!playlistsLoading && !playlistsError && communityPlaylists.length === 0 && (
+    <div className="rounded-2xl border border-dashed border-[#302438] bg-[#17191E] px-6 py-10 text-center">
+      <ListMusic
+        className="mx-auto size-8 text-[#A0A0A8]"
+        strokeWidth={1.5}
+      />
+      <p className="mt-3 text-sm text-[#A0A0A8]">
+        No public playlists yet. Be the first to share one.
+      </p>
+    </div>
+  )}
+
+  {!playlistsLoading && !playlistsError && communityPlaylists.length > 0 && (
+    <motion.div
+      ref={carouselRef}
+      variants={carouselContainerVariants}
+      initial="hidden"
+      animate="visible"
+      className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {communityPlaylists.map((playlist) => (
+        <motion.div
+          key={playlist.id}
+          variants={cardItemVariants}
+        >
+          <PlaylistCarouselCard playlist={playlist} />
+        </motion.div>
+      ))}
+    </motion.div>
+  )}
+</motion.section>
+
         </main>
         <Footer />
       </div>
