@@ -28,6 +28,9 @@ const TOP_GENRES_SHOWN = 10;
 // Same toast (by key) can only appear once per this many milliseconds.
 const TOAST_COOLDOWN_MS = 30_000;
 
+// How long the copy button's success state stays visible before opening the new copy.
+const COPY_SUCCESS_DELAY_MS = 1200;
+
 const SORTS = [
   { value: "order", label: "Curated (author's order)" },
   { value: "title", label: "Title (A–Z)" },
@@ -228,13 +231,16 @@ const PlaylistDetail = () => {
   const shakeCopyButton = () =>
     copyControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.4 } });
 
-  // Toast handed over by another page (e.g. "Playlist updated." after editing)
+  // Toast handed over by another page (e.g. "Playlist updated." after editing).
+  // The ref makes sure it shows exactly once: in dev, React StrictMode runs effects
+  // twice, and both runs would otherwise read the same location state and toast twice.
+  const handoffToastShown = useRef(false);
   useEffect(() => {
     const message = (location.state as { toast?: string } | null)?.toast;
-    if (message) {
-      pushToast("success", message);
-      navigate(location.pathname, { replace: true, state: null });
-    }
+    if (!message || handoffToastShown.current) return;
+    handoffToastShown.current = true;
+    pushToast("success", message);
+    navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -373,9 +379,12 @@ const PlaylistDetail = () => {
       const created = await copyPlaylist(playlistId);
       writeCopied(playlistId);
       setAlreadyCopied(true);
+      setCopying(false); // show the "Already copied" check state before leaving
       pushToast("success", "Playlist copied to your library!");
       const newOwner = created.owner?.username;
       if (newOwner) {
+        // Give the success animation time to play before opening the new copy
+        await new Promise((resolve) => window.setTimeout(resolve, COPY_SUCCESS_DELAY_MS));
         navigate(`/playlists/${encodeURIComponent(newOwner)}/${created.id}`);
       }
     } catch (err) {
@@ -565,7 +574,7 @@ const PlaylistDetail = () => {
                           initial={{ opacity: 0, scale: 0.4, rotate: -90 }}
                           animate={{ opacity: 1, scale: 1, rotate: 0 }}
                           exit={{ opacity: 0, scale: 0.4, rotate: 90 }}
-                          transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                          transition={{ type: "spring", stiffness: 180, damping: 18 }}
                           className="inline-flex"
                         >
                           {copying ? (
@@ -584,7 +593,7 @@ const PlaylistDetail = () => {
                           initial={{ opacity: 0, y: 6 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -6 }}
-                          transition={{ duration: 0.15 }}
+                          transition={{ duration: 0.35, ease: "easeInOut" }}
                         >
                           {copying ? "Copying..." : alreadyCopied ? "Already copied" : "Make a copy"}
                         </motion.span>
