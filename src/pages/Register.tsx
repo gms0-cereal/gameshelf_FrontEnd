@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { Mail, Lock, User, ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { register } from "@/services/authService";
 
-// 9 Hardcoded reliable cover images with high-res Steam assets
 const ROTATING_HERO_GAMES = [
   {
     title: "Hollow Knight: Silksong",
@@ -67,7 +68,6 @@ export default function Register() {
   });
   const [loading, setLoading] = useState(false);
 
-  // Auto-rotate the featured banner every 10 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length);
@@ -86,10 +86,24 @@ export default function Register() {
     setLoading(true);
 
     try {
-      toast.success("Account created successfully!");
-      navigate("/interests");
-    } catch {
-      toast.error("Failed to create account. Please try again.");
+      await register({
+        username: formData.username.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+
+      toast.success("Account created successfully! Please log in.");
+      navigate("/login", {
+        state: { username: formData.username.trim() },
+      });
+    } catch (error) {
+      const message = isAxiosError(error)
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          "Failed to create account. Please try again."
+        : "Failed to create account. Please try again.";
+
+      toast.error(String(message));
     } finally {
       setLoading(false);
     }
@@ -99,11 +113,10 @@ export default function Register() {
     <div className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Navbar />
 
-      {/* Main Container - flex-1 pushes Footer to bottom when viewport exceeds content */}
       <main className="flex flex-1 flex-col justify-center px-5 py-8 md:px-8 xl:px-16">
         <div className="grid w-full gap-8 lg:grid-cols-12 lg:items-center">
           
-          {/* Left Side: Registration Form */}
+          {/* Form Side */}
           <div className="flex w-full flex-col justify-center lg:col-span-5">
             <Card className="w-full rounded-2xl border border-[#302438] bg-[#17191E] p-2 text-[#E6E1EA] shadow-2xl">
               <CardContent className="flex flex-col gap-6 p-6 md:p-8">
@@ -117,7 +130,6 @@ export default function Register() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  {/* Username Field */}
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="username" className="text-[12px] font-medium text-[#A0A0A8]">
                       Username
@@ -137,7 +149,6 @@ export default function Register() {
                     </div>
                   </div>
 
-                  {/* Email Field */}
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="email" className="text-[12px] font-medium text-[#A0A0A8]">
                       Email Address
@@ -157,7 +168,6 @@ export default function Register() {
                     </div>
                   </div>
 
-                  {/* Password Field with Toggle Button */}
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="password" className="text-[12px] font-medium text-[#A0A0A8]">
                       Password
@@ -180,11 +190,7 @@ export default function Register() {
                         className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77717F] hover:text-[#E6E1EA]"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
-                        {showPassword ? (
-                          <EyeOff className="size-4" />
-                        ) : (
-                          <Eye className="size-4" />
-                        )}
+                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
                     </div>
                   </div>
@@ -209,10 +215,9 @@ export default function Register() {
             </Card>
           </div>
 
-          {/* Right Side: Hero Banner rotating every 10s */}
+          {/* Banner Side */}
           <div className="hidden w-full lg:col-span-7 lg:block">
             <div className="relative flex min-h-[460px] w-full flex-col justify-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-8 md:p-10">
-              
               <div className="absolute inset-0">
                 <img
                   key={activeGame.cover}
@@ -237,7 +242,7 @@ export default function Register() {
                   {activeGame.title}
                 </h2>
                 <p className="max-w-[500px] text-xs text-[#A0A0A8]">
-                  Build your collection, and receive recommendations based on your preferences.
+                  Build your collection, log playtimes, and receive recommendations based on your preferences.
                 </p>
               </div>
 

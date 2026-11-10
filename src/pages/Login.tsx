@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { Mail, Lock, User, ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff, LogIn } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { login } from "@/services/authService";
+import {useAuth} from "@/context/AuthContext";
 
-// 9 Hardcoded reliable cover images with high-res Steam assets
 const ROTATING_HERO_GAMES = [
   {
     title: "Hollow Knight: Silksong",
@@ -58,15 +60,27 @@ const ROTATING_HERO_GAMES = [
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { refreshUser } = useAuth();
+
+  const routeState = location.state as {
+    from?: { pathname?: string } | string;
+    username?: string;
+  } | null;
+
+  const redirectTo =
+    typeof routeState?.from === "string"
+      ? routeState.from
+      : routeState?.from?.pathname || "/home";
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    username: "",
+    username: routeState?.username || "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
 
-  // Auto-rotate the featured banner every 10 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length);
@@ -85,11 +99,23 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Perform your login authentication here
+      await login({
+        username: formData.username.trim(),
+        password: formData.password,
+      });
+
+      await refreshUser();
+
       toast.success("Logged in successfully!");
-      navigate("/home");
-    } catch {
-      toast.error("Invalid username or password. Please try again.");
+      navigate(redirectTo, { replace: true });
+    } catch (error) {
+      const message = isAxiosError(error)
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          "Invalid username or password. Please try again."
+        : "Unable to log in. Please try again.";
+
+      toast.error(String(message));
     } finally {
       setLoading(false);
     }
@@ -99,11 +125,10 @@ export default function Login() {
     <div className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Navbar />
 
-      {/* Main Container - flex-1 pushes Footer to bottom when viewport exceeds content */}
       <main className="flex flex-1 flex-col justify-center px-5 py-8 md:px-8 xl:px-16">
         <div className="grid w-full gap-8 lg:grid-cols-12 lg:items-center">
           
-          {/* Left Side: Login Form (matching Register layout side) */}
+          {/* Form Side */}
           <div className="flex w-full flex-col justify-center lg:col-span-5">
             <Card className="w-full rounded-2xl border border-[#302438] bg-[#17191E] p-2 text-[#E6E1EA] shadow-2xl">
               <CardContent className="flex flex-col gap-6 p-6 md:p-8">
@@ -117,7 +142,6 @@ export default function Login() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  {/* Username Field */}
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="username" className="text-[12px] font-medium text-[#A0A0A8]">
                       Username
@@ -137,7 +161,6 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {/* Password Field with Toggle Button */}
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
                       <label htmlFor="password" className="text-[12px] font-medium text-[#A0A0A8]">
@@ -165,11 +188,7 @@ export default function Login() {
                         className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77717F] hover:text-[#E6E1EA]"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
-                        {showPassword ? (
-                          <EyeOff className="size-4" />
-                        ) : (
-                          <Eye className="size-4" />
-                        )}
+                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
                     </div>
                   </div>
@@ -194,10 +213,9 @@ export default function Login() {
             </Card>
           </div>
 
-          {/* Right Side: Hero Banner rotating every 10s (matching Register layout side) */}
+          {/* Banner Side */}
           <div className="hidden w-full lg:col-span-7 lg:block">
             <div className="relative flex min-h-[460px] w-full flex-col justify-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-8 md:p-10">
-              
               <div className="absolute inset-0">
                 <img
                   key={activeGame.cover}
