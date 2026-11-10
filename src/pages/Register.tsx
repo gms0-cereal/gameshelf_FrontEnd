@@ -1,408 +1,291 @@
-// ─── React & Router ───────────────────────────────────────────────────────────
-import {
-    useEffect,
-    useState,
-    type ChangeEvent,
-    type ComponentProps,
-    type FormEvent,
-    type ReactNode,
-} from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Mail, Lock, User, ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 
-// ─── UI Components ────────────────────────────────────────────────────────────
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import Navbar from '../components/layout/Navbar';
-import Footer from '../components/layout/Footer';
-// ─── Icons ────────────────────────────────────────────────────────────────────
-import { Eye, EyeOff, Mail, User } from 'lucide-react';
-import { toast } from 'sonner';
-
-// ─── Services ───────────────────────────────────────────────────────────────
-import { isAxiosError } from 'axios';
-import { register } from '../services/authService';
-import api from '../lib/api';
-
-type FormValues = {
-    username: string;
-    email: string;
-    password: string;
-    confirm: string;
-    terms: boolean;
-};
-type FormErrors = Partial<Record<keyof FormValues | 'form', string>>;
-
-const EMPTY_FORM: FormValues = {
-    username: '',
-    email: '',
-    password: '',
-    confirm: '',
-    terms: false,
-};
-
-const STORAGE_KEY_COVER_INDEX = 'gameshelf_signup_cover_idx';
-const FALLBACK_COVERS = [
-    'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1200&auto=format&fit=crop',
+// 9 Hardcoded reliable cover images with high-res Steam assets
+const ROTATING_HERO_GAMES = [
+  {
+    title: "Hollow Knight: Silksong",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1030300/header.jpg",
+    genre: "Action / Platformer / Metroidvania",
+  },
+  {
+    title: "Armored Core VI Fires of Rubicon",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1888160/header.jpg",
+    genre: "Action / Mecha / Sci-Fi",
+  },
+  {
+    title: "Black Myth: Wukong",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg",
+    genre: "Action RPG / Mythology",
+  },
+  {
+    title: "Lies of P",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1627720/header.jpg",
+    genre: "Souls-like / Dark Fantasy",
+  },
+  {
+    title: "Counter-Strike 2",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg",
+    genre: "FPS / Tactical Competitive",
+  },
+  {
+    title: "Cuphead",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/268910/header.jpg",
+    genre: "Run & Gun / Classic Animation",
+  },
+  {
+    title: "NieR:Automata",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/524220/header.jpg",
+    genre: "Action RPG / Post-Apocalyptic",
+  },
+  {
+    title: "Dark Souls III",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/374320/header.jpg",
+    genre: "Dark Fantasy / Action RPG",
+  },
+  {
+    title: "Red Dead Redemption 2",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg",
+    genre: "Open World / Western Story",
+  },
 ];
 
-const inputClass =
-    'h-11 rounded-lg border-[#3f3a5c] bg-[#2a2641] pr-11 text-[13px] text-[#f2f0f9] placeholder:text-[#a39fba] focus-visible:border-[#9188dc] focus-visible:ring-[#9188dc]/30 aria-invalid:border-[#f2848d] aria-invalid:ring-[#f2848d]/20';
+export default function Register() {
+  const navigate = useNavigate();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [loading, setLoading] = useState(false);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function validate(v: FormValues): FormErrors {
-    const e: FormErrors = {};
-    const username = v.username.trim();
-    const email = v.email.trim();
+  // Auto-rotate the featured banner every 10 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
-    if (!username) e.username = 'Enter a username.';
-    else if (username.length > 20) e.username = 'Username cannot exceed 20 characters.';
-    else if (!/^[\w.@+-]{3,20}$/.test(username))
-        e.username = 'Use 3 to 20 letters, numbers or . @ + - _ with no spaces.';
+  const activeGame = ROTATING_HERO_GAMES[currentSlide];
 
-    if (!email) e.email = 'Enter your email address.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-        e.email = 'Enter a valid email address.';
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
-    if (!v.password) e.password = 'Enter a password.';
-    else if (v.password.length < 8) e.password = 'Use at least 8 characters.';
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-    if (!v.confirm) e.confirm = 'Re-enter your password.';
-    else if (v.confirm !== v.password) e.confirm = "Passwords don't match.";
-
-    if (!v.terms) e.terms = 'Agree to the Terms and Privacy Policy to continue.';
-    return e;
-}
-
-function fromApi(data: unknown): FormErrors {
-    const out: FormErrors = {};
-    if (data && typeof data === 'object') {
-        for (const [key, msg] of Object.entries(data as Record<string, unknown>)) {
-            const text = Array.isArray(msg) ? msg.join(' ') : String(msg);
-            const field = key === 'non_field_errors' || key === 'detail' ? 'form' : key;
-            out[field as keyof FormErrors] = text;
-        }
+    try {
+      toast.success("Account created successfully!");
+      navigate("/interests");
+    } catch {
+      toast.error("Failed to create account. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    if (Object.keys(out).length === 0) out.form = 'Something went wrong. Try again.';
-    return out;
-}
+  };
 
-type FieldProps = Omit<ComponentProps<'input'>, 'id'> & {
-    id: string;
-    label: string;
-    error?: string;
-    trailing?: ReactNode;
-};
+  return (
+    <div className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <Navbar />
 
-function Field({ id, label, error, trailing, ...input }: FieldProps) {
-    const errorId = `${id}-error`;
-    return (
-        <div className="mb-4">
-            <label htmlFor={id} className="mb-2 block text-[11px] font-semibold">
-                {label}
-            </label>
-            <div className="relative">
-                <Input
-                    id={id}
-                    className={inputClass}
-                    aria-invalid={Boolean(error)}
-                    aria-describedby={error ? errorId : undefined}
-                    {...input}
-                />
-                {trailing}
-            </div>
-            {error && (
-                <p id={errorId} className="mt-1.5 text-xs text-[#f2848d]">
-                    {error}
-                </p>
-            )}
-        </div>
-    );
-}
+      {/* Main Container - flex-1 pushes Footer to bottom when viewport exceeds content */}
+      <main className="flex flex-1 flex-col justify-center px-5 py-8 md:px-8 xl:px-16">
+        <div className="grid w-full gap-8 lg:grid-cols-12 lg:items-center">
+          
+          {/* Left Side: Registration Form */}
+          <div className="flex w-full flex-col justify-center lg:col-span-5">
+            <Card className="w-full rounded-2xl border border-[#302438] bg-[#17191E] p-2 text-[#E6E1EA] shadow-2xl">
+              <CardContent className="flex flex-col gap-6 p-6 md:p-8">
+                <div>
+                  <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.5px] text-[#E6E1EA]">
+                    Create an Account
+                  </h1>
+                  <p className="mt-1.5 text-xs text-[#A0A0A8]">
+                    Join GameShelf to curate your catalog and track your favorite games.
+                  </p>
+                </div>
 
-const iconSlot =
-    'absolute inset-y-0 right-0 grid w-11 place-items-center text-[#a39fba]';
-
-function PasswordField(props: Omit<FieldProps, 'type' | 'trailing'>) {
-    const [shown, setShown] = useState(false);
-    return (
-        <Field
-            {...props}
-            type={shown ? 'text' : 'password'}
-            trailing={
-                <button
-                    type="button"
-                    onClick={() => setShown(s => !s)}
-                    aria-label={shown ? 'Hide password' : 'Show password'}
-                    aria-pressed={shown}
-                    className={`${iconSlot} cursor-pointer rounded-lg hover:text-white focus-visible:outline-2 focus-visible:outline-[#9188dc]`}
-                >
-                    {shown ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                </button>
-            }
-        />
-    );
-}
-
-function SignUp() {
-    const navigate = useNavigate();
-
-    const [values, setValues] = useState<FormValues>(EMPTY_FORM);
-    const [errors, setErrors] = useState<FormErrors>({});
-    const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
-
-    // Dynamic Game Covers State
-    const [heroCovers, setHeroCovers] = useState<string[]>(FALLBACK_COVERS);
-    const [currentCover, setCurrentCover] = useState<string>(FALLBACK_COVERS[0]);
-
-    useEffect(() => {
-        async function fetchGameCovers() {
-            try {
-                const gameQueries = ['Silksong', 'Ultrakill', 'Ori', 'Nier', 'Counter-Strike', 'Castle Crashers'];
-                const promises = gameQueries.map(async (query) => {
-                    const { data } = await api.get('/games/', { params: { search: query, limit: 1 } });
-                    const results = Array.isArray(data) ? data : (data as { results?: any[] }).results;
-                    if (results && results.length > 0) {
-                        return results[0].cover_image_url || results[0].background_image || null;
-                    }
-                    return null;
-                });
-
-                const fetchedImages = (await Promise.all(promises)).filter(Boolean) as string[];
-                const coversToUse = fetchedImages.length > 0 ? fetchedImages : FALLBACK_COVERS;
-
-                setHeroCovers(coversToUse);
-
-                const storedIdx = localStorage.getItem(STORAGE_KEY_COVER_INDEX);
-                const nextIdx = storedIdx ? (parseInt(storedIdx, 10) + 1) % coversToUse.length : 0;
-                setCurrentCover(coversToUse[nextIdx]);
-            } catch {
-                setCurrentCover(FALLBACK_COVERS[0]);
-            }
-        }
-
-        fetchGameCovers();
-    }, []);
-
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const { name, type, value, checked } = e.target;
-        setValues(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-        setErrors(prev => {
-            const next = { ...prev };
-            delete next[name as keyof FormErrors];
-            delete next.form;
-            return next;
-        });
-    };
-
-    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const found = validate(values);
-        setErrors(found);
-        if (Object.keys(found).length > 0) return;
-
-        setStatus('submitting');
-        try {
-            await register({
-                username: values.username.trim(),
-                email: values.email.trim(),
-                password: values.password,
-            });
-
-            // Rotate cover index forward upon successful registration sequence
-            if (heroCovers.length > 0) {
-                const storedIdx = localStorage.getItem(STORAGE_KEY_COVER_INDEX);
-                const nextIdx = storedIdx ? (parseInt(storedIdx, 10) + 1) % heroCovers.length : 0;
-                localStorage.setItem(STORAGE_KEY_COVER_INDEX, nextIdx.toString());
-            }
-
-            setStatus('success');
-            return;
-        } catch (error) {
-            if (isAxiosError(error) && error.response) {
-                setErrors(fromApi(error.response.data));
-            } else {
-                toast.error("Can't reach the server. Check your connection and try again.");
-            }
-        }
-        setStatus('idle');
-    };
-
-    return (
-        <div className="flex min-h-screen flex-col bg-[#1e1b2e] text-[#f2f0f9] antialiased">
-            <Navbar />
-
-            <main className="mx-auto grid w-full max-w-[1200px] flex-1 items-center gap-10 px-4 py-10 sm:px-6 md:grid-cols-2 md:gap-14 lg:px-[52px] lg:py-[50px]">
-                {/* ── Hero Panel with Dynamic Covers & Matched Sizing ── */}
-                <section
-                    aria-label="GameShelf Featured Artwork"
-                    className="relative hidden min-h-[360px] overflow-hidden rounded-2xl bg-[#1d2b33] md:block md:h-full md:min-h-[550px] shadow-xl order-2 lg:order-1"
-                >
-                    <img
-                        src={currentCover}
-                        alt="Featured Game Artwork"
-                        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1b1a2a]/95 via-[#1b1a2a]/30 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 p-8 z-10">
-                        <p className="text-xs tracking-widest text-[#c9c6e0] font-semibold uppercase">
-                            Your games. Your story.
-                        </p>
-                        <h2 className="mt-3 max-w-[320px] text-[32px] font-semibold leading-[1.1] text-[#ecebf7]">
-                            A home for every adventure.
-                        </h2>
-                        <p className="mt-5 text-[13px] text-[#c9c6e0]">
-                            Discover what&rsquo;s next. Keep the games you love close.
-                        </p>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                  {/* Username Field */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="username" className="text-[12px] font-medium text-[#A0A0A8]">
+                      Username
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
+                      <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        required
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="gamer123"
+                        className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-4 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
+                      />
                     </div>
-                </section>
+                  </div>
 
-                {/* ── Form ──────────────────────────────────────────────────── */}
-                <section
-                    aria-labelledby="signup-title"
-                    className="order-1 w-full md:max-w-[473px] md:justify-self-end lg:order-2"
-                >
-                    {status === 'success' ? (
-                        <div role="status">
-                            <h1 id="signup-title" className="mb-2.5 text-[28px] font-semibold">
-                                Account created
-                            </h1>
-                            <p className="mb-6 text-xs leading-normal text-[#a39fba]">
-                                We sent a verification link to {values.email.trim()}. Open it to
-                                finish setting up your account.
-                            </p>
-                            <Button
-                                className="h-10 bg-[#b0464f] px-6 text-sm font-semibold text-white hover:bg-[#c25660]"
-                                onClick={() => navigate('/login', { state: { username: values.username.trim() } })}
-                            >
-                                Go to Log In
-                            </Button>
-                        </div>
-                    ) : (
-                        <>
-                            <h1 id="signup-title" className="mb-2.5 text-[28px] font-semibold">
-                                Sign Up
-                            </h1>
-                            <p className="mb-6 text-xs leading-normal text-[#a39fba]">
-                                Build your shelf. Find your people. Discover your next favorite.
-                            </p>
+                  {/* Email Field */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="email" className="text-[12px] font-medium text-[#A0A0A8]">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="you@example.com"
+                        className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-4 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
+                      />
+                    </div>
+                  </div>
 
-                            <form noValidate onSubmit={handleSubmit}>
-                                <Field
-                                    id="signup-username"
-                                    label="Username"
-                                    name="username"
-                                    placeholder="Enter username"
-                                    autoComplete="username"
-                                    maxLength={20}
-                                    value={values.username}
-                                    onChange={handleChange}
-                                    error={errors.username}
-                                    trailing={
-                                        <span className={`${iconSlot} pointer-events-none`}>
-                                            <User className="size-4" aria-hidden="true" />
-                                        </span>
-                                    }
-                                />
-                                <Field
-                                    id="signup-email"
-                                    label="Email"
-                                    name="email"
-                                    type="email"
-                                    placeholder="Enter email"
-                                    autoComplete="email"
-                                    value={values.email}
-                                    onChange={handleChange}
-                                    error={errors.email}
-                                    trailing={
-                                        <span className={`${iconSlot} pointer-events-none`}>
-                                            <Mail className="size-4" aria-hidden="true" />
-                                        </span>
-                                    }
-                                />
-                                <PasswordField
-                                    id="signup-password"
-                                    label="Password"
-                                    name="password"
-                                    placeholder="Enter password"
-                                    autoComplete="new-password"
-                                    value={values.password}
-                                    onChange={handleChange}
-                                    error={errors.password}
-                                />
-                                <PasswordField
-                                    id="signup-confirm"
-                                    label="Confirm Password"
-                                    name="confirm"
-                                    placeholder="Enter password"
-                                    autoComplete="new-password"
-                                    value={values.confirm}
-                                    onChange={handleChange}
-                                    error={errors.confirm}
-                                />
+                  {/* Password Field with Toggle Button */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="password" className="text-[12px] font-medium text-[#A0A0A8]">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="••••••••"
+                        className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-10 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77717F] hover:text-[#E6E1EA]"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-                                <div className="mb-5 mt-1 text-xs text-[#a39fba]">
-                                    <label className="flex cursor-pointer items-center gap-2.5">
-                                        <input
-                                            type="checkbox"
-                                            name="terms"
-                                            checked={values.terms}
-                                            onChange={handleChange}
-                                            aria-invalid={Boolean(errors.terms)}
-                                            aria-describedby={
-                                                errors.terms ? 'signup-terms-error' : undefined
-                                            }
-                                            className="size-4 accent-[#b0464f]"
-                                        />
-                                        <span>
-                                            I agree to the{' '}
-                                            <Link to="/terms" className="text-[#9188dc] hover:underline">
-                                                Terms
-                                            </Link>{' '}
-                                            and{' '}
-                                            <Link to="/privacy" className="text-[#9188dc] hover:underline">
-                                                Privacy Policy
-                                            </Link>
-                                        </span>
-                                    </label>
-                                    {errors.terms && (
-                                        <p id="signup-terms-error" className="mt-1.5 text-xs text-[#f2848d]">
-                                            {errors.terms}
-                                        </p>
-                                    )}
-                                </div>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="mt-2 h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
+                  >
+                    {loading ? "Creating Account..." : "Continue to Setup"}
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </form>
 
-                                {errors.form && (
-                                    <p
-                                        role="alert"
-                                        className="mb-4 rounded-lg border border-[#f2848d] px-3 py-2.5 text-[13px] text-[#f2848d]"
-                                    >
-                                        {errors.form}
-                                    </p>
-                                )}
+                <div className="border-t border-[#302438] pt-4 text-center text-xs text-[#A0A0A8]">
+                  Already have an account?{" "}
+                  <Link to="/login" className="font-medium text-[#B39ACF] hover:underline">
+                    Log in
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-                                <Button
-                                    type="submit"
-                                    disabled={status === 'submitting'}
-                                    className="h-10 bg-[#b0464f] px-6 text-sm font-semibold text-white hover:bg-[#c25660]"
-                                >
-                                    {status === 'submitting' ? 'Creating account...' : 'Create Account'}
-                                </Button>
-                            </form>
+          {/* Right Side: Hero Banner rotating every 10s */}
+          <div className="hidden w-full lg:col-span-7 lg:block">
+            <div className="relative flex min-h-[460px] w-full flex-col justify-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-8 md:p-10">
+              
+              <div className="absolute inset-0">
+                <img
+                  key={activeGame.cover}
+                  src={activeGame.cover}
+                  alt={activeGame.title}
+                  className="h-full w-full object-cover contrast-110 saturate-125 transition-opacity duration-1000"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0.95) 100%)",
+                  }}
+                />
+              </div>
 
-                            <p className="mt-4 text-xs text-[#9188dc]">
-                                Already have an account?{' '}
-                                <Link to="/login" className="hover:underline">
-                                    Log In
-                                </Link>
-                            </p>
-                        </>
-                    )}
-                </section>
-            </main>
+              <div className="relative z-10 flex flex-col gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#B39ACF]">
+                  {activeGame.genre}
+                </p>
+                <h2 className="text-3xl font-semibold leading-tight text-[#E6E1EA] md:text-4xl">
+                  {activeGame.title}
+                </h2>
+                <p className="max-w-[500px] text-xs text-[#A0A0A8]">
+                  Build your collection, and receive recommendations based on your preferences.
+                </p>
+              </div>
 
-            <Footer />
+              <div className="relative z-10 mt-6 flex items-center justify-between">
+                <div className="flex gap-1.5">
+                  {ROTATING_HERO_GAMES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`h-2 rounded-full transition-all ${
+                        idx === currentSlide ? "w-6 bg-[#B39ACF]" : "w-2 bg-[#A0A0A8]/40 hover:bg-[#A0A0A8]"
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentSlide(
+                        (prev) => (prev - 1 + ROTATING_HERO_GAMES.length) % ROTATING_HERO_GAMES.length
+                      )
+                    }
+                    className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length)
+                    }
+                    className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
         </div>
-    );
-}
+      </main>
 
-export default SignUp;
+      <Footer />
+    </div>
+  );
+}

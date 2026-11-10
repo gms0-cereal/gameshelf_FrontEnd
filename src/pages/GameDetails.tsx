@@ -37,7 +37,7 @@ import {
 } from "@/services/Reviewservice";
 import ThirdPartyReviews from "@/components/reviews/ThirdPartyReviews";
 import GameshelfReviewItem from "@/components/reviews/GameshelfReviewItem";
-import SimilarGames from "@/components/games/SimilarGames";
+import SimilarGames from "@/components/games/SimilarGamesSection";
 
 const REVIEWS_PER_PAGE = 10;
 const DLC_LIMIT = 3;

@@ -25,7 +25,19 @@ const toGameSummary = ({ game, score, reason }: SimilarGameResult): GameSummary 
 
 const CARD_WIDTH = "w-[260px] sm:w-[280px]";
 
-export default function SimilarGames({ appId }: { appId: number | string }) {
+interface SimilarGamesProps {
+  appId: number | string;
+  likedGameTitle?: string;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+}
+
+export default function SimilarGamesSection({
+  appId,
+  likedGameTitle,
+  onLoadMore,
+  hasMore = false,
+}: SimilarGamesProps) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [canPrev, setCanPrev] = useState(false);
@@ -34,6 +46,7 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
 
   // Fetch whenever the selected game changes
   useEffect(() => {
+    if (!appId) return;
     const controller = new AbortController();
     setLoading(true);
     setGames([]);
@@ -63,6 +76,16 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
     return () => window.removeEventListener("resize", updateArrows);
   }, [games, loading, updateArrows]);
 
+  // Handle infinite scroll trigger when nearing the end
+  const handleScroll = (event: React.UIEvent<HTMLUListElement>) => {
+    updateArrows();
+    const el = event.currentTarget;
+    const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 400;
+    if (nearEnd && hasMore && onLoadMore) {
+      onLoadMore();
+    }
+  };
+
   function scrollByPage(direction: 1 | -1) {
     const el = trackRef.current;
     if (!el) return;
@@ -83,7 +106,7 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
             id="similar-games-title"
             className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
           >
-            Similar games
+            {likedGameTitle ? `Because you played ${likedGameTitle}` : "Similar games"}
           </h2>
           <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
             Based on shared tags and features
@@ -114,7 +137,7 @@ export default function SimilarGames({ appId }: { appId: number | string }) {
 
       <ul
         ref={trackRef}
-        onScroll={updateArrows}
+        onScroll={handleScroll}
         role="status"
         aria-busy={loading}
         className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
