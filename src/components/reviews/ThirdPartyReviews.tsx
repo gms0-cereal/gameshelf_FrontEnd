@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, SlidersHorizontal, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  ExternalLink,
+  Loader2,
+  SlidersHorizontal,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   getExternalReviews,
@@ -7,6 +14,15 @@ import {
   type ExternalReviewItem,
   type ExternalReviewsResponse,
 } from "@/services/Reviewservice";
+
+// The backend adds `status` for Reddit: the first time a game is opened it
+// scrapes in the background and answers "syncing" until the reviews are saved.
+type ExternalReviewsWithStatus = ExternalReviewsResponse & {
+  status?: "syncing" | "ready" | "failed";
+};
+
+const POLL_MS = 4000;
+const MAX_POLLS = 25; // about 100 seconds, then offer a manual "Check again"
 
 // ---------------------------------------------------------------------------
 // Sources
@@ -163,6 +179,9 @@ export default function ThirdPartyReviews({
   const [items, setItems] = useState<ExternalReviewItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false); // backend is collecting this game's reviews
+  const [timedOut, setTimedOut] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const visible = SOURCES.filter((source) => enabled.includes(source.key));
@@ -189,39 +208,85 @@ export default function ThirdPartyReviews({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, []);
 
-  // Load the selected source (only the ones our backend can fetch)
+  // Load the selected source (only the ones our backend can fetch).
+  // While the backend answers "syncing" we ask again every few seconds.
   useEffect(() => {
     setData(null);
     setItems([]);
     setCursor(null);
     setError(null);
+    setSyncing(false);
+    setTimedOut(false);
 
     if (!active || active.kind !== "api") return;
+    const source = active;
 
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let sawSyncing = false;
+    let polls = 0;
+
     setLoading(true);
 
-    getExternalReviews(appId, active.key)
-      .then((response) => {
+    async function load() {
+      try {
+        const response = (await getExternalReviews(
+          appId,
+          source.key
+        )) as ExternalReviewsWithStatus;
         if (cancelled) return;
+
+        if (response.status === "syncing") {
+          sawSyncing = true;
+          polls += 1;
+          if (polls >= MAX_POLLS) {
+            setSyncing(false);
+            setTimedOut(true);
+            setLoading(false);
+            return;
+          }
+          setSyncing(true);
+          timer = setTimeout(load, POLL_MS);
+          return;
+        }
+
+        setSyncing(false);
         setData(response);
         setItems(response.items);
         setCursor(response.next_cursor);
-      })
-      .catch((err) => {
+        setLoading(false);
+
+        if (response.status === "failed") {
+          setError(`Couldn’t load ${source.label} right now.`);
+        } else if (sawSyncing) {
+          // Only announce when the user actually waited for a first-time collection.
+          if (response.items.length > 0) {
+            toast.success(`${source.label} reviews are ready`, {
+              description: `Found ${response.items.length} ${
+                response.items.length === 1 ? "discussion" : "discussions"
+              } about ${gameName}.`,
+            });
+          } else {
+            toast.info(`No ${source.label} reviews found for ${gameName}.`);
+          }
+        }
+      } catch (err) {
         if (cancelled) return;
-        setError(
-          err?.response?.data?.error ?? `Couldn’t load ${active.label} right now.`
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        const message = (err as { response?: { data?: { error?: string } } })?.response
+          ?.data?.error;
+        setError(message ?? `Couldn’t load ${source.label} right now.`);
+        setSyncing(false);
+        setLoading(false);
+      }
+    }
+
+    load();
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
-  }, [appId, active?.key]);
+  }, [appId, active?.key, reloadKey]);
 
   function toggleSource(key: string) {
     const isOn = enabled.includes(key);
@@ -381,16 +446,43 @@ export default function ThirdPartyReviews({
             <ExternalItem key={item.id} item={item} scoreLabel={scoreLabel} />
           ))}
 
-          {loading && (
+          {syncing && (
+            <div
+              role="status"
+              className="flex flex-col items-center gap-3 rounded-xl border border-[#55516c] bg-[#2f2d3e] px-5 py-8 text-center"
+            >
+              <Loader2 className="size-6 animate-spin text-[#c2ade7]" aria-hidden="true" />
+              <p className="text-sm text-[#e0deeb]">
+                Collecting {active.label} reviews for {gameName}…
+              </p>
+              <p className="max-w-md text-xs leading-5 text-[#b4aec7]">
+                This only happens the first time a game is opened and can take up to a
+                minute. We’ll let you know when the reviews are ready.
+              </p>
+            </div>
+          )}
+
+          {loading && !syncing && (
             <p role="status" className="text-sm text-[#b4aec7]">
               Loading {active.label}…
             </p>
           )}
 
-          {error && (
-            <p role="alert" className="text-sm text-[#e58d91]">
-              {error}
-            </p>
+          {(error || timedOut) && !loading && (
+            <div role="alert" className="flex flex-wrap items-center gap-3">
+              <p className="text-sm text-[#e58d91]">
+                {timedOut
+                  ? `Collecting ${active.label} reviews is taking longer than usual.`
+                  : error}
+              </p>
+              <Button
+                type="button"
+                onClick={() => setReloadKey((key) => key + 1)}
+                className="h-8 rounded-lg border border-[#55516c] bg-transparent px-4 text-xs font-semibold text-[#e0deeb] shadow-none hover:bg-[#46445a]"
+              >
+                Check again
+              </Button>
+            </div>
           )}
 
           {!loading && !error && data && data.kind === "summary" && !summary?.score && (
