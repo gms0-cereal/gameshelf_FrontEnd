@@ -28,7 +28,7 @@ export default function GameCard({ game }: { game: GameSummary }) {
   return (
     <Link
       to={`/gamedetails/${game.slug || game.id}`}
-      className="group relative flex h-[420px] w-full flex-col overflow-hidden rounded-2xl border border-transparent bg-[#17191E] transition-all hover:border-[#554363] hover:bg-[#20232B] focus:outline-none focus:ring-2 focus:ring-[#B39ACF]"
+      className="group relative flex h-[420px] w-full flex-col overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] transition-all duration-200 hover:border-[#B39ACF] hover:bg-[#20232B] focus:outline-none focus:ring-2 focus:ring-[#B39ACF]"
     >
       {/* Clean Cover Image Container */}
       <div className="relative h-[160px] w-full shrink-0 overflow-hidden rounded-t-2xl bg-[#20232B]">
