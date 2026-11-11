@@ -609,14 +609,15 @@ export default function GameDetails() {
   const reviewsPath = `/gamedetails/${appid}/reviews?write=1`;
 
   const summary = reviewData?.summary;
-  const totalReviews = summary?.total_reviews ?? 0;
-  const communityScore =
-    totalReviews > 0
-      ? ((summary?.total_positive ?? 0) / totalReviews) * 10
-      : game?.metacritic
-        ? game.metacritic.score / 10
-        : null;
-
+  // const totalReviews = summary?.total_reviews ?? 0;
+  // const communityScore =
+  //   totalReviews > 0
+  //     ? ((summary?.total_positive ?? 0) / totalReviews) * 10
+  //     : game?.metacritic
+  //       ? game.metacritic.score / 10
+  //       : null;
+  const communityScore = game?.bayesian_score ?? null;
+  const totalReviews = game?.rating_count ?? 0;
   const screenshots = game?.screenshots?.slice(0, SCREENSHOT_LIMIT) ?? [];
   const trailer = game?.movies?.[0];
 

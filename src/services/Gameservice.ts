@@ -1,5 +1,10 @@
+
+import { useCallback } from "react";
 import api from "../lib/api";
 
+// ---------------------------------------------------------------------------
+// Core game models
+// ---------------------------------------------------------------------------
 export interface GameListItem {
   id: number;
   title: string;
@@ -33,7 +38,9 @@ export interface PopularGameItem {
   header_image: string;
   popularity_score: number;
   short_description?: string;
+  bayesian_score?: number | null;
   community_rating?: number | null;
+  average_rating?: number | null;
   rating_count?: number;
 }
 
@@ -52,7 +59,7 @@ export interface SteamGameListResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Steam game cards (details + GameShelf rating, assembled by the backend)
+// Steam game cards (details + GameShelf rating)
 // Returned by /games/steam/summaries/ and /games/steam/?expand=1
 // ---------------------------------------------------------------------------
 export interface SteamGameCard {
@@ -63,19 +70,29 @@ export interface SteamGameCard {
   platforms: string[];
   release_year: number | null;
   price: string | null;
-  score: number | null;
-  short_description: string;
-  metacritic_score: number | null;
-  // third-party rating (Steam), 0-10
-  steam_rating: { score: number; label: string; total_reviews: number } | null;
-  // GameShelf community
-  community_rating: number | null;
-  rating_count: number;
-  // the logged-in user's own rating, null if not rated
-  my_score: number | null;
-  bayesian_score?: number;
-}
 
+  // Steam / external score
+  score: number | null;
+  metacritic_score: number | null;
+
+  short_description: string;
+
+  // Third-party rating (Steam), 0-10
+  steam_rating: {
+    score: number;
+    label: string;
+    total_reviews: number;
+  } | null;
+
+  // GameShelf community ratings
+  community_rating: number | null;
+  bayesian_score?: number | null;
+  average_rating?: number | null;
+  rating_count: number;
+
+  // Logged-in user's own rating
+  my_score: number | null;
+}
 
 export interface SteamGameCardListResponse {
   games: SteamGameCard[];
@@ -84,7 +101,8 @@ export interface SteamGameCardListResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Steam details (store.steampowered.com/api/appdetails -> `data`)
+// Steam details
+// store.steampowered.com/api/appdetails -> data
 // ---------------------------------------------------------------------------
 export interface SteamScreenshot {
   id: number;
@@ -117,16 +135,35 @@ export interface SteamGameDetail {
   developers?: string[];
   publishers?: string[];
   genres?: { id: string; description: string }[];
-  platforms?: { windows: boolean; mac: boolean; linux: boolean };
-  release_date?: { coming_soon: boolean; date: string };
-  price_overview?: { final_formatted: string; discount_percent: number };
-  metacritic?: { score: number; url: string };
+  platforms?: {
+    windows: boolean;
+    mac: boolean;
+    linux: boolean;
+  };
+  release_date?: {
+    coming_soon: boolean;
+    date: string;
+  };
+  price_overview?: {
+    final_formatted: string;
+    discount_percent: number;
+  };
+  metacritic?: {
+    score: number;
+    url: string;
+  };
   screenshots?: SteamScreenshot[];
   movies?: SteamMovie[];
   dlc?: number[];
   pc_requirements?: SteamRequirements | [];
   mac_requirements?: SteamRequirements | [];
   linux_requirements?: SteamRequirements | [];
+
+  bayesian_score?: number | null;
+  community_rating?: number | null;
+  average_rating?: number | null;
+  rating_count?: number;
+  my_score?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,10 +179,18 @@ export interface SimilarGameResult {
     header_image?: string | null;
     release_date: string | null;
     genres: string[];
+
+    // GameShelf ratings
+    bayesian_score?: number | null;
+    community_rating?: number | null;
+    average_rating?: number | null;
+    rating_count?: number;
   };
   score: number;
   rank: number;
-  reason?: { shared_features?: string[] };
+  reason?: {
+    shared_features?: string[];
+  };
 }
 
 export interface SimilarGamesResponse {
@@ -157,9 +202,11 @@ export async function getSimilarGames(
   appId: number | string,
   signal?: AbortSignal
 ): Promise<SimilarGameResult[]> {
-  const { data } = await api.get<SimilarGamesResponse>(`/similar/${appId}/`, {
-    signal,
-  });
+  const { data } = await api.get<SimilarGamesResponse>(
+    `/similar/${appId}/`,
+    { signal }
+  );
+
   return data.results;
 }
 
@@ -170,12 +217,12 @@ export interface SteamReview {
   recommendationid: string;
   author: {
     steamid: string;
-    playtime_forever?: number; // minutes
+    playtime_forever?: number;
   };
   review: string;
   voted_up: boolean;
   votes_up: number;
-  timestamp_created: number; // unix seconds
+  timestamp_created: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,7 +237,6 @@ export interface GameShelfReview {
   likes: number;
 }
 
-// Adjust these field names to match what your backend really returns.
 function normalizeReview(raw: any): GameShelfReview {
   const author = raw.author;
 
@@ -225,14 +271,22 @@ export async function getGameShelfReviews(
 ): Promise<GameShelfReview[]> {
   const { data } = await api.get(`/reviews/${gameId}`);
   const list = Array.isArray(data) ? data : (data?.results ?? []);
+
   return list.map(normalizeReview);
 }
 
+// ---------------------------------------------------------------------------
+// Game catalog
+// ---------------------------------------------------------------------------
+
 // GET /games/?page=1
-export async function getGames(page = 1): Promise<Paginated<GameListItem>> {
-  const { data } = await api.get<Paginated<GameListItem>>("/games/", {
-    params: { page },
-  });
+export async function getGames(
+  page = 1
+): Promise<Paginated<GameListItem>> {
+  const { data } = await api.get<Paginated<GameListItem>>(
+    "/games/",
+    { params: { page } }
+  );
 
   return data;
 }
@@ -243,40 +297,48 @@ export async function getGame(id: number): Promise<GameDetail> {
   return data;
 }
 
+// ---------------------------------------------------------------------------
+// Steam games
+// ---------------------------------------------------------------------------
+
 // GET /games/steam/
 export async function getSteamGames(
   limit = 12,
   lastAppId = 0
 ): Promise<SteamGameListResponse> {
-  const { data } = await api.get<SteamGameListResponse>("/games/steam/", {
-    params: {
-      limit,
-      last_appid: lastAppId,
-    },
-  });
+  const { data } = await api.get<SteamGameListResponse>(
+    "/games/steam/",
+    {
+      params: {
+        limit,
+        last_appid: lastAppId,
+      },
+    }
+  );
 
   return data;
 }
 
 // GET /games/steam/?expand=1
-// Same catalog page, but each game already has its details and rating, so the
-// page needs no extra per-game requests.
 export async function getSteamGamesExpanded(
   limit = 12,
   lastAppId = 0
 ): Promise<SteamGameCardListResponse> {
-  const { data } = await api.get<SteamGameCardListResponse>("/games/steam/", {
-    params: {
-      limit,
-      last_appid: lastAppId,
-      expand: 1,
-    },
-  });
+  const { data } = await api.get<SteamGameCardListResponse>(
+    "/games/steam/",
+    {
+      params: {
+        limit,
+        last_appid: lastAppId,
+        expand: 1,
+      },
+    }
+  );
 
   return data;
 }
 
-// GET /games/steam/summaries/?appids=1,2,3  (backend allows up to 30 ids)
+// GET /games/steam/summaries/?appids=1,2,3
 export async function getSteamGameSummaries(
   appIds: number[]
 ): Promise<SteamGameCard[]> {
@@ -284,7 +346,11 @@ export async function getSteamGameSummaries(
 
   const { data } = await api.get<{ results: SteamGameCard[] }>(
     "/games/steam/summaries/",
-    { params: { appids: appIds.join(",") } }
+    {
+      params: {
+        appids: appIds.join(","),
+      },
+    }
   );
 
   return data.results;
@@ -294,7 +360,10 @@ export async function getSteamGameSummaries(
 export async function getSteamGameDetails(
   appId: number | string
 ): Promise<SteamGameDetail> {
-  const { data } = await api.get<SteamGameDetail>(`/games/steam/${appId}/`);
+  const { data } = await api.get<SteamGameDetail>(
+    `/games/steam/${appId}/`
+  );
+
   return data;
 }
 
@@ -306,7 +375,12 @@ export async function getSteamGameReviews(
 ): Promise<SteamReviewsResponse> {
   const { data } = await api.get<SteamReviewsResponse>(
     `/games/steam/${appId}/reviews/`,
-    { params: { cursor, num_per_page: numPerPage } }
+    {
+      params: {
+        cursor,
+        num_per_page: numPerPage,
+      },
+    }
   );
 
   return data;
@@ -322,7 +396,10 @@ export type ListStatus =
   | "on_hold"
   | "dropped";
 
-export const LIST_STATUS_OPTIONS: { value: ListStatus; label: string }[] = [
+export const LIST_STATUS_OPTIONS: {
+  value: ListStatus;
+  label: string;
+}[] = [
   { value: "playing", label: "Playing" },
   { value: "plan_to_play", label: "Plan to Play" },
   { value: "completed", label: "Completed" },
@@ -343,7 +420,7 @@ export interface UserGameEntry {
   started_at: string | null;
   completed_at: string | null;
   notes: string | null;
-  score?: number | null; // not provided by the backend yet
+  score?: number | null;
 }
 
 export interface UserGameListResponse {
@@ -356,40 +433,56 @@ export type ListStatusCheck =
   | ({ in_list: true } & UserGameEntry);
 
 // GET /games/list/?status=&search=
-export async function getMyGameList(params: {
-  status?: ListStatus | "all";
-  search?: string;
-} = {}): Promise<UserGameListResponse> {
-  const { data } = await api.get<UserGameListResponse>("/list/", {
-    params: {
-      status: params.status && params.status !== "all" ? params.status : undefined,
-      search: params.search || undefined,
-    },
-  });
+export async function getMyGameList(
+  params: {
+    status?: ListStatus | "all";
+    search?: string;
+  } = {}
+): Promise<UserGameListResponse> {
+  const { data } = await api.get<UserGameListResponse>(
+    "/list/",
+    {
+      params: {
+        status:
+          params.status && params.status !== "all"
+            ? params.status
+            : undefined,
+        search: params.search || undefined,
+      },
+    }
+  );
+
   return data;
 }
 
-// POST /games/list/  (adds the game, or changes its status if already added)
+// POST /games/list/
 export async function addToMyList(
   steamAppId: number | string,
   status: ListStatus = "plan_to_play"
 ): Promise<UserGameEntry> {
-  const { data } = await api.post<UserGameEntry>("/list/", {
-    steam_app_id: Number(steamAppId),
-    status,
-  });
+  const { data } = await api.post<UserGameEntry>(
+    "/list/",
+    {
+      steam_app_id: Number(steamAppId),
+      status,
+    }
+  );
+
   return data;
 }
 
 // PATCH /games/list/<id>/
 export async function updateListEntry(
   entryId: number,
-  changes: Partial<Pick<UserGameEntry, "status" | "progress" | "notes">>
+  changes: Partial<
+    Pick<UserGameEntry, "status" | "progress" | "notes">
+  >
 ): Promise<UserGameEntry> {
   const { data } = await api.patch<UserGameEntry>(
     `/list/${entryId}/`,
     changes
   );
+
   return data;
 }
 
@@ -405,6 +498,7 @@ export async function getListStatus(
   const { data } = await api.get<ListStatusCheck>(
     `/list/steam/${appId}/`
   );
+
   return data;
 }
 
@@ -419,7 +513,16 @@ export interface BrowseGame {
   platforms: string[];
   release_year: number | null;
   price: string | null;
-  score: number | null; // 0-10 (Metacritic / 10), when Steam has one
+
+  // Steam / external score
+  score: number | null;
+
+  // GameShelf ratings
+  bayesian_score?: number | null;
+  community_rating?: number | null;
+  average_rating?: number | null;
+  rating_count?: number;
+  my_score?: number | null;
 }
 
 export interface BrowseResponse {
@@ -439,11 +542,10 @@ export interface BrowseParams {
   page?: number;
 }
 
-// GET /games/steam/browse/?q=&genre=&platform=&sort=&page=
+// GET /games/steam/browse/
 export async function browseSteamGames(
   params: BrowseParams
 ): Promise<BrowseResponse> {
-  // Build the query string by hand so spaces are sent as %20, not "+".
   const query = Object.entries({
     q: params.q,
     genre: params.genre,
@@ -452,14 +554,22 @@ export async function browseSteamGames(
     page: params.page,
   })
     .filter(([, value]) => value !== undefined && value !== "")
-    .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+    .map(
+      ([key, value]) =>
+        `${key}=${encodeURIComponent(String(value))}`
+    )
     .join("&");
 
   const { data } = await api.get<BrowseResponse>(
     `/games/steam/browse/?${query}`
   );
+
   return data;
 }
+
+// ---------------------------------------------------------------------------
+// Top rated
+// ---------------------------------------------------------------------------
 
 // GET /games/steam/top-rated/
 export async function getTopRatedGames(
@@ -478,105 +588,155 @@ export async function getTopRatedGames(
   return data;
 }
 
+// ---------------------------------------------------------------------------
+// Popular now
+// ---------------------------------------------------------------------------
 export async function fetchPopularNowGames(
   days = 31,
   signal?: AbortSignal
 ): Promise<PopularGameItem[]> {
-  const response = await fetch(`/api/v1/games/steam/popular/?days=${days}`, {
-    signal,
-  });
+  const response = await fetch(
+    `/api/v1/games/steam/popular/?days=${days}`,
+    { signal }
+  );
 
   if (!response.ok) {
     throw new Error("Failed to fetch popular games");
   }
 
   const data = await response.json();
+
   return data.results ?? [];
 }
 
-
 // ---------------------------------------------------------------------------
-// Mature content (18+) gate. Frontend only: a game is mature if it has one of
-// the 4 adult tags; the user's age comes from their birthday (birth_day).
+// Mature content (18+) gate
 // ---------------------------------------------------------------------------
-export type AgeGateCode = "login_required" | "birthday_required" | "age_restricted";
+// export type AgeGateCode =
+//   | "login_required"
+//   | "birthday_required"
+//   | "age_restricted";
 
-/** The 4 adult tags (same names as the adult entries in GENRE_TAGS), lowercase. */
-export const ADULT_TAGS = new Set([
-  "hentai",
-  "sexual content",
-  "nudity",
-  "adult content",
-]);
+// export const ADULT_TAGS = new Set([
+//   "hentai",
+//   "sexual content",
+//   "nudity",
+//   "adult content",
+// ]);
 
-const ADULT_AGE = 18;
+// const ADULT_AGE = 18;
 
-type Named = string | { description?: string; name?: string } | null | undefined;
+// type Named =
+//   | string
+//   | { description?: string; name?: string }
+//   | null
+//   | undefined;
 
-/** Anything shaped like a game from your API (details, Discover card, playlist game...). */
-export interface MatureCheckable {
-  genres?: unknown;
-  tags?: unknown;
-}
+// export interface MatureCheckable {
+//   genres?: unknown;
+//   tags?: unknown;
+// }
 
-function tagNames(list: unknown): string[] {
-  if (!Array.isArray(list)) return [];
-  return (list as Named[])
-    .map((item) => (typeof item === "string" ? item : item?.description ?? item?.name ?? ""))
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-}
+// function tagNames(list: unknown): string[] {
+//   if (!Array.isArray(list)) return [];
 
-/** Does this game have one of the 4 adult tags? */
-export function isMatureGame(game: MatureCheckable | null | undefined): boolean {
-  if (!game) return false;
-  return [...tagNames(game.genres), ...tagNames(game.tags)].some((name) => ADULT_TAGS.has(name));
-}
+//   return (list as Named[])
+//     .map((item) =>
+//       typeof item === "string"
+//         ? item
+//         : item?.description ?? item?.name ?? ""
+//     )
+//     .map((s) => s.trim().toLowerCase())
+//     .filter(Boolean);
+// }
 
-/** Is this genre filter value (from Discover) one of the adult tags? */
-export function isAdultGenreSlug(slug: string | null | undefined): boolean {
-  return !!slug && ADULT_TAGS.has(slug.trim().toLowerCase());
-}
+// export function isMatureGame(
+//   game: MatureCheckable | null | undefined
+// ): boolean {
+//   if (!game) return false;
 
-export function ageFromBirthday(birth?: string | null): number | null {
-  if (!birth) return null;
-  const b = new Date(birth);
-  if (Number.isNaN(b.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - b.getFullYear();
-  const beforeBirthday =
-    now.getMonth() < b.getMonth() ||
-    (now.getMonth() === b.getMonth() && now.getDate() < b.getDate());
-  if (beforeBirthday) age -= 1;
-  return age;
-}
+//   return [
+//     ...tagNames(game.genres),
+//     ...tagNames(game.tags),
+//   ].some((name) => ADULT_TAGS.has(name));
+// }
 
-/** null = allowed to view mature content, otherwise the reason it is blocked. */
-export function getAgeGate(user: AuthUser | null | undefined): AgeGateCode | null {
-  if (!user) return "login_required";
-  const age = ageFromBirthday(user.birth_day);
-  if (age === null) return "birthday_required"; // birthday not set yet: can't view
-  if (age < ADULT_AGE) return "age_restricted"; // under 18: can't view
-  return null;
-}
+// export function isAdultGenreSlug(
+//   slug: string | null | undefined
+// ): boolean {
+//   return !!slug && ADULT_TAGS.has(slug.trim().toLowerCase());
+// }
 
-/** For a single game page: is this game blocked for the current user? */
-export function useMatureGate(game: MatureCheckable | null | undefined) {
-  const { user, loading } = useAuth();
+// export function ageFromBirthday(
+//   birth?: string | null
+// ): number | null {
+//   if (!birth) return null;
 
-  if (!isMatureGame(game)) return { gate: null as AgeGateCode | null, checking: false };
-  if (loading) return { gate: null as AgeGateCode | null, checking: true };
-  return { gate: getAgeGate(user), checking: false };
-}
+//   const b = new Date(birth);
+//   if (Number.isNaN(b.getTime())) return null;
 
-/** For lists (Discover, playlists, Home): removes mature games unless the user is 18+. */
-export function useMatureFilter() {
-  const { user, loading } = useAuth();
-  const allowed = !loading && getAgeGate(user) === null;
+//   const now = new Date();
 
-  return useCallback(
-    <T extends MatureCheckable>(items: T[]): T[] =>
-      allowed ? items : items.filter((item) => !isMatureGame(item)),
-    [allowed],
-  );
-}
+//   let age = now.getFullYear() - b.getFullYear();
+
+//   const beforeBirthday =
+//     now.getMonth() < b.getMonth() ||
+//     (now.getMonth() === b.getMonth() &&
+//       now.getDate() < b.getDate());
+
+//   if (beforeBirthday) age -= 1;
+
+//   return age;
+// }
+
+// export function getAgeGate(
+//   user: AuthUser | null | undefined
+// ): AgeGateCode | null {
+//   if (!user) return "login_required";
+
+//   const age = ageFromBirthday(user.birth_day);
+
+//   if (age === null) return "birthday_required";
+//   if (age < ADULT_AGE) return "age_restricted";
+
+//   return null;
+// }
+
+// export function useMatureGate(
+//   game: MatureCheckable | null | undefined
+// ) {
+//   const { user, loading } = useAuth();
+
+//   if (!isMatureGame(game)) {
+//     return {
+//       gate: null as AgeGateCode | null,
+//       checking: false,
+//     };
+//   }
+
+//   if (loading) {
+//     return {
+//       gate: null as AgeGateCode | null,
+//       checking: true,
+//     };
+//   }
+
+//   return {
+//     gate: getAgeGate(user),
+//     checking: false,
+//   };
+// }
+
+// export function useMatureFilter() {
+//   const { user, loading } = useAuth();
+
+//   const allowed = !loading && getAgeGate(user) === null;
+
+//   return useCallback(
+//     <T extends MatureCheckable>(items: T[]): T[] =>
+//       allowed
+//         ? items
+//         : items.filter((item) => !isMatureGame(item)),
+//     [allowed]
+//   );
+// }

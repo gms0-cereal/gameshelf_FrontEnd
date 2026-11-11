@@ -12,11 +12,10 @@ function steamCardToSummary(card: SteamGameCard): GameSummary {
     genres: card.genres,
     platforms: card.platforms,
     release_year: card.release_year,
-    score: card.score,
+    score: card.bayesian_score ?? card.score,
     bio: card.short_description || "Explore live community catalogs and add this title to your shelf.",
   };
 }
-
 const CARD_WIDTH = "w-[260px] sm:w-[280px]";
 const PAGE_SIZE = 20;
 

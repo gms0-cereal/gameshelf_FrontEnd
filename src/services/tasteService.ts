@@ -13,11 +13,22 @@ export interface TasteOptionsResponse {
   platforms: { value: string; label: string }[];
 }
 
-export interface TasteProfilePayload {
+export interface GamePayload {
+  id: number;
+  appid?: number;
+  title: string;
+  slug: string | null;
+  cover_image_url: string | null;
+  header_image?: string;
+  release_date: string | null;
   genres: string[];
-  tags?: string[];
-  platforms: string[];
-  likedGameIds?: number[]; // Steam app IDs
+
+  // GameShelf ratings
+  bayesian_score?: number | null;
+  community_rating?: number | null;
+  average_rating?: number | null;
+  rating_count?: number;
+  my_score?: number | null;
 }
 
 export interface TasteProfileResponse {
@@ -38,6 +49,13 @@ export interface RecommendedGame {
   release_date?: string;
   genres?: string[];
   platforms?: string[];
+
+  // GameShelf ratings
+  bayesian_score?: number | null;
+  community_rating?: number | null;
+  average_rating?: number | null;
+  rating_count?: number;
+  my_score?: number | null;
 }
 
 export interface TasteRecommendation {
@@ -62,19 +80,36 @@ export interface TasteRecommendationResponse {
   [key: string]: unknown;
 }
 
-// GET /api/v1/taste/options/  -> genres, tags and platforms from the Steam data
+export interface TasteProfilePayload {
+  genres: string[];
+  tags?: string[];
+  platforms: string[];
+  likedGameIds?: number[];
+}
+
+// GET /api/v1/taste/options/
 export async function getTasteOptions() {
   const { data } = await api.get<TasteOptionsResponse>("/taste/options/");
   return data;
 }
 
 // PUT /api/v1/taste/profile/
-export async function saveTasteProfile({ genres, tags, platforms, likedGameIds }: TasteProfilePayload) {
+export async function saveTasteProfile({
+  genres,
+  tags,
+  platforms,
+  likedGameIds,
+}: TasteProfilePayload) {
   const body: Record<string, unknown> = { genres, platforms };
+
   if (tags !== undefined) body.tags = tags;
   if (likedGameIds !== undefined) body[LIKED_GAMES_FIELD] = likedGameIds;
 
-  const { data } = await api.put<TasteProfileResponse>("/taste/profile/", body);
+  const { data } = await api.put<TasteProfileResponse>(
+    "/taste/profile/",
+    body
+  );
+
   return data;
 }
 
@@ -84,7 +119,7 @@ export async function getTasteProfile() {
   return data;
 }
 
-// GET /api/v1/taste/  -> K-Means recommendations
+// GET /api/v1/taste/ — K-Means recommendations
 export async function getTasteRecommendations(
   limit = 20,
   offset = 0,

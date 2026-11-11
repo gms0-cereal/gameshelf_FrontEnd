@@ -9,6 +9,12 @@ export interface GamePayload {
   header_image?: string;
   release_date: string | null;
   genres: string[];
+
+  bayesian_score?: number | null;
+  community_rating?: number | null;
+  average_rating?: number | null;
+  rating_count?: number;
+  my_score?: number | null;
 }
 
 export interface TasteRecommendationItem {
