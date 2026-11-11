@@ -29,6 +29,13 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+export async function getRedditReviews(appId: number | string, cursor = "*") {
+  const { data } = await api.get(`/reviews/external-reviews/${appId}/`, {
+    params: { source: "reddit", cursor, limit: 5 },
+  });
+  return data;
+}
+
 // ---------------------------------------------------------------------------
 // reports (reviews + comments)
 // ---------------------------------------------------------------------------
