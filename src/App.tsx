@@ -36,11 +36,11 @@ import PrivacyPolicy from "@/pages/Privacypolicy";
 import Terms from "@/pages/Terms";
 import Settings from "@/pages/Settings";
 // Moderator Dashboard Imports
-import ModeratorDashboard from "./components/moderators/ModeratorDashboard";
-import ModReport from "./components/moderators/ModReport";
-import ModSanctions from "./components/moderators/ModSanctions";
-import ModAppealManage from "./components/moderators/ModAppealManage";
-import ModHistory from "./components/moderators/ModHistory";
+import ModeratorDashboard from "./pages/moderators/ModeratorDashboard";
+import ModReport from "./pages/moderators/ModReport";
+import ModSanctions from "./pages/moderators/ModSanctions";
+import ModAppealManage from "./pages/moderators/ModAppealManage";
+import ModHistory from "./pages/moderators/ModHistory";
 
 
 const queryClient = new QueryClient();

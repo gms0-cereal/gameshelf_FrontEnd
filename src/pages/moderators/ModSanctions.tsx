@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import ModLayout from "../layout/Modlayout";
+import ModLayout from "../../components/layout/Modlayout";
 import { useState } from "react";
 import { PRIOR_SANCTIONS, type PriorSanction } from "./modData";
 import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, FilterSelect, Label, Notice, PageHeader, Pagination, RowAction, SearchInput, TextArea, type Column } from "./Modui";

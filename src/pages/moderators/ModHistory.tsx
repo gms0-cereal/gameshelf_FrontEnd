@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import ModLayout from "../layout/Modlayout";
+import ModLayout from "../../components/layout/Modlayout";
 import { useState } from "react";
 import { AUDIT_EVENTS, type AuditEvent } from "./modData";
 import { Badge, Button, Card, Cell, DataTable, FilterSelect, Label, PageHeader, Pagination, RowAction, SearchInput, type Column } from "./Modui";

@@ -1,11 +1,21 @@
 import { useNavigate } from "react-router-dom";
-import ModLayout from "../layout/Modlayout";
+import { useEffect, useState } from "react";
+import ModLayout from "../../components/layout/Modlayout";
 import { CATEGORY_OVERVIEW, REPORTS, priorityTone, type Report } from "./modData";
 import { Badge, Button, Card, DataTable, Notice, PageHeader, Pagination, RowAction, StatCard, type Column } from "./Modui";
+import { getModerationDashboard, type ModerationDashboard } from "./moderationApi";
 
 function OverviewContent({ onOpenReport }: { onOpenReport: () => void }) {
+  const [dashboard, setDashboard] = useState<ModerationDashboard | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const queue = REPORTS.filter((r) => r.priority !== "Low").slice(0, 4);
   const max = Math.max(...CATEGORY_OVERVIEW.map(([, n]) => n));
+
+  useEffect(() => {
+    getModerationDashboard()
+      .then(setDashboard)
+      .catch(() => setLoadError("Live moderation data is unavailable. Showing the saved queue snapshot."));
+  }, []);
 
   const columns: Column<Report>[] = [
     { key: "report", header: "Report / user", render: (r) => <span className="text-zinc-300">{r.id} · {r.reporter}</span> },
@@ -29,13 +39,14 @@ function OverviewContent({ onOpenReport }: { onOpenReport: () => void }) {
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label="Pending reports" value={12} hint="Awaiting first review" />
-        <StatCard label="Under review" value={6} hint="Assigned moderator actions" />
-        <StatCard label="Resolved reports" value={30} hint="30 of 48 reports in range" />
-        <StatCard label="Active sanctions" value={8} hint="Across all reporting periods" />
-        <StatCard label="Pending appeals" value={3} hint="Oldest waiting 15 hours" />
+        <StatCard label="Pending reports" value={dashboard?.pending_reports ?? 12} hint="Awaiting first review" />
+        <StatCard label="Under review" value={dashboard?.under_review ?? 6} hint="Assigned moderator actions" />
+        <StatCard label="Resolved reports" value={dashboard?.resolved_reports ?? 30} hint="Resolved reports" />
+        <StatCard label="Active sanctions" value="—" hint="Sanction API not available yet" />
+        <StatCard label="Pending appeals" value="—" hint="Appeal API not available yet" />
       </div>
 
+      {loadError && <Notice tone="info" className="mb-4">{loadError}</Notice>}
       <Notice className="mb-4">
         1 high-priority report needs review. A-031 is awaiting an independent appeal decision.
       </Notice>

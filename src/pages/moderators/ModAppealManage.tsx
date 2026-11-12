@@ -1,4 +1,4 @@
-import ModLayout from "../layout/Modlayout";
+import ModLayout from "../../components/layout/Modlayout";
 import { useState } from "react";
 import { APPEALS, type Appeal } from "./modData";
 import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, FilterSelect, Notice, PageHeader, Pagination, RowAction, SearchInput, StatCard, Tabs, TextArea, type Column } from "./Modui";
