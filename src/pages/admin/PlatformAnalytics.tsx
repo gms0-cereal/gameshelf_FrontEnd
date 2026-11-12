@@ -1,33 +1,238 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CalendarDays, Info } from 'lucide-react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
-import { Download, CalendarDays } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import {
+  DataTable,
+  ExportButton,
+  MetricCard,
+  MetricGrid,
+  PageHeading,
+  Panel,
+  SecondaryButton,
+  SectionHeading,
+  Tabs,
+  WorkspaceFooter,
+} from '../../components/admin/AdminLayout';
+import type { Column } from '../../components/admin/AdminLayout';
+import { anDayTicks as dayTicks, anTraffic as traffic, anSubmissions as submissions, anRegistrations as registrations, anRegTicks as regTicks, anTopPages as topPages, anSources as sources, anReviewed as reviewed } from './MockData';
+import type { PageRow, SourceRow, ReviewedRow } from './MockData';
 
-const traffic = [
-  { day: '04 Oct', views: 14500, visits: 5800 }, { day: '08 Oct', views: 16200, visits: 6200 },
-  { day: '11 Oct', views: 17500, visits: 6500 }, { day: '15 Oct', views: 16000, visits: 6100 },
-  { day: '18 Oct', views: 18500, visits: 6800 }, { day: '22 Oct', views: 19800, visits: 7200 },
-  { day: '25 Oct', views: 18700, visits: 6900 }, { day: '29 Oct', views: 21800, visits: 7700 },
-  { day: '02 Nov', views: 19000, visits: 7100 },
-];
-const registrations = [
-  { day: '04 Oct', users: 31 }, { day: '08 Oct', users: 39 }, { day: '11 Oct', users: 35 },
-  { day: '15 Oct', users: 45 }, { day: '18 Oct', users: 42 }, { day: '22 Oct', users: 48 },
-  { day: '25 Oct', users: 44 }, { day: '29 Oct', users: 53 }, { day: '02 Nov', users: 55 },
-];
-const panel = 'rounded-xl border border-[#454650] bg-[#222228]';
-const metric = (label: string, value: string, note: string) => <div className={`${panel} bg-[#343a43] p-4`}><p className="text-xs text-slate-300">{label}</p><p className="mt-2 text-3xl font-bold text-[#f3f0df]">{value}</p><p className="mt-2 text-[11px] text-slate-300">{note}</p></div>;
-const games = [{name:'Hollow Knight',views:'28,400',time:'4m 12s',reviews:18,adds:620},{name:'Hades',views:'24,600',time:'3m 48s',reviews:18,adds:540},{name:'Stardew Valley',views:'20,100',time:'4m 06s',reviews:14,adds:480},{name:'Celeste',views:'16,800',time:'3m 22s',reviews:11,adds:320}];
+const PURPLE = '#c2ade7';
+const AMBER = '#dfc192';
+const GRID = '#38363f';
+const axisTick = { fill: '#76717f', fontSize: 10 };
+const tooltipStyle = { background: '#1a1a20', border: '1px solid #38363f', borderRadius: 6, fontSize: 11 };
+const kFormat = (v: number) => (v === 0 ? '0' : `${v / 1000}k`);
 
-export const PlatformAnalytics: React.FC = () => <AdminLayout>
-  <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-wider text-[#bda6e4]">Platform Operations</p><h1 className="mt-1 text-3xl font-bold text-white">Platform Analytics</h1><p className="mt-1 text-sm text-slate-300">Understand discovery, acquisition and contribution across the community.</p></div><button onClick={() => window.print()} className="rounded-lg border border-[#55515f] bg-[#343a43] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-[#383044]"><Download className="mr-2 inline h-4 w-4"/>Export report</button></div>
-  <div className="flex flex-wrap items-center gap-2"><button className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs"><CalendarDays className="mr-2 inline h-4 w-4"/>04 Oct–02 Nov 2026</button><button className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs">Segment: All users ▾</button><button className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs">All platforms ▾</button><button className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs">Compare: Previous 30 days ▾</button></div>
-  <div className="border-b border-[#454650] pb-2 text-xs font-semibold text-[#bda6e4]">All analytics　 Traffic & Engagement　 User Acquisition　 Content Growth</div>
-  <section className="space-y-4"><h2 className="text-lg font-semibold">Traffic &amp; Engagement</h2><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{metric('DAU','1,842','01 Nov · Last complete day')}{metric('MAU','8,760','30-day unique active accounts')}{metric('Visits','198,400','+4.2% vs prior period')}{metric('Page views','462,800','2.3 views per visit')}</div>
-  <div className="grid gap-4 xl:grid-cols-2"><div className={`${panel} p-4`}><div className="mb-3"><h3 className="font-semibold">Visits &amp; page views</h3><p className="text-xs text-slate-300">By day · all time · UTC</p></div><ResponsiveContainer width="100%" height={250}><LineChart data={traffic}><CartesianGrid stroke="#59616b" strokeDasharray="3 3"/><XAxis dataKey="day" stroke="#cbd5e1" fontSize={10}/><YAxis stroke="#cbd5e1" fontSize={10}/><Tooltip contentStyle={{background:'#1a1a20',border:'1px solid #55515f'}}/><Legend/><Line type="monotone" dataKey="views" name="Page views" stroke="#d6d9df" strokeWidth={2.5}/><Line type="monotone" dataKey="visits" name="Visits" stroke="#e5d28a" strokeWidth={2} strokeDasharray="4 4"/></LineChart></ResponsiveContainer></div>
-  <div className={`${panel} p-4`}><div className="mb-3"><h3 className="font-semibold">Most-visited game pages</h3><p className="text-xs text-slate-300">Ranked by page views</p></div><div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-[#1a1a20] text-slate-300"><tr>{['Game','Views','Engagement'].map(x=><th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{games.map(g=><tr key={g.name} className="border-b border-[#454650]"><td className="p-3 font-semibold">{g.name}</td><td className="p-3">{g.views}</td><td className="p-3">{g.time}</td></tr>)}</tbody></table></div></div></div>
-  <div className="rounded-lg border border-[#454650] bg-[#343a43] px-4 py-3 text-xs text-slate-200">Engagement: 12.4% recommendation CTR · 9,540 clicks / 76,000 impressions · Median session 6m 14s.</div></section>
-  <section className="space-y-4"><h2 className="text-lg font-semibold">User Acquisition</h2><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{metric('New registrations','1,240','04 Oct–02 Nov')}{metric('Registered accounts','12,840','11,600 at period start')}{metric('Active / inactive','8,760 / 4,080','Active within selected 30 days')}{metric('Account growth','10.7%','1,240 ÷ 11,600')}</div><div className="grid gap-4 xl:grid-cols-2"><div className={`${panel} p-4`}><h3 className="font-semibold">Registration trend</h3><p className="mb-3 text-xs text-slate-300">New accounts per day · UTC</p><ResponsiveContainer width="100%" height={220}><BarChart data={registrations}><CartesianGrid stroke="#59616b" strokeDasharray="3 3"/><XAxis dataKey="day" stroke="#cbd5e1" fontSize={10}/><YAxis stroke="#cbd5e1" fontSize={10}/><Tooltip contentStyle={{background:'#1a1a20',border:'1px solid #55515f'}}/><Bar dataKey="users" name="Registrations" fill="#bda6e4" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer></div><div className={`${panel} p-4`}><h3 className="font-semibold">Acquisition sources</h3><p className="mb-3 text-xs text-slate-300">Registrations attributed to first visit</p>{[['Organic search','550','45%'],['Direct','372','30%'],['Community referred','186','15%'],['Other','124','10%']].map(r=><div key={r[0]} className="flex justify-between border-b border-[#454650] py-3 text-xs"><span>{r[0]}</span><span>{r[1]}</span><span className="text-[#bda6e4]">{r[2]}</span></div>)}</div></div></section>
-  <section className="space-y-4"><h2 className="text-lg font-semibold">Content Growth</h2><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{metric('Catalogue games','38','34 published · +3 this period')}{metric('New library additions','2,840','18,460 total additions')}{metric('New reviews','96','690 reviews in total')}{metric('New ratings','448','1,240 ratings in total')}</div><div className="grid gap-4 xl:grid-cols-2"><div className={`${panel} p-4`}><h3 className="font-semibold">Reviews &amp; ratings</h3><p className="mb-3 text-xs text-slate-300">Submissions per day · includes held records</p><ResponsiveContainer width="100%" height={220}><LineChart data={traffic}><CartesianGrid stroke="#59616b" strokeDasharray="3 3"/><XAxis dataKey="day" stroke="#cbd5e1" fontSize={10}/><YAxis stroke="#cbd5e1" fontSize={10}/><Tooltip contentStyle={{background:'#1a1a20',border:'1px solid #55515f'}}/><Line type="monotone" dataKey="visits" name="Ratings" stroke="#d6d9df" strokeWidth={2.5}/><Line type="monotone" dataKey="views" name="Reviews" stroke="#e5d28a" strokeWidth={2} strokeDasharray="4 4"/></LineChart></ResponsiveContainer></div><div className={`${panel} p-4`}><h3 className="font-semibold">Most-reviewed &amp; most-added</h3><p className="mb-3 text-xs text-slate-300">Period totals · ranked by reviews</p><table className="w-full text-left text-xs"><thead className="bg-[#1a1a20]"><tr><th className="p-3">Game</th><th className="p-3">Reviews</th><th className="p-3">Library adds</th></tr></thead><tbody>{games.map(g=><tr key={g.name} className="border-b border-[#454650]"><td className="p-3 font-semibold">{g.name}</td><td className="p-3">{g.reviews}</td><td className="p-3">{g.adds}</td></tr>)}</tbody></table></div></div></section>
-  <p className="rounded-lg bg-[#343a43] px-4 py-3 text-xs text-slate-300">Daily activity ends 01 Nov; period totals include 02 Nov through 10:00 UTC. Reviews, ratings, content flags and reports are separate measures. Public scores exclude held ratings.</p>
-</AdminLayout>;
+/* ---------------- Tables ---------------- */
+const pageCols: Column<PageRow>[] = [
+  { header: 'Game', className: 'text-[#f0eef5]', cell: (r) => r.game },
+  { header: 'Views ↓', className: 'text-[#aaa6b5]', cell: (r) => r.views },
+  { header: 'Engagement', className: 'text-[#c2ade7]', cell: (r) => r.engagement },
+];
+
+const sourceCols: Column<SourceRow>[] = [
+  { header: 'Source', className: 'text-[#f0eef5]', cell: (r) => r.source },
+  { header: 'Accounts ↓', className: 'text-[#aaa6b5]', cell: (r) => r.accounts },
+  { header: 'Share', className: 'text-[#c2ade7]', cell: (r) => r.share },
+];
+
+const reviewedCols: Column<ReviewedRow>[] = [
+  { header: 'Game', className: 'text-[#f0eef5]', cell: (r) => r.game },
+  { header: 'Reviews ↓', className: 'text-[#aaa6b5]', cell: (r) => r.reviews },
+  { header: 'Library adds', className: 'text-[#c2ade7]', cell: (r) => r.adds },
+];
+
+/* ---------------- Small helpers ---------------- */
+const Pager = '‹ Previous   1   2   3   Next ›';
+
+const ChartPanel: React.FC<{ title: string; subtitle: string; legend: React.ReactNode; children: React.ReactElement }> = ({
+  title,
+  subtitle,
+  legend,
+  children,
+}) => (
+  <Panel className="flex min-w-0 flex-col gap-4 p-5">
+    <SectionHeading title={title} subtitle={subtitle} action="Daily ⌄" />
+    <p className="text-[10px]">{legend}</p>
+    <div className="h-[190px]">
+      <ResponsiveContainer width="100%" height="100%">
+        {children}
+      </ResponsiveContainer>
+    </div>
+  </Panel>
+);
+
+const InfoNote: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex items-center gap-[10px] rounded-md bg-[#1a1a20] p-[14px]">
+    <Info className="h-[18px] w-[18px] shrink-0 text-[#dfc192]" />
+    <p className="flex-1 text-xs leading-normal text-[#aaa6b5]">{children}</p>
+  </div>
+);
+
+type TabKey = 'all' | 'traffic' | 'acquisition' | 'content';
+const tabs: { key: TabKey; label: string }[] = [
+  { key: 'all', label: 'All analytics' },
+  { key: 'traffic', label: 'Traffic & Engagement' },
+  { key: 'acquisition', label: 'User Acquisition' },
+  { key: 'content', label: 'Content Growth' },
+];
+
+export const PlatformAnalytics: React.FC = () => {
+  const [tab, setTab] = useState<TabKey>('all');
+  const show = (k: Exclude<TabKey, 'all'>) => tab === 'all' || tab === k;
+
+  return (
+    <AdminLayout>
+      <PageHeading
+        eyebrow="PLATFORM OPERATIONS"
+        title="Platform Analytics"
+        description="Understand discovery, acquisition and contribution across the community."
+        actions={<ExportButton label="Export report" />}
+      />
+
+      <div className="flex flex-wrap gap-3">
+        <SecondaryButton>
+          <CalendarDays className="h-[15px] w-[15px]" />
+          04 Oct–02 Nov 2026
+        </SecondaryButton>
+        <SecondaryButton disabled className="opacity-40">
+          Segment: All users ⌄
+        </SecondaryButton>
+        <SecondaryButton>All platforms ⌄</SecondaryButton>
+        <SecondaryButton>Compare: Previous 30 days ⌄</SecondaryButton>
+      </div>
+
+      <Tabs tabs={tabs} active={tab} onChange={setTab} />
+
+      {/* ---------------- Traffic & Engagement ---------------- */}
+      {show('traffic') && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xl font-semibold text-[#f0eef5]">Traffic &amp; Engagement</h2>
+          <MetricGrid cols={4}>
+            <MetricCard label="DAU" value="1,842" context="01 Nov · Last complete day" />
+            <MetricCard label="MAU" value="8,760" context="30-day unique active accounts" />
+            <MetricCard label="Visits" value="198,400" context="+14.2% vs prior period" />
+            <MetricCard label="Page views" value="462,800" context="2.33 views per visit" />
+          </MetricGrid>
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,620px)_1fr]">
+            <ChartPanel
+              title="Visits & page views"
+              subtitle="Daily events · All traffic · UTC"
+              legend={
+                <>
+                  <span className="text-[#c2ade7]">● Page views　</span>
+                  <span className="text-[#dfc192]">◌ Visits</span>
+                </>
+              }
+            >
+              <LineChart data={traffic}>
+                <CartesianGrid stroke={GRID} vertical={false} />
+                <XAxis dataKey="day" ticks={dayTicks} tick={axisTick} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 20000]} ticks={[0, 10000, 20000]} tickFormatter={kFormat} tick={axisTick} tickLine={false} axisLine={false} width={38} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line type="monotone" dataKey="views" name="Page views" stroke={PURPLE} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="visits" name="Visits" stroke={AMBER} strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+              </LineChart>
+            </ChartPanel>
+
+            <Panel className="flex min-w-0 flex-col gap-4 p-5">
+              <SectionHeading title="Most-visited game pages" subtitle="Ranked by page views" action="Full report →" />
+              <DataTable columns={pageCols} rows={topPages} rowKey={(r) => r.game} footerLeft="Top 4 of 34 published games" footerRight={Pager} />
+            </Panel>
+          </div>
+
+          <InfoNote>Engagement: 12.4% recommendation CTR · 10,540 clicks / 85,000 impressions · Median session 6m 14s.</InfoNote>
+        </section>
+      )}
+
+      {/* ---------------- User Acquisition ---------------- */}
+      {show('acquisition') && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xl font-semibold text-[#f0eef5]">User Acquisition</h2>
+          <MetricGrid cols={4}>
+            <MetricCard label="New registrations" value="1,240" context="04 Oct–02 Nov" />
+            <MetricCard label="Registered accounts" value="12,840" context="11,600 at period start" />
+            <MetricCard label="Active / inactive" value="8,760 / 4,080" context="Activity within selected 30 days" />
+            <MetricCard label="Account growth" value="10.7%" context="1,240 ÷ 11,600" />
+          </MetricGrid>
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,620px)_1fr]">
+            <ChartPanel title="Registration trend" subtitle="New accounts per day · UTC" legend={<span className="text-[#c2ade7]">● Registrations　Average 41 / day</span>}>
+              <BarChart data={registrations}>
+                <CartesianGrid stroke={GRID} vertical={false} />
+                <XAxis dataKey="day" ticks={regTicks} interval={0} tick={axisTick} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 80]} ticks={[0, 40, 80]} tick={axisTick} tickLine={false} axisLine={false} width={38} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: '#2b2a33' }} />
+                <Bar dataKey="users" name="Registrations" radius={[3, 3, 0, 0]}>
+                  {registrations.map((_, i) => (
+                    <Cell key={i} fill={i === registrations.length - 1 ? PURPLE : '#79678f'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartPanel>
+
+            <Panel className="flex min-w-0 flex-col gap-4 p-5">
+              <SectionHeading title="Acquisition sources" subtitle="Registrations attributed to first visit" />
+              <DataTable columns={sourceCols} rows={sources} rowKey={(r) => r.source} footerLeft="1,240 new accounts · 100% attributed" footerRight={Pager} />
+            </Panel>
+          </div>
+        </section>
+      )}
+
+      {/* ---------------- Content Growth ---------------- */}
+      {show('content') && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xl font-semibold text-[#f0eef5]">Content Growth</h2>
+          <MetricGrid cols={4}>
+            <MetricCard label="Catalogue games" value="38" context="34 published · +3 this period" />
+            <MetricCard label="New library additions" value="2,840" context="18,490 total additions" />
+            <MetricCard label="New reviews" value="96" context="526 reviews in total" />
+            <MetricCard label="New ratings" value="448" context="3,240 ratings in total" />
+          </MetricGrid>
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,620px)_1fr]">
+            <ChartPanel
+              title="Reviews & ratings"
+              subtitle="Submissions per day · Includes held records"
+              legend={
+                <>
+                  <span className="text-[#c2ade7]">● Ratings　</span>
+                  <span className="text-[#dfc192]">◌ Reviews</span>
+                </>
+              }
+            >
+              <LineChart data={submissions}>
+                <CartesianGrid stroke={GRID} vertical={false} />
+                <XAxis dataKey="day" ticks={dayTicks} tick={axisTick} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 30]} ticks={[0, 15, 30]} tick={axisTick} tickLine={false} axisLine={false} width={38} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line type="monotone" dataKey="ratings" name="Ratings" stroke={PURPLE} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="reviews" name="Reviews" stroke={AMBER} strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+              </LineChart>
+            </ChartPanel>
+
+            <Panel className="flex min-w-0 flex-col gap-4 p-5">
+              <SectionHeading title="Most-reviewed & most-added" subtitle="Period totals · Ranked by reviews" />
+              <DataTable
+                columns={reviewedCols}
+                rows={reviewed}
+                rowKey={(r) => r.game}
+                footerLeft="Most added: Hollow Knight · 620 additions"
+                footerRight={Pager}
+              />
+            </Panel>
+          </div>
+        </section>
+      )}
+
+      <InfoNote>
+        Daily activity ends 01 Nov; period totals include 02 Nov through 10:30 UTC. Reviews, ratings, content flags and reports are separate measures. Public scores exclude held ratings.
+      </InfoNote>
+
+      <WorkspaceFooter />
+    </AdminLayout>
+  );
+};

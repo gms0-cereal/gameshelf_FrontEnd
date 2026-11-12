@@ -1,12 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import ModLayout from "../layout/Modlayout";
-import { useState } from "react";
-import { AUDIT_EVENTS, type AuditEvent } from "./modData";
-import { Badge, Button, Card, Cell, DataTable, FilterSelect, Label, PageHeader, Pagination, RowAction, SearchInput, type Column } from "./Modui";
+import ModLayout from "../../components/layout/Modlayout";
+import { useEffect, useState } from "react";
+import type { AuditEvent } from "./modData";
+import { getModerationHistory } from "../../lib/moderationApi";
+import { Badge, Button, Card, Cell, DataTable, FilterSelect, Label, PageHeader, Pagination, RowAction, SearchInput, type Column } from "../../components/ui/Modui";
 
 function HistoryContent({ onOpenReport }: { onOpenReport: () => void }) {
-  const [selectedId, setSelectedId] = useState("AU-0145");
-  const selected = AUDIT_EVENTS.find((e) => e.id === selectedId) ?? AUDIT_EVENTS[0];
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const selected = events.find((e) => e.id === selectedId) ?? events[0];
+
+  useEffect(() => {
+    getModerationHistory()
+      .then((history) => {
+        setEvents(history);
+        setSelectedId(history[0]?.id ?? null);
+      })
+      .catch(() => setLoadError("Moderation history is unavailable. Check your moderator access and try again."));
+  }, []);
 
   const columns: Column<AuditEvent>[] = [
     { key: "id", header: "Event ID", render: (e) => <span className="text-zinc-300">{e.id}</span> },
@@ -39,15 +51,16 @@ function HistoryContent({ onOpenReport }: { onOpenReport: () => void }) {
           <FilterSelect label="Date range" options={["04 Oct–02 Nov"]} />
           <FilterSelect label="Result" options={["All results", "Assigned", "Applied", "Delivered"]} />
         </div>
-        <DataTable columns={columns} rows={AUDIT_EVENTS} selectedId={selectedId} onRowClick={(e) => setSelectedId(e.id)} />
-        <Pagination summary="1–5 of 5 events · 5 per page" />
+        <DataTable columns={columns} rows={events} selectedId={selectedId ?? undefined} onRowClick={(e) => setSelectedId(e.id)} />
+        <Pagination summary={`${events.length} history entries returned by the API`} />
         <p className="mt-3 text-[9.5px] text-zinc-500">
           Not completed: R-1048 review / proposed 24h mute · R-1044 review / visibility decision (RV-0524 still published) · A-031
           appeal decision. No draft is shown as an applied action.
         </p>
       </Card>
+      {loadError && <p className="text-[10px] text-amber-300">{loadError}</p>}
 
-      <Card
+      {selected && <Card
         title={`${selected.id} · ${selected.action}`}
         action={
           <div className="flex items-center gap-3">
@@ -79,7 +92,7 @@ function HistoryContent({ onOpenReport }: { onOpenReport: () => void }) {
           <Badge tone="amber">Pending</Badge>
           No restriction change · AshRunner remains Active · RV-0526 remains published · Proposed 24h mute not confirmed or applied.
         </div>
-      </Card>
+      </Card>}
 
       <p className="mt-4 text-[9.5px] leading-relaxed text-zinc-500">
         Read-only demo · Intended for authorized moderators. Audit records retain actor, UTC time, reason and evidence references;

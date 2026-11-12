@@ -1,12 +1,19 @@
-import ModLayout from "../layout/Modlayout";
-import { useState } from "react";
-import { APPEALS, type Appeal } from "./modData";
-import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, FilterSelect, Notice, PageHeader, Pagination, RowAction, SearchInput, StatCard, Tabs, TextArea, type Column } from "./Modui";
+import ModLayout from "../../components/layout/Modlayout";
+import { useEffect, useState } from "react";
+import type { Appeal } from "./modData";
+import { getAppeals } from "../../lib/moderationApi";
+import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, FilterSelect, Notice, PageHeader, Pagination, RowAction, SearchInput, StatCard, Tabs, TextArea, type Column } from "../../components/ui/Modui";
 
 const APPEAL_TABS = ["Pending (3)", "Under review (2)", "Decided (11)", "All appeals (16)"] as const;
 
 function AppealsList({ onOpen }: { onOpen: (id: string) => void }) {
   const [tab, setTab] = useState<(typeof APPEAL_TABS)[number]>("Pending (3)");
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAppeals().then(setAppeals).catch(() => setLoadError("Appeals are unavailable. Check your moderator access and try again."));
+  }, []);
 
   const columns: Column<Appeal>[] = [
     { key: "id", header: "Appeal ID", render: (a) => <span className="text-zinc-300">{a.id}</span> },
@@ -45,9 +52,10 @@ function AppealsList({ onOpen }: { onOpen: (id: string) => void }) {
           <FilterSelect options={["04 Oct–02 Nov"]} />
           <Button variant="ghost">Reset filters</Button>
         </div>
-        <DataTable columns={columns} rows={APPEALS} selectedId="A-031" onRowClick={(a) => onOpen(a.id)} />
-        <Pagination summary="Showing 3 of 3 pending appeals · Page 1 of 1" />
+        <DataTable columns={columns} rows={appeals} onRowClick={(a) => onOpen(a.id)} />
+        <Pagination summary={`Showing ${appeals.length} appeals returned by the API`} />
       </Card>
+      {loadError && <Notice tone="info" className="mb-4">{loadError}</Notice>}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Independent review" subtitle="Avoid conflicts of interest">

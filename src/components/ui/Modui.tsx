@@ -25,7 +25,7 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
 }
 
 export function Eyebrow({ children }: { children: ReactNode }) {
-  return <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.12em] text-zinc-500">{children}</p>;
+  return <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#bda6e4]">{children}</p>;
 }
 
 export function Label({ children }: { children: ReactNode }) {
@@ -45,11 +45,11 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-5">
-      <Eyebrow>Trust &amp; Community</Eyebrow>
+      <Eyebrow>GameShelf Trust &amp; Safety</Eyebrow>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-zinc-50">{title}</h1>
-          {subtitle && <p className="mt-1.5 max-w-3xl text-[11px] text-zinc-500">{subtitle}</p>}
+          <h1 className="mt-1 text-3xl font-bold leading-tight tracking-tight text-white">{title}</h1>
+          {subtitle && <p className="mt-1 max-w-3xl text-sm text-slate-400">{subtitle}</p>}
           {meta && <p className="mt-1 text-[10px] text-zinc-600">{meta}</p>}
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
@@ -72,7 +72,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={`rounded-lg border border-[#2a2a33] bg-[#17171d] ${className}`}>
+    <section className={`rounded-xl border border-[#454650] bg-[#222228] ${className}`}>
       {(title || action) && (
         <header className="flex items-start justify-between gap-3 px-4 pt-4">
           <div>
@@ -99,12 +99,12 @@ export function StatCard({
   icon?: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-[#2a2a33] bg-[#17171d] p-4">
+    <div className="rounded-xl border border-[#454650] bg-[#222228] p-5">
       <p className="flex items-center justify-between text-[10px] text-zinc-500">
         {label}
         {icon}
       </p>
-      <p className="mt-2 text-[28px] font-semibold leading-none text-zinc-50">{value}</p>
+      <p className="mt-2 text-3xl font-bold leading-none text-white">{value}</p>
       {hint && <p className="mt-2 text-[10px] text-zinc-500">{hint}</p>}
     </div>
   );
@@ -143,9 +143,9 @@ export function Button({
   disabled?: boolean;
 }) {
   const styles = {
-    primary: "bg-violet-600 text-white hover:bg-violet-500 border-violet-500",
-    secondary: "bg-[#1d1d25] text-zinc-200 hover:bg-[#25252f] border-[#33333f]",
-    danger: "bg-[#b4343c] text-white hover:bg-[#c53f48] border-[#c9474f]",
+    primary: "bg-[#1f1833] text-slate-200 hover:bg-[#2a2145] border-[#342954]",
+    secondary: "bg-[#1a1a20] text-slate-200 hover:bg-[#29272f] border-[#454650]",
+    danger: "bg-rose-700 text-white hover:bg-rose-600 border-rose-600",
     ghost: "bg-transparent text-zinc-400 hover:text-zinc-200 border-transparent",
   }[variant];
   return (
@@ -253,14 +253,14 @@ export function Tabs<T extends string>({
   onChange: (t: T) => void;
 }) {
   return (
-    <div className="mb-3 flex gap-4 border-b border-[#2a2a33]">
+    <div className="mb-3 flex gap-4 border-b border-[#454650]">
       {tabs.map((t) => (
         <button
           key={t}
           type="button"
           onClick={() => onChange(t)}
           className={`-mb-px border-b-2 pb-2 text-[11px] ${
-            active === t ? "border-violet-500 text-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-300"
+            active === t ? "border-[#bda6e4] text-white" : "border-transparent text-slate-500 hover:text-slate-300"
           }`}
         >
           {t}
@@ -274,7 +274,7 @@ export function SearchInput({ placeholder, className = "" }: { placeholder: stri
   return (
     <input
       placeholder={placeholder}
-      className={`rounded-md border border-[#2a2a33] bg-[#121217] px-3 py-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none ${className}`}
+      className={`rounded-lg border border-[#454650] bg-[#1a1a20] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-[#bda6e4] focus:outline-none ${className}`}
     />
   );
 }
@@ -283,7 +283,7 @@ export function FilterSelect({ options, label }: { options: string[]; label?: st
   return (
     <label className="flex flex-col gap-1">
       {label && <Label>{label}</Label>}
-      <select className="rounded-md border border-[#2a2a33] bg-[#1d1d25] px-2.5 py-1.5 text-[11px] text-zinc-200 focus:border-violet-500 focus:outline-none">
+      <select className="rounded-lg border border-[#454650] bg-[#1a1a20] px-2.5 py-1.5 text-xs text-slate-200 focus:border-[#bda6e4] focus:outline-none">
         {options.map((o) => (
           <option key={o}>{o}</option>
         ))}
@@ -329,7 +329,7 @@ export function TextArea({
       <textarea
         rows={rows}
         placeholder={placeholder}
-        className="w-full resize-none rounded-md border border-[#2a2a33] bg-[#121217] p-2.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none"
+        className="w-full resize-none rounded-lg border border-[#454650] bg-[#1a1a20] p-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:border-[#bda6e4] focus:outline-none"
       />
     </label>
   );

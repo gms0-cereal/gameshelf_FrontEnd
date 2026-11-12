@@ -22,12 +22,15 @@ import CommunityPlaylists from "./pages/CommunityPlaylists";
 import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
 import AppealReportPage from "./pages/AppealReportPage";
 import { SettingsProvider } from "./context/Settingscontext";
-// Admin Dashboard Imports
-import { Dashboard } from "./pages/admin/Dashboard";
-import { Games } from "./pages/admin/Games";
-import { PlatformAnalytics } from "./pages/admin/PlatformAnalytics";
-import { SystemLogs } from "./pages/admin/SystemLogs";
 import Discover from "./pages/Discover";
+// Admin Dashboard Imports
+import { Dashboard } from './pages/admin/Dashboard';
+import { PlatformAnalytics } from './pages/admin/PlatformAnalytics';
+import { UserManagement } from './pages/admin/UserManagement';
+import { UserRoleManagement } from './pages/admin/UserRoleManagement';
+import { SystemLogs } from './pages/admin/SystemLogs';
+import { WebsiteSettings } from './pages/admin/WebsiteSettings';
+import { Games } from './pages/admin/Games'; // your existing file, unchanged
 //Legal Stuff
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
@@ -36,13 +39,15 @@ import PrivacyPolicy from "@/pages/Privacypolicy";
 import Terms from "@/pages/Terms";
 import Settings from "@/pages/Settings";
 // Moderator Dashboard Imports
-import ModeratorDashboard from "./components/moderators/ModeratorDashboard";
-import ModReport from "./components/moderators/ModReport";
-import ModSanctions from "./components/moderators/ModSanctions";
-import ModAppealManage from "./components/moderators/ModAppealManage";
-import ModHistory from "./components/moderators/ModHistory";
-import RoleRoute from "./components/RoleRoute";
 
+import ModeratorDashboard from "./pages/moderators/ModeratorDashboard";
+import ModReport from "./pages/moderators/ModReport";
+import ModSanctions from "./pages/moderators/ModSanctions";
+import ModAppealManage from "./pages/moderators/ModAppealManage";
+import ModHistory from "./pages/moderators/ModHistory";
+
+
+import RoleRoute from "./components/RoleRoute"; // <--- 2. Import RoleRoute component
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -86,21 +91,25 @@ const App = () => (
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<Terms />} />
               {/* Admin Routes */}
-              <Route element={<RoleRoute allowedRoles={["admin"]} />}>
+              {/* <Route element={<RoleRoute allowedRoles={["admin"]} />}> */}
                 <Route path="/admin" element={<Dashboard />} />
-                <Route path="/admin/games" element={<Games />} />
                 <Route path="/admin/analytics" element={<PlatformAnalytics />} />
+                <Route path="/admin/users" element={<UserManagement />} />
+                <Route path="/admin/roles" element={<UserRoleManagement />} />
+                <Route path="/admin/roles/:userId" element={<UserRoleManagement />} />
+                <Route path="/admin/games" element={<Games />} />
                 <Route path="/admin/logs" element={<SystemLogs />} />
-              </Route>
+                <Route path="/admin/settings" element={<WebsiteSettings />} />
+              {/* </Route> */}
 
               {/* Moderator Routes */}
-              <Route element={<RoleRoute allowedRoles={["moderator", "admin"]} />}>
+              {/* <Route element={<RoleRoute allowedRoles={["moderator", "admin"]} />}> */}
                 <Route path="/moderator" element={<ModeratorDashboard />} />
                 <Route path="/moderator/reports" element={<ModReport />} />
                 <Route path="/moderator/sanctions" element={<ModSanctions />} />
                 <Route path="/moderator/appeals" element={<ModAppealManage />} />
                 <Route path="/moderator/history" element={<ModHistory />} />
-              </Route>
+              {/* </Route> */}
               {/* Settings Route */}
               <Route path="/settings" element={<Settings />} />
             </Routes>
