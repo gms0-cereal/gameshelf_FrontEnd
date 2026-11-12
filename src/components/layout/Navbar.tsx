@@ -31,6 +31,14 @@ const menuItems = [
   { to: "/settings", label: "Settings" },
 ];
 
+const moderatorMenuItems = [
+  { to: "/moderator", label: "Moderator Dashboard" },
+];
+
+const adminMenuItems = [
+  { to: "/admin", label: "Admin Dashboard" },
+];
+
 const menuItemClass =
   "block w-full px-4 py-2.5 text-left text-sm text-[#E6E1EA] hover:bg-[#20232B] focus:bg-[#20232B] focus:outline-none transition-colors";
 
@@ -398,7 +406,13 @@ export default function Navbar() {
                     onKeyDown={onMenuKeyDown}
                     className="absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] py-1 shadow-xl"
                   >
-                    {menuItems.map((item) => (
+                    {[
+                      ...menuItems,
+                      ...(user?.role === "moderator" || user?.role === "admin"
+                        ? moderatorMenuItems
+                        : []),
+                      ...(user?.role === "admin" ? adminMenuItems : []),
+                    ].map((item) => (
                       <Link
                         key={item.label}
                         to={item.to}

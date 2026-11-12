@@ -1,4 +1,5 @@
-import { useState,useMemo, } from "react";
+
+import { useState } from "react";
 import { Heart, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,8 @@ interface Props {
   onDeleted: (reviewId: number) => void;
 }
 
+const COMMENTS_PER_PAGE = 15;
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -34,30 +37,32 @@ function formatDate(iso: string) {
   });
 }
 
-export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Props) {
+export default function GameshelfReviewItem({
+  review,
+  onUpdated,
+  onDeleted,
+}: Props) {
   const [likeBusy, setLikeBusy] = useState(false);
 
-  // edit
   const [editing, setEditing] = useState(false);
   const [draftContent, setDraftContent] = useState(review.content);
   const [saving, setSaving] = useState(false);
 
-  // report
   const [reporting, setReporting] = useState(false);
   const [reason, setReason] = useState<ReportReason>("spam");
   const [details, setDetails] = useState("");
 
-  // comments
   const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<ReviewComment[] | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [posting, setPosting] = useState(false);
+  const [commentPage, setCommentPage] = useState(1);
 
-  // --- like ----------------------------------------------------------------
   async function toggleLike() {
     if (likeBusy) return;
     setLikeBusy(true);
+
     const wasLiked = review.liked_by_me;
 
     onUpdated({
@@ -70,16 +75,20 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
       const result = wasLiked
         ? await unlikeReview(review.id)
         : await likeReview(review.id);
-      onUpdated({ ...review, liked_by_me: result.liked, like_count: result.like_count });
+
+      onUpdated({
+        ...review,
+        liked_by_me: result.liked,
+        like_count: result.like_count,
+      });
     } catch (err) {
-      onUpdated(review); // rollback
+      onUpdated(review);
       toast.error(apiErrorMessage(err, "Couldn’t update your like."));
     } finally {
       setLikeBusy(false);
     }
   }
 
-  // --- edit ----------------------------------------------------------------
   function startEdit() {
     setDraftContent(review.content);
     setReporting(false);
@@ -88,16 +97,19 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
 
   async function saveEdit() {
     const content = draftContent.trim();
+
     if (!content) {
       toast.error("Review can’t be empty.");
       return;
     }
+
     if (content === review.content) {
       setEditing(false);
       return;
     }
 
     setSaving(true);
+
     try {
       const updated = await updateReview(review.id, { content });
       onUpdated(updated);
@@ -110,9 +122,9 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
     }
   }
 
-  // --- delete --------------------------------------------------------------
   async function remove() {
     if (!window.confirm("Delete this review? This can’t be undone.")) return;
+
     try {
       await deleteReview(review.id);
       onDeleted(review.id);
@@ -122,15 +134,16 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
     }
   }
 
-  // --- report --------------------------------------------------------------
   async function submitReport() {
     try {
       const result = await reportReview(review.id, { reason, details });
+
       toast.success(
         result.already_reported
           ? "You’ve already reported this review."
           : "Thanks, we’ll review this."
       );
+
       setReporting(false);
       setDetails("");
     } catch (err) {
@@ -138,13 +151,13 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
     }
   }
 
-  // --- comments ------------------------------------------------------------
   async function toggleComments() {
     const next = !open;
     setOpen(next);
 
     if (next && comments === null) {
       setLoadingComments(true);
+
       try {
         setComments(await getComments(review.id));
       } catch (err) {
@@ -161,11 +174,22 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
     if (!content) return;
 
     setPosting(true);
+
     try {
       const created = await createComment(review.id, { content });
+
       setComments((prev) => [...(prev ?? []), created]);
-      onUpdated({ ...review, comment_count: review.comment_count + 1 });
       setCommentDraft("");
+      onUpdated({
+        ...review,
+        comment_count: review.comment_count + 1,
+      });
+
+      // Move to the page containing the newly posted comment.
+      const newTopLevelCount =
+        (comments ?? []).filter((c) => c.parent_comment === null).length + 1;
+
+      setCommentPage(Math.ceil(newTopLevelCount / COMMENTS_PER_PAGE));
     } catch (err) {
       toast.error(apiErrorMessage(err, "Couldn’t post your comment."));
     } finally {
@@ -175,44 +199,74 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
 
   async function postReply(parentId: number, content: string) {
     const created = await createComment(review.id, {
-        content,
-        parentComment: parentId,
+      content,
+      parentComment: parentId,
     });
+
     setComments((prev) => [...(prev ?? []), created]);
-    onUpdated({ ...review, comment_count: review.comment_count + 1 });
-    }
+
+    onUpdated({
+      ...review,
+      comment_count: review.comment_count + 1,
+    });
+  }
 
   const replaceComment = (updated: ReviewComment) =>
-    setComments((prev) => (prev ?? []).map((c) => (c.id === updated.id ? updated : c)));
+    setComments((prev) =>
+      (prev ?? []).map((c) => (c.id === updated.id ? updated : c))
+    );
 
-    const removeComment = (id: number) => {
+  const removeComment = (id: number) => {
     const before = comments ?? [];
-
     const gone = new Set<number>([id]);
+
     let grew = true;
+
     while (grew) {
-        grew = false;
-        for (const c of before) {
-        if (c.parent_comment !== null && gone.has(c.parent_comment) && !gone.has(c.id)) {
-            gone.add(c.id);
-            grew = true;
+      grew = false;
+
+      for (const c of before) {
+        if (
+          c.parent_comment !== null &&
+          gone.has(c.parent_comment) &&
+          !gone.has(c.id)
+        ) {
+          gone.add(c.id);
+          grew = true;
         }
-        }
+      }
     }
 
     const after = before.filter((c) => !gone.has(c.id));
     setComments(after);
+
     onUpdated({
-        ...review,
-        comment_count: Math.max(0, review.comment_count - gone.size),
+      ...review,
+      comment_count: Math.max(0, review.comment_count - gone.size),
     });
-    };
-  const topLevel = (comments ?? []).filter((c) => c.parent_comment === null);
-  const repliesOf = (id: number) => (comments ?? []).filter((c) => c.parent_comment === id);
+  };
+
+  const topLevel = (comments ?? []).filter(
+    (c) => c.parent_comment === null
+  );
+
+  const totalCommentPages = Math.max(
+    1,
+    Math.ceil(topLevel.length / COMMENTS_PER_PAGE)
+  );
+
+  const currentCommentPage = Math.min(commentPage, totalCommentPages);
+
+  const visibleComments = topLevel.slice(
+    (currentCommentPage - 1) * COMMENTS_PER_PAGE,
+    currentCommentPage * COMMENTS_PER_PAGE
+  );
+
+  const repliesOf = (id: number) =>
+    (comments ?? []).filter((c) => c.parent_comment === id);
 
   return (
     <article className="flex flex-col gap-3 border-t border-[#55516c] pt-4 first:border-t-0 first:pt-0">
-      {/* top: author + rating + 3-dot menu */}
       <div className="flex items-center justify-between gap-2 text-[13px] text-[#b4aec7]">
         <span>
           {review.author.username} • {formatDate(review.created_at)}
@@ -220,8 +274,11 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
 
         <div className="flex items-center gap-2">
           {review.rating !== null && (
-            <span className="font-medium text-[#c2ade7]">★ {review.rating} / 10</span>
+            <span className="font-medium text-[#FACC15]">
+              ★ {review.rating} / 10
+            </span>
           )}
+
           <ItemMenu
             isMine={review.is_mine}
             onEdit={startEdit}
@@ -234,42 +291,45 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
         </div>
       </div>
 
-      {/* {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>} */}
-
-      {/* body */}
       {editing ? (
-        <>
-          {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>}
-          <div className="flex flex-col gap-2">
-            <textarea
-              value={draftContent}
-              onChange={(e) => setDraftContent(e.target.value)}
-              rows={5}
-              className="w-full rounded-lg border border-[#55516c] bg-[#2a2838] p-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
-            />
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={saveEdit}
-                disabled={saving}
-                className="h-8 rounded-lg border-0 bg-[#a8484c] px-4 text-xs font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
-              >
-                {saving ? "Saving…" : "Save"}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="h-8 rounded-lg border border-[#55516c] bg-transparent px-4 text-xs text-[#e0deeb] shadow-none hover:bg-[#46445a]"
-              >
-                Cancel
-              </Button>
-            </div>
+        <div className="flex flex-col gap-2">
+          {review.title && (
+            <h3 className="text-sm font-semibold">{review.title}</h3>
+          )}
+
+          <textarea
+            value={draftContent}
+            onChange={(e) => setDraftContent(e.target.value)}
+            rows={5}
+            className="w-full rounded-lg border border-[#55516c] bg-[#2a2838] p-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
+          />
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={saveEdit}
+              disabled={saving}
+              className="h-8 rounded-lg border-0 bg-[#a8484c] px-4 text-xs font-semibold text-[#e0deeb] shadow-none hover:bg-[#ae494e]"
+            >
+              {saving ? "Saving…" : "Save"}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="h-8 rounded-lg border border-[#55516c] bg-transparent px-4 text-xs text-[#e0deeb] shadow-none hover:bg-[#46445a]"
+            >
+              Cancel
+            </Button>
           </div>
-        </>
+        </div>
       ) : (
         <SpoilerMask active={review.contains_spoilers}>
           <div className="flex flex-col gap-3">
-            {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>}
+            {review.title && (
+              <h3 className="text-sm font-semibold">{review.title}</h3>
+            )}
+
             <p className="line-clamp-6 whitespace-pre-line text-sm leading-6 text-[#e0deeb]">
               {review.content || "No written review."}
             </p>
@@ -277,7 +337,6 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
         </SpoilerMask>
       )}
 
-      {/* report form (opened from the 3-dot menu) */}
       {reporting && (
         <div className="flex flex-col gap-2 rounded-lg border border-[#55516c] bg-[#2a2838] p-3">
           <select
@@ -291,6 +350,7 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
               </option>
             ))}
           </select>
+
           <textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
@@ -299,6 +359,7 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
             placeholder="Add details (optional)"
             className="rounded-md border border-[#55516c] bg-[#201e2f] p-2 text-xs text-[#e0deeb] outline-none focus:border-[#c2ade7]"
           />
+
           <div className="flex gap-2">
             <Button
               type="button"
@@ -307,6 +368,7 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
             >
               Submit report
             </Button>
+
             <Button
               type="button"
               onClick={() => setReporting(false)}
@@ -318,7 +380,6 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
         </div>
       )}
 
-      {/* bottom: like + comments */}
       <div className="flex items-center gap-4 text-xs text-[#b4aec7]">
         <button
           type="button"
@@ -328,7 +389,11 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
           className="flex cursor-pointer items-center gap-1.5 hover:text-[#e0deeb]"
         >
           <Heart
-            className={`size-3.5 ${review.liked_by_me ? "fill-[#e58d91] text-[#e58d91]" : ""}`}
+            className={`size-3.5 ${
+              review.liked_by_me
+                ? "fill-[#e58d91] text-[#e58d91]"
+                : ""
+            }`}
             strokeWidth={1.7}
             aria-hidden="true"
           />
@@ -341,7 +406,11 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
           aria-expanded={open}
           className="flex cursor-pointer items-center gap-1.5 hover:text-[#e0deeb]"
         >
-          <MessageSquare className="size-3.5" strokeWidth={1.7} aria-hidden="true" />
+          <MessageSquare
+            className="size-3.5"
+            strokeWidth={1.7}
+            aria-hidden="true"
+          />
           Comments ({review.comment_count.toLocaleString()})
         </button>
       </div>
@@ -354,29 +423,62 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
             </p>
           )}
 
-          {topLevel.map((c) => (
+          {visibleComments.map((c) => (
             <div key={c.id} className="flex flex-col gap-3">
-                <CommentItem
+              <CommentItem
                 comment={c}
                 onUpdated={replaceComment}
                 onDeleted={removeComment}
                 onReply={postReply}
-                />
-                {repliesOf(c.id).map((r) => (
+              />
+
+              {repliesOf(c.id).map((r) => (
                 <div key={r.id} className="ml-6">
-                    <CommentItem
+                  <CommentItem
                     comment={r}
                     onUpdated={replaceComment}
                     onDeleted={removeComment}
                     onReply={postReply}
-                    />
+                  />
                 </div>
-                ))}
+              ))}
             </div>
-            ))}
+          ))}
 
           {!loadingComments && comments?.length === 0 && (
             <p className="text-xs text-[#b4aec7]">No comments yet.</p>
+          )}
+
+          {!loadingComments && topLevel.length > COMMENTS_PER_PAGE && (
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentCommentPage === 1}
+                onClick={() => setCommentPage((page) => Math.max(1, page - 1))}
+                className="h-8 border-[#55516c] bg-transparent text-xs text-[#e0deeb] hover:bg-[#46445a]"
+              >
+                Previous
+              </Button>
+
+              <span className="text-xs text-[#b4aec7]">
+                Page {currentCommentPage} of {totalCommentPages}
+              </span>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentCommentPage >= totalCommentPages}
+                onClick={() =>
+                  setCommentPage((page) =>
+                    Math.min(totalCommentPages, page + 1)
+                  )
+                }
+                className="h-8 border-[#55516c] bg-transparent text-xs text-[#e0deeb] hover:bg-[#46445a]"
+              >
+                Next
+              </Button>
+            </div>
           )}
 
           <div className="flex flex-col gap-2">
@@ -388,6 +490,7 @@ export default function GameshelfReviewItem({ review, onUpdated, onDeleted }: Pr
               placeholder="Write a comment…"
               className="w-full rounded-lg border border-[#55516c] bg-[#2a2838] p-3 text-sm text-[#e0deeb] outline-none focus:border-[#c2ade7]"
             />
+
             <Button
               type="button"
               onClick={postComment}

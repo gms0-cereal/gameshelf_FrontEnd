@@ -1,12 +1,23 @@
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import GameCard, { type GameSummary } from "@/components/games/GameCard";
-import { getTasteRecommendations, type TasteRecommendationItem } from "@/services/recommendationService";
+import {
+  getTasteRecommendations,
+  type TasteRecommendationItem,
+} from "@/services/recommendationService";
 
-function recommendationToSummary(rec: TasteRecommendationItem): GameSummary | null {
+function recommendationToSummary(
+  rec: TasteRecommendationItem
+): GameSummary | null {
   const g = rec.game as any;
-  const appId = g?.appid || g?.steam_app_id || (rec as any).appid || (rec as any).steam_app_id;
+  const appId =
+    g?.appid ||
+    g?.steam_app_id ||
+    (rec as any).appid ||
+    (rec as any).steam_app_id;
+
   if (!appId) return null;
 
   const nativeDescription =
@@ -15,6 +26,13 @@ function recommendationToSummary(rec: TasteRecommendationItem): GameSummary | nu
     (rec as any).short_description ||
     (rec as any).description ||
     "Explore live community catalogs and add this title to your shelf.";
+
+  const bayesianScore =
+    g?.bayesian_score ??
+    (rec as any).bayesian_score ??
+    g?.community_rating ??
+    (rec as any).community_rating ??
+    null;
 
   return {
     id: appId,
@@ -26,6 +44,8 @@ function recommendationToSummary(rec: TasteRecommendationItem): GameSummary | nu
       `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`,
     genres: g?.genres?.length ? g.genres : ["Steam Game"],
     platforms: ["PC"],
+    bayesian_score: bayesianScore,
+    score: bayesianScore,
     bio: nativeDescription,
   };
 }
@@ -47,27 +67,38 @@ export default function RecommendedGamesSection() {
 
   const fetchPage = useCallback(async (isReset = false) => {
     if (loadingRef.current || (!hasMoreRef.current && !isReset)) return;
+
     loadingRef.current = true;
+
     if (isReset) {
       offsetRef.current = 0;
       hasMoreRef.current = true;
     }
 
     try {
-      const data = await getTasteRecommendations(PAGE_SIZE, offsetRef.current);
+      const data = await getTasteRecommendations(
+        PAGE_SIZE,
+        offsetRef.current
+      );
+
       const results = data.results ?? [];
+
       const summaries = results
         .map(recommendationToSummary)
         .filter((g): g is GameSummary => g !== null);
 
       setGames((prev) => {
         const existingIds = new Set(prev.map((g) => g.id));
-        const uniqueNew = summaries.filter((g) => !existingIds.has(g.id));
+        const uniqueNew = summaries.filter(
+          (g) => !existingIds.has(g.id)
+        );
+
         return isReset ? uniqueNew : [...prev, ...uniqueNew];
       });
 
       offsetRef.current += results.length;
-      hasMoreRef.current = data.has_more ?? results.length === PAGE_SIZE;
+      hasMoreRef.current =
+        data.has_more ?? results.length === PAGE_SIZE;
     } catch {
       setError("Failed to load recommendations.");
     } finally {
@@ -83,20 +114,28 @@ export default function RecommendedGamesSection() {
   const updateArrows = useCallback(() => {
     const el = trackRef.current;
     if (!el) return;
+
     setCanPrev(el.scrollLeft > 4);
-    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    setCanNext(
+      el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+    );
   }, []);
 
   useEffect(() => {
     updateArrows();
+
     window.addEventListener("resize", updateArrows);
+
     return () => window.removeEventListener("resize", updateArrows);
   }, [games, loading, updateArrows]);
 
   const handleScroll = (event: React.UIEvent<HTMLUListElement>) => {
     updateArrows();
+
     const el = event.currentTarget;
-    const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 400;
+    const nearEnd =
+      el.scrollLeft + el.clientWidth >= el.scrollWidth - 400;
+
     if (nearEnd && hasMoreRef.current) {
       void fetchPage();
     }
@@ -105,7 +144,11 @@ export default function RecommendedGamesSection() {
   function scrollByPage(direction: 1 | -1) {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: direction * el.clientWidth * 0.9, behavior: "smooth" });
+
+    el.scrollBy({
+      left: direction * el.clientWidth * 0.9,
+      behavior: "smooth",
+    });
   }
 
   if (!loading && games.length === 0 && !error) return null;
@@ -114,7 +157,10 @@ export default function RecommendedGamesSection() {
     "flex size-9 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B] disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <section aria-labelledby="taste-recommendations-title" className="flex flex-col gap-5">
+    <section
+      aria-labelledby="taste-recommendations-title"
+      className="flex flex-col gap-5"
+    >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col">
           <h2
@@ -123,9 +169,11 @@ export default function RecommendedGamesSection() {
           >
             Recommended for You
           </h2>
+
           <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
             Games selected based on your genres, platforms, and liked games.
           </p>
+
           <Link
             to="/interests"
             className="mt-1 text-[13px] leading-4 text-[#B39ACF] hover:underline"
@@ -142,8 +190,13 @@ export default function RecommendedGamesSection() {
             aria-label="Previous recommended games"
             className={arrowClass}
           >
-            <ChevronLeft className="size-4" strokeWidth={1.7} aria-hidden="true" />
+            <ChevronLeft
+              className="size-4"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
           </button>
+
           <button
             type="button"
             onClick={() => scrollByPage(1)}
@@ -151,7 +204,11 @@ export default function RecommendedGamesSection() {
             aria-label="Next recommended games"
             className={arrowClass}
           >
-            <ChevronRight className="size-4" strokeWidth={1.7} aria-hidden="true" />
+            <ChevronRight
+              className="size-4"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -161,7 +218,7 @@ export default function RecommendedGamesSection() {
       <ul
         ref={trackRef}
         onScroll={handleScroll}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {loading && games.length === 0
           ? Array.from({ length: 5 }, (_, i) => (
@@ -170,7 +227,10 @@ export default function RecommendedGamesSection() {
               </li>
             ))
           : games.map((game) => (
-              <li key={game.id} className={`${CARD_WIDTH} shrink-0 snap-start`}>
+              <li
+                key={game.id}
+                className={`${CARD_WIDTH} shrink-0 snap-start`}
+              >
                 <GameCard game={game} />
               </li>
             ))}

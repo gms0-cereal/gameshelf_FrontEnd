@@ -1,84 +1,121 @@
-import { Link } from "react-router-dom";
-import { Calendar, Monitor, Star } from "lucide-react";
 
-export interface GameSummary {
-  id: number | string;
+import { Link } from "react-router-dom";
+import { Calendar, Gamepad2, Star } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+
+export type GameSummary = {
+  id: number;
   title: string;
   slug: string;
-  cover: string;
+  cover?: string | null;
   genres?: string[];
   platforms?: string[];
   release_year?: number | null;
   score?: number | null;
+  community_rating?: number | null;
+  rating_count?: number;
   price?: string | null;
   statusLabel?: string;
   statusClassName?: string;
+  communityRatingText?: string;
+  lastPlayedText?: string;
   bio?: string;
-  description?: string;
-  short_description?: string;
-}
+  bayesian_score?: number | null;
+};
 
-export default function GameCard({ game }: { game: GameSummary }) {
-  const descText =
-    game.bio ||
-    game.description ||
-    game.short_description ||
-    "Explore live community catalogs and add this title to your shelf.";
+export function GameCard({ game }: { game: GameSummary }) {
+  const displayScore = game.bayesian_score ?? game.community_rating ?? game.score ?? null;
+  
+  const details = [
+    {
+      icon: Gamepad2,
+      text: game.platforms?.join(" / ") || "Platform unknown",
+      color: "text-[#38BDF8]",
+    },
+    {
+      icon: Calendar,
+      text: game.release_year
+        ? `Released ${game.release_year}`
+        : "Release date unknown",
+      color: "text-[#34D399]",
+    },
+    {
+      icon: Star,
+      text:
+        displayScore !== null
+          ? `Score ${Number(displayScore).toFixed(1)}/10`
+          : "No score yet",
+      color: "text-[#FBBF24]",
+    },
+  ];
 
   return (
-    <Link
-      to={`/gamedetails/${game.slug || game.id}`}
-      className="group relative flex h-[420px] w-full flex-col overflow-hidden rounded-2xl border border-transparent bg-[#17191E] transition-all hover:border-[#554363] hover:bg-[#20232B] focus:outline-none focus:ring-2 focus:ring-[#B39ACF]"
-    >
-      {/* Clean Cover Image Container */}
-      <div className="relative h-[160px] w-full shrink-0 overflow-hidden rounded-t-2xl bg-[#20232B]">
-        <img
-          src={game.cover}
-          alt={game.title}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:brightness-110"
-        />
+    <Card className="group relative flex min-w-0 flex-col gap-0 overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none transition-colors duration-200 hover:border-[#554363] focus-within:border-[#B39ACF]">
+      {/* Cover Image */}
+      <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden rounded-t-2xl bg-[#000000]">
+        {game.cover ? (
+          <img
+            src={game.cover}
+            alt={game.title}
+            loading="lazy"
+            className="block h-full w-full object-cover object-center contrast-110 saturate-125 transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[#17191E]">
+            <Gamepad2 className="size-8 text-[#B39ACF]" />
+          </div>
+        )}
+
+        {game.price && (
+          <span className="absolute right-2.5 top-2.5 rounded-full border border-[#34D399]/30 bg-[#10251F]/95 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.5px] text-[#34D399]">
+            {game.price}
+          </span>
+        )}
       </div>
 
-      {/* Content Area */}
-      <div className="flex flex-1 flex-col p-4">
-        <p className="line-clamp-1 text-[11px] font-medium uppercase tracking-wider text-[#B39ACF]">
-          {game.genres?.slice(0, 2).join(" / ") || "Steam Game"}
+      <CardContent className="flex flex-1 flex-col p-4">
+        <p className="truncate text-xs leading-4 text-[#B39ACF]">
+          {game.genres?.slice(0, 2).join(" / ") || "—"}
         </p>
-        
-        <h3 className="mt-1 line-clamp-1 text-base font-semibold leading-tight text-[#E6E1EA] transition-colors group-hover:text-[#B39ACF]" title={game.title}>
-          {game.title}
+
+        <h3 className="mt-1 truncate text-base font-medium leading-6">
+          <Link
+            to={`/gamedetails/${game.id}`}
+            title={game.title}
+            className="outline-none after:absolute after:inset-0 after:z-10 after:content-[''] group-hover:text-[#B39ACF] focus-visible:text-[#C2ADE0]"
+          >
+            {game.title}
+          </Link>
         </h3>
 
-        <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-[#A0A0A8]">
-          {descText}
-        </p>
+        <ul className="mt-2.5 flex flex-col gap-1.5">
+          {details.map(({ icon: Icon, text, color }, i) => (
+            <li
+              key={i}
+              className="flex items-center gap-2.5 text-[13px] leading-5 text-[#A0A0A8]"
+            >
+              <Icon
+                className={`size-4 shrink-0 ${color}`}
+                strokeWidth={1.7}
+                aria-hidden="true"
+              />
+              <span className="min-w-0 truncate">{text}</span>
+            </li>
+          ))}
+        </ul>
 
-        <div className="flex-1" />
-
-        {/* Metadata Footer */}
-        <div className="mt-3 flex flex-col gap-1.5 text-[12px] font-medium text-[#A0A0A8]">
-          <div className="flex items-center gap-2">
-            <Monitor className="size-3.5 text-[#38BDF8]" />
-            <span className="line-clamp-1">{game.platforms?.join(" / ") || "PC"}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="size-3.5 text-[#34D399]" />
-            <span>{game.release_year ? `Released ${game.release_year}` : "Release date unknown"}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Star className="size-3.5 text-[#FBBF24]" />
-            <span className={game.score ? "text-[#E6E1EA]" : ""}>
-              {game.score ? `Score ${game.score.toFixed(1)}/10` : "No score yet"}
-            </span>
-          </div>
+        <div className="mt-auto pt-4">
+          <span
+            aria-hidden="true"
+            className="inline-flex h-9 w-full items-center justify-center rounded-xl bg-[#B39ACF]/15 px-4 text-[13px] font-semibold text-[#C2ADE0] transition-colors duration-200 group-hover:bg-[#B39ACF]/25 group-hover:text-[#E6E1EA]"
+          >
+            View Game
+          </span>
         </div>
-
-        {/* Visual Link Button */}
-        <div className="mt-4 flex w-full items-center justify-center rounded-xl bg-[#302C39] py-2.5 text-[13px] font-semibold text-[#B39ACF] transition-colors group-hover:bg-[#B39ACF] group-hover:text-[#17191E]">
-          View Game
-        </div>
-      </div>
-    </Link>
+      </CardContent>
+    </Card>
   );
 }
+
+// Export both named and default to prevent any import mismatches across files
+export default GameCard;

@@ -1,32 +1,19 @@
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import GameCard, { type GameSummary } from "@/components/games/GameCard";
-import { getPlayersLikeYou, type PlayersLikeYouItem } from "@/services/playersLikeYouService";
-import type { UserGameEntry } from "@/services/Gameservice";
+import {
+  getPlayersLikeYou,
+  type PlayersLikeYouItem,
+} from "@/services/playersLikeYouService";
 
-
-const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  playing: { label: "Playing", className: "bg-[#20232B] text-[#B39ACF] border border-[#302438]" },
-  completed: { label: "Completed", className: "bg-[#10251F] text-[#34D399] border border-[#302438]" },
-  on_hold: { label: "On Hold", className: "bg-[#20232B] text-[#B39ACF] border border-[#302438]" },
-  plan_to_play: { label: "Plan to Play", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
-  dropped: { label: "Dropped", className: "bg-[#2B171C] text-[#E58B91] border border-[#E58B91]/40" },
-  unplayed: { label: "Unplayed", className: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]" },
-};
-
-function getGameStatus(userEntry?: UserGameEntry) {
-  const statusKey = userEntry?.status;
-  // Fall back to "unplayed" if it doesn't fit any known status or isn't in the list
-  const validKey = statusKey && STATUS_STYLES[statusKey] ? statusKey : "unplayed";
-  return STATUS_STYLES[validKey];
-}
-
-function playersLikeYouToSummary(item: PlayersLikeYouItem, userEntry?: UserGameEntry): GameSummary | null {
+function playersLikeYouToSummary(
+  item: PlayersLikeYouItem
+): GameSummary | null {
   const g = item.game as any;
   const appId = g?.steam_app_id || g?.appid;
-  if (!appId) return null;
 
-  const statusStyle = getGameStatus(userEntry);
+  if (!appId) return null;
 
   return {
     id: appId,
@@ -39,12 +26,15 @@ function playersLikeYouToSummary(item: PlayersLikeYouItem, userEntry?: UserGameE
     genres: g?.genres?.length ? g.genres : ["Steam Game"],
     platforms: g?.platforms?.length ? g.platforms : ["PC"],
     release_year: g?.release_year ?? null,
-    score: g?.score ?? g?.community_rating ?? null,
-    statusLabel: statusStyle.label,
-    statusClassName: statusStyle.className,
-    bio: g?.short_description || g?.description || "Explore live community catalogs and add this title to your shelf.",
+    score: g?.bayesian_score ?? g?.community_rating ?? null,
+    bio:
+      g?.short_description ||
+      g?.description ||
+      "Explore live community catalogs and discover your next game.",
+    bayesian_score: g?.bayesian_score ?? g?.community_rating ?? null,
   };
 }
+
 const CARD_WIDTH = "w-[260px] sm:w-[280px]";
 const PAGE_SIZE = 20;
 
@@ -62,7 +52,9 @@ export default function PlayersLikeYouSection() {
 
   const fetchPage = useCallback(async (isReset = false) => {
     if (loadingRef.current || (!hasMoreRef.current && !isReset)) return;
+
     loadingRef.current = true;
+
     if (isReset) {
       offsetRef.current = 0;
       hasMoreRef.current = true;
@@ -70,6 +62,7 @@ export default function PlayersLikeYouSection() {
 
     try {
       const data = await getPlayersLikeYou(PAGE_SIZE, offsetRef.current);
+
       if (data.source !== "personalized") {
         hasMoreRef.current = false;
         if (isReset) setGames([]);
@@ -77,6 +70,7 @@ export default function PlayersLikeYouSection() {
       }
 
       const results = data.results ?? [];
+
       const summaries = results
         .map(playersLikeYouToSummary)
         .filter((g): g is GameSummary => g !== null);
@@ -84,6 +78,7 @@ export default function PlayersLikeYouSection() {
       setGames((prev) => {
         const existingIds = new Set(prev.map((g) => g.id));
         const uniqueNew = summaries.filter((g) => !existingIds.has(g.id));
+
         return isReset ? uniqueNew : [...prev, ...uniqueNew];
       });
 
@@ -104,20 +99,26 @@ export default function PlayersLikeYouSection() {
   const updateArrows = useCallback(() => {
     const el = trackRef.current;
     if (!el) return;
+
     setCanPrev(el.scrollLeft > 4);
     setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }, []);
 
   useEffect(() => {
     updateArrows();
+
     window.addEventListener("resize", updateArrows);
+
     return () => window.removeEventListener("resize", updateArrows);
   }, [games, loading, updateArrows]);
 
   const handleScroll = (event: React.UIEvent<HTMLUListElement>) => {
     updateArrows();
+
     const el = event.currentTarget;
-    const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 400;
+    const nearEnd =
+      el.scrollLeft + el.clientWidth >= el.scrollWidth - 400;
+
     if (nearEnd && hasMoreRef.current) {
       void fetchPage();
     }
@@ -126,7 +127,11 @@ export default function PlayersLikeYouSection() {
   function scrollByPage(direction: 1 | -1) {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: direction * el.clientWidth * 0.9, behavior: "smooth" });
+
+    el.scrollBy({
+      left: direction * el.clientWidth * 0.9,
+      behavior: "smooth",
+    });
   }
 
   if (!loading && games.length === 0) return null;
@@ -135,7 +140,10 @@ export default function PlayersLikeYouSection() {
     "flex size-9 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B] disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <section aria-labelledby="players-like-you-title" className="flex flex-col gap-5">
+    <section
+      aria-labelledby="players-like-you-title"
+      className="flex flex-col gap-5"
+    >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2
@@ -144,6 +152,7 @@ export default function PlayersLikeYouSection() {
           >
             Players Like You Also Play
           </h2>
+
           <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">
             Collaborative recommendations from users with matching game libraries
           </p>
@@ -157,8 +166,13 @@ export default function PlayersLikeYouSection() {
             aria-label="Previous players like you games"
             className={arrowClass}
           >
-            <ChevronLeft className="size-4" strokeWidth={1.7} aria-hidden="true" />
+            <ChevronLeft
+              className="size-4"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
           </button>
+
           <button
             type="button"
             onClick={() => scrollByPage(1)}
@@ -166,7 +180,11 @@ export default function PlayersLikeYouSection() {
             aria-label="Next players like you games"
             className={arrowClass}
           >
-            <ChevronRight className="size-4" strokeWidth={1.7} aria-hidden="true" />
+            <ChevronRight
+              className="size-4"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -176,7 +194,8 @@ export default function PlayersLikeYouSection() {
       <ul
         ref={trackRef}
         onScroll={handleScroll}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+
       >
         {loading && games.length === 0
           ? Array.from({ length: 5 }, (_, i) => (
@@ -185,7 +204,10 @@ export default function PlayersLikeYouSection() {
               </li>
             ))
           : games.map((game) => (
-              <li key={game.id} className={`${CARD_WIDTH} shrink-0 snap-start`}>
+              <li
+                key={game.id}
+                className={`${CARD_WIDTH} shrink-0 snap-start`}
+              >
                 <GameCard game={game} />
               </li>
             ))}

@@ -1,14 +1,24 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { Mail, Lock, User, ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff, LogIn } from "lucide-react";
+import {
+  Lock,
+  User,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  LogIn,
+} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { login } from "@/services/authService";
-import {useAuth} from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 const ROTATING_HERO_GAMES = [
   {
@@ -85,6 +95,7 @@ export default function Login() {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length);
     }, 10000);
+
     return () => clearInterval(timer);
   }, []);
 
@@ -122,12 +133,15 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div
+      className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       <Navbar />
 
       <main className="flex flex-1 flex-col justify-center px-5 py-8 md:px-8 xl:px-16">
         <div className="grid w-full gap-8 lg:grid-cols-12 lg:items-center">
-          
+
           {/* Form Side */}
           <div className="flex w-full flex-col justify-center lg:col-span-5">
             <Card className="w-full rounded-2xl border border-[#302438] bg-[#17191E] p-2 text-[#E6E1EA] shadow-2xl">
@@ -146,6 +160,7 @@ export default function Login() {
                     <label htmlFor="username" className="text-[12px] font-medium text-[#A0A0A8]">
                       Username
                     </label>
+
                     <div className="relative">
                       <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
                       <input
@@ -166,10 +181,12 @@ export default function Login() {
                       <label htmlFor="password" className="text-[12px] font-medium text-[#A0A0A8]">
                         Password
                       </label>
+
                       <Link to="/forgot-password" className="text-[11px] text-[#B39ACF] hover:underline">
                         Forgot password?
                       </Link>
                     </div>
+
                     <div className="relative">
                       <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
                       <input
@@ -182,13 +199,18 @@ export default function Login() {
                         placeholder="••••••••"
                         className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-10 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
                       />
+
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77717F] hover:text-[#E6E1EA]"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
-                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        {showPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -216,15 +238,43 @@ export default function Login() {
           {/* Banner Side */}
           <div className="hidden w-full lg:col-span-7 lg:block">
             <div className="relative flex min-h-[460px] w-full flex-col justify-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-8 md:p-10">
-              <div className="absolute inset-0">
-                <img
-                  key={activeGame.cover}
-                  src={activeGame.cover}
-                  alt={activeGame.title}
-                  className="h-full w-full object-cover contrast-110 saturate-125 transition-opacity duration-1000"
-                />
+
+              {/* Animated Game Cover */}
+              <div className="absolute inset-0 overflow-hidden">
+                <AnimatePresence mode="sync" initial={false}>
+                  <motion.img
+                    key={activeGame.cover}
+                    src={activeGame.cover}
+                    alt={activeGame.title}
+                    initial={{
+                      opacity: 0,
+                      scale: 1.08,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                    }}
+                    exit={{
+                      opacity: 0,
+                      scale: 1.02,
+                    }}
+                    transition={{
+                      opacity: {
+                        duration: 1.2,
+                        ease: "easeInOut",
+                      },
+                      scale: {
+                        duration: 10,
+                        ease: "linear",
+                      },
+                    }}
+                    className="absolute inset-0 h-full w-full object-cover contrast-110 saturate-125"
+                  />
+                </AnimatePresence>
+
+                {/* Gradient Overlay */}
                 <div
-                  className="absolute inset-0"
+                  className="absolute inset-0 z-[1]"
                   style={{
                     background:
                       "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0.95) 100%)",
@@ -232,26 +282,46 @@ export default function Login() {
                 />
               </div>
 
+              {/* Game Information */}
               <div className="relative z-10 flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-[#B39ACF]">
-                  {activeGame.genre}
-                </p>
-                <h2 className="text-3xl font-semibold leading-tight text-[#E6E1EA] md:text-4xl">
-                  {activeGame.title}
-                </h2>
-                <p className="max-w-[500px] text-xs text-[#A0A0A8]">
-                  Welcome back. Pick up right where you left off on your game shelf.
-                </p>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={activeGame.title}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{
+                      duration: 0.65,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="flex flex-col gap-2"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#B39ACF]">
+                      {activeGame.genre}
+                    </p>
+
+                    <h2 className="text-3xl font-semibold leading-tight text-[#E6E1EA] md:text-4xl">
+                      {activeGame.title}
+                    </h2>
+
+                    <p className="max-w-[500px] text-xs text-[#A0A0A8]">
+                      Welcome back. Pick up right where you left off on your game shelf.
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
               </div>
 
+              {/* Carousel Controls */}
               <div className="relative z-10 mt-6 flex items-center justify-between">
                 <div className="flex gap-1.5">
                   {ROTATING_HERO_GAMES.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentSlide(idx)}
-                      className={`h-2 rounded-full transition-all ${
-                        idx === currentSlide ? "w-6 bg-[#B39ACF]" : "w-2 bg-[#A0A0A8]/40 hover:bg-[#A0A0A8]"
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        idx === currentSlide
+                          ? "w-6 bg-[#B39ACF]"
+                          : "w-2 bg-[#A0A0A8]/40 hover:bg-[#A0A0A8]"
                       }`}
                       aria-label={`Go to slide ${idx + 1}`}
                     />
@@ -263,17 +333,22 @@ export default function Login() {
                     type="button"
                     onClick={() =>
                       setCurrentSlide(
-                        (prev) => (prev - 1 + ROTATING_HERO_GAMES.length) % ROTATING_HERO_GAMES.length
+                        (prev) =>
+                          (prev - 1 + ROTATING_HERO_GAMES.length) %
+                          ROTATING_HERO_GAMES.length
                       )
                     }
                     className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
                   >
                     <ChevronLeft className="size-4" />
                   </button>
+
                   <button
                     type="button"
                     onClick={() =>
-                      setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length)
+                      setCurrentSlide(
+                        (prev) => (prev + 1) % ROTATING_HERO_GAMES.length
+                      )
                     }
                     className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
                   >

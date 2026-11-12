@@ -1,9 +1,6 @@
 // src/services/playersLikeYouService.ts
-//
-// ADAPT ONE LINE: API_BASE must be the same base URL your tasteService.ts uses
-// (copy its request helper if it has one, e.g. an axios instance or apiFetch).
 
-const API_BASE: string = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
+import api from "../lib/api";
 
 export interface PlayersLikeYouGame {
   id: number;
@@ -13,6 +10,13 @@ export interface PlayersLikeYouGame {
   release_date: string | null;
   genres: string[];
   steam_app_id: number | null;
+
+  // GameShelf ratings
+  bayesian_score?: number | null;
+  community_rating?: number | null;
+  average_rating?: number | null;
+  rating_count?: number;
+  my_score?: number | null;
 }
 
 export interface PlayersLikeYouItem {
@@ -21,7 +25,11 @@ export interface PlayersLikeYouItem {
   rank: number;
   reason_type: string;
   reason_text: string;
-  reason_game: { id: number; title: string; slug: string | null } | null;
+  reason_game: {
+    id: number;
+    title: string;
+    slug: string | null;
+  } | null;
 }
 
 export interface PlayersLikeYouResponse {
@@ -35,21 +43,14 @@ export interface PlayersLikeYouResponse {
 
 export async function getPlayersLikeYou(
   limit = 20,
-  offset = 0,
-  signal?: AbortSignal
+  offset = 0
 ): Promise<PlayersLikeYouResponse> {
-  const response = await fetch(
-    `${API_BASE}/players-like-you/?limit=${limit}&offset=${offset}`,
+  const { data } = await api.get<PlayersLikeYouResponse>(
+    "/players-like-you/",
     {
-      credentials: "include",
-      headers: { Accept: "application/json" },
-      signal,
+      params: { limit, offset },
     }
   );
 
-  if (!response.ok) {
-    throw new Error(`players-like-you failed: ${response.status}`);
-  }
-
-  return response.json();
+  return data;
 }

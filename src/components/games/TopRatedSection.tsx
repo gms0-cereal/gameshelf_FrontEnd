@@ -12,11 +12,10 @@ function steamCardToSummary(card: SteamGameCard): GameSummary {
     genres: card.genres,
     platforms: card.platforms,
     release_year: card.release_year,
-    score: card.score,
+    score: card.bayesian_score ?? card.score,
     bio: card.short_description || "Explore live community catalogs and add this title to your shelf.",
   };
 }
-
 const CARD_WIDTH = "w-[260px] sm:w-[280px]";
 const PAGE_SIZE = 20;
 
@@ -141,7 +140,8 @@ export default function TopRatedSection({}: TopRatedSectionProps) {
       <ul
         ref={trackRef}
         onScroll={handleScroll}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+
       >
         {loading && games.length === 0
           ? Array.from({ length: 5 }, (_, i) => (

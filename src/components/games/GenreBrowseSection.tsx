@@ -45,9 +45,8 @@ export default function GenreBrowseSection({ primaryGenre }: GenreBrowseSectionP
         genres: card.genres?.length > 0 ? card.genres : ["Steam Game"],
         platforms: card.platforms || ["PC"],
         release_year: card.release_year ?? null,
-        score: card.score ?? (card.community_rating !== null ? card.community_rating : null),
-        statusLabel: "Unplayed",
-        statusClassName: "bg-[#17191E] text-[#A0A0A8] border border-[#302438]",
+        score: card.bayesian_score ?? card.community_rating ?? null,
+        bayesian_score: card.bayesian_score ?? card.community_rating ?? null,
         bio: card.short_description || "Explore live community catalogs.",
       }));
 
@@ -148,7 +147,8 @@ export default function GenreBrowseSection({ primaryGenre }: GenreBrowseSectionP
         onScroll={handleScroll}
         role="status"
         aria-busy={loading}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+
       >
         {loading && games.length === 0
           ? Array.from({ length: 5 }, (_, i) => (
