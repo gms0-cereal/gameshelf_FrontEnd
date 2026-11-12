@@ -288,7 +288,7 @@ export default function Register() {
           </h2>
 
           <p className="max-w-[500px] text-xs text-[#A0A0A8]">
-            Build your collection, log playtimes, and receive recommendations based on your preferences.
+            Build your collection and receive recommendations based on your preferences.
           </p>
         </motion.div>
       </AnimatePresence>

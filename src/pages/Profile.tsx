@@ -416,8 +416,8 @@ function UserPlaylistsSection({ playlists }: { playlists: Playlist[] }) {
       {playlists.length > 0 ? (
         <div
           ref={playlistsRef}
-          className="-mx-1 flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
+         className="-mx-1 flex snap-x snap-mandatory gap-14 overflow-x-auto px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+         >
           {playlists.map((playlist) => (
             <div
               key={playlist.id}
