@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import ModLayout from "../../components/layout/Modlayout";
-import { useState } from "react";
-import { PRIOR_SANCTIONS, type PriorSanction } from "./modData";
-import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, FilterSelect, Label, Notice, PageHeader, Pagination, RowAction, SearchInput, TextArea, type Column } from "./Modui";
+import { useEffect, useState } from "react";
+import type { PriorSanction } from "./modData";
+import { getSanctions } from "../../lib/moderationApi";
+import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, FilterSelect, Label, Notice, PageHeader, Pagination, RowAction, SearchInput, TextArea, type Column } from "../../components/ui/Modui";
 
 function EnforcementCase({
   onBack,
@@ -12,6 +13,14 @@ function EnforcementCase({
   onOpenReview: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
+  const [sanctions, setSanctions] = useState<PriorSanction[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSanctions()
+      .then(setSanctions)
+      .catch(() => setLoadError("Sanctions are unavailable. Check your moderator access and try again."));
+  }, []);
 
   const columns: Column<PriorSanction>[] = [
     { key: "id", header: "Sanction", render: (s) => s.id },
@@ -152,9 +161,10 @@ function EnforcementCase({
 
       <Card title="Prior-sanctions table" subtitle="AshRunner · Complete moderation history">
         <SearchInput placeholder="Search sanction history…" className="mb-3 w-full" />
-        <DataTable columns={columns} rows={PRIOR_SANCTIONS} />
-        <Pagination summary="1 prior sanction · Up to 5 per page · No active restrictions" />
+        <DataTable columns={columns} rows={sanctions} />
+        <Pagination summary={`${sanctions.length} sanctions returned by the API`} />
       </Card>
+      {loadError && <Notice tone="info" className="mt-3">{loadError}</Notice>}
     </>
   );
 }

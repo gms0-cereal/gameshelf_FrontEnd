@@ -1,35 +1,173 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Info, SlidersHorizontal } from 'lucide-react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
-import { Download, Search } from 'lucide-react';
+import {
+  DataTable,
+  ExportButton,
+  FilterSelect,
+  InfoLine,
+  MetricCard,
+  MetricGrid,
+  PageHeading,
+  Panel,
+  SearchField,
+  SecondaryButton,
+  SectionHeading,
+  StatusBadge,
+  Tabs,
+  WorkspaceFooter,
+} from '../../components/admin/AdminLayout';
+import type { BadgeTone, Column } from '../../components/admin/AdminLayout';
+import { logs } from './MockData';
+import type { Log, LogStatus } from './MockData';
 
-type Log = { id:string; type:string; description:string; actor:string; timestamp:string; severity:'Error'|'Warning'|'Info'; status:'Open'|'Logged'|'Success'|'Blocked' };
-const logs:Log[] = [
- {id:'EV-0911',type:'algorithm.run.failed',description:'MR-0412 · TF-IDF · DATASET_FETCH_TIMEOUT',actor:'Worker service',timestamp:'02 Nov · 10:02:14',severity:'Error',status:'Open'},
- {id:'EV-0910',type:'algorithm.trigger',description:'TF-IDF refresh · MR-0412 · DS-1102',actor:'Scheduler',timestamp:'02 Nov · 10:00:00',severity:'Info',status:'Logged'},
- {id:'EV-0909',type:'permission.policy.updated',description:'Staff MFA enforced · Policy PERM-004',actor:'Alex Chen · AD-001',timestamp:'02 Nov · 09:50:00',severity:'Warning',status:'Success'},
- {id:'EV-0908',type:'user.role.changed',description:'U-1140 · Regular User → Moderator',actor:'Alex Chen · AD-001',timestamp:'02 Nov · 09:40:00',severity:'Warning',status:'Success'},
- {id:'EV-0907',type:'report.assigned',description:'R-1048 · Assigned to Maya Ross',actor:'Maya Ross · MOD-02',timestamp:'02 Nov · 09:24:00',severity:'Info',status:'Success'},
- {id:'EV-0906',type:'configuration.updated',description:'CFG-0027 · Daily operations digest enabled',actor:'Alex Chen · AD-001',timestamp:'02 Nov · 09:10:00',severity:'Info',status:'Success'},
- {id:'EV-0904',type:'auth.login.failed',description:'Staff login rejected · Invalid password; no session',actor:'Auth service',timestamp:'02 Nov · 08:55:02',severity:'Warning',status:'Blocked'},
- {id:'EV-0900',type:'sanction.applied',description:'S-0209 · FirstStrike · 7-day suspension',actor:'Noah Kim · MOD-03',timestamp:'01 Nov · 14:00:00',severity:'Warning',status:'Success'},
+const statusTone: Record<LogStatus, BadgeTone> = { Open: 'medium', Logged: 'info', Success: 'success', Blocked: 'info' };
+
+type TabKey = 'all' | 'staff' | 'security' | 'system';
+const tabs: { key: TabKey; label: string }[] = [
+  { key: 'all', label: 'All events (214)' },
+  { key: 'staff', label: 'Staff actions (56)' },
+  { key: 'security', label: 'Security (30)' },
+  { key: 'system', label: 'System (128)' },
 ];
-const pill = (value:string) => value==='Error'?'bg-[#69434a] text-[#f2c4c8]':value==='Warning'?'bg-[#655b3e] text-[#f0dfa0]':value==='Info'?'bg-[#514b67] text-[#d9cff4]':value==='Open'?'bg-[#655b3e] text-[#f0dfa0]':value==='Blocked'?'bg-[#514b67] text-[#d9cff4]':'bg-[#3c5c4a] text-[#c2e6cf]';
-export const SystemLogs:React.FC = () => {
- const [query,setQuery]=useState(''); const [type,setType]=useState('All event types'); const [severity,setSeverity]=useState('All severities'); const [tab,setTab]=useState('All events'); const [selected,setSelected]=useState(logs[0]);
- const filtered=useMemo(()=>logs.filter(l=>{
-   const textMatch = (`${l.id} ${l.type} ${l.description} ${l.actor}`).toLowerCase().includes(query.toLowerCase());
-   const typeMatch = type === 'All event types' || l.type.startsWith(type);
-   const severityMatch = severity === 'All severities' || l.severity === severity;
-   let tabMatch = true;
-   if (tab === 'Security') tabMatch = l.type.startsWith('auth.') || l.type.startsWith('permission.');
-   else if (tab === 'Staff actions') tabMatch = l.actor.includes('AD-') || l.actor.includes('MOD-');
-   else if (tab === 'System') tabMatch = !(l.type.startsWith('auth.') || l.type.startsWith('permission.'));
-   return textMatch && typeMatch && severityMatch && tabMatch;
- }),[query,type,severity,tab]);
- return <AdminLayout><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-wider text-[#bda6e4]">Platform Operations</p><h1 className="mt-1 text-3xl font-bold">System Logs</h1><p className="mt-1 text-sm text-slate-300">Security audits, staff actions and system errors. All events are append-only and recorded in UTC.</p></div><button onClick={()=>window.print()} className="rounded-lg border border-[#55515f] bg-[#343a43] px-4 py-2 text-xs font-semibold"><Download className="mr-2 inline h-4 w-4"/>Export audit logs</button></div>
- <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{[['Events today','148','02 Nov · Through 10:30 UTC'],['Security events today','21','Includes 8 staff logins'],['Open errors','1','INC-014 · TF-IDF worker'],['Retention','365 days','Restricted after-retention access']].map(a=><div key={a[0]} className="rounded-xl border border-[#454650] bg-[#343a43] p-4"><p className="text-xs text-slate-300">{a[0]}</p><p className="mt-2 text-3xl font-bold text-[#f3f0df]">{a[1]}</p><p className="mt-2 text-[11px] text-slate-300">{a[2]}</p></div>)}</div>
- <div className="rounded-xl border border-[#454650] bg-[#222228] p-4 space-y-3"><div className="flex flex-wrap gap-2"><div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search Log ID, event, actor or related record..." className="w-full rounded-lg border border-[#55515f] bg-[#1a1a20] py-2 pl-9 pr-3 text-xs outline-none focus:border-[#bda6e4]"/></div><button className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 text-xs">More filters</button></div><div className="flex flex-wrap gap-2"><select value={type} onChange={e=>setType(e.target.value)} className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs"><option>All event types</option><option>auth.</option><option>algorithm.</option><option>user.</option><option>permission.</option><option>report.</option><option>configuration.</option><option>sanction.</option></select><select value={severity} onChange={e=>setSeverity(e.target.value)} className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs"><option>All severities</option><option>Error</option><option>Warning</option><option>Info</option></select><button className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs">01–02 Nov 2026 ▾</button><button className="rounded-lg border border-[#55515f] bg-[#343a43] px-3 py-2 text-xs">All actors ▾</button><button onClick={()=>{setQuery('');setType('All event types');setSeverity('All severities');setTab('All events')}} className="px-2 text-xs text-[#bda6e4]">Reset filters</button></div><div className="flex flex-wrap gap-5 border-b border-[#454650] text-xs font-semibold">{['All events','Staff actions','Security','System'].map(t=><button key={t} onClick={()=>setTab(t)} className={`pb-2 ${tab===t?'border-b-2 border-[#bda6e4] text-[#d6c6f1]':'text-slate-300'}`}>{t}</button>)}</div>
- <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-xs"><thead className="bg-[#1a1a20] text-slate-300"><tr>{['Log ID','Event type','Description / record','Responsible actor','Timestamp','Severity','Status'].map(t=><th key={t} className="p-3">{t}</th>)}</tr></thead><tbody>{filtered.map(l=><tr key={l.id} onClick={()=>setSelected(l)} className={`cursor-pointer border-b border-[#454650] ${selected.id===l.id?'bg-[#383044]':'hover:bg-[#343a43]'}`}><td className="p-3 font-mono font-semibold">{l.id}</td><td className="p-3">{l.type}</td><td className="p-3">{l.description}</td><td className="p-3">{l.actor}</td><td className="p-3 whitespace-nowrap">{l.timestamp}</td><td className="p-3"><span className={`rounded px-2 py-1 text-[10px] font-semibold ${pill(l.severity)}`}>{l.severity}</span></td><td className="p-3"><span className={`rounded px-2 py-1 text-[10px] font-semibold ${pill(l.status)}`}>{l.status}</span></td></tr>)}</tbody></table></div><div className="flex flex-wrap justify-between gap-2 text-[11px] text-slate-300"><span>Showing {filtered.length} of 214 events · 01–02 Nov · Related-record context</span><span>‹ Previous　 1　2　3　 Next ›</span></div></div>
- <div className="grid gap-4 lg:grid-cols-2"><div className="rounded-xl border border-[#454650] bg-[#343a43] p-4"><div className="flex justify-between"><h3 className="font-semibold">Selected log · {selected.id}</h3><button onClick={()=>navigator.clipboard?.writeText(selected.id)} className="text-xs text-[#d6c6f1]">Copy Log ID</button></div><p className="mt-1 text-xs text-slate-300">{selected.type}</p><p className="mt-4 text-xs">Related records · MR-0412 · DS-1102 · INC-014</p><p className="mt-3 text-xs">Actor / source · {selected.actor}</p><p className="mt-3 text-xs">Recorded at · {selected.timestamp} UTC</p><p className="mt-3 text-xs">Outcome · {selected.severity==='Error'?'Failed run retained; last successful index still live':'Event retained in immutable audit history'}</p></div><div className="rounded-xl border border-[#454650] bg-[#343a43] p-4"><h3 className="font-semibold">Security &amp; audit controls</h3><p className="mt-2 text-xs text-slate-300">Sensitive, immutable records. Role-change events retain before/after roles, actor and authorization. Exports exclude credentials and private player content.</p><div className="mt-4 flex flex-wrap gap-2"><button className="rounded-lg border border-[#55515f] bg-[#222228] px-3 py-2 text-xs">Execution Details →</button><button className="rounded-lg border border-[#55515f] bg-[#222228] px-3 py-2 text-xs">Incident INC-014 →</button></div><p className="mt-4 rounded-lg bg-[#1a1a20] p-3 text-xs text-slate-300">Acknowledging an incident appends an event; it does not remove the original error.</p></div></div>
- </AdminLayout>;
+
+const isSecurity = (l: Log) => l.type.startsWith('auth.') || l.type.startsWith('permission.');
+const isStaff = (l: Log) => /\b(AD|MOD)-\d+/.test(l.actor);
+
+const ALL_TYPES = 'All event types';
+const ALL_SEVERITIES = 'All severities';
+const typePrefixes = ['auth.', 'algorithm.', 'user.', 'permission.', 'report.', 'configuration.', 'sanction.'];
+
+const columns: Column<Log>[] = [
+  { header: 'Event type', className: 'text-[#aaa6b5]', cell: (l) => l.type },
+  { header: 'Description / record', className: 'text-[#aaa6b5]', cell: (l) => l.description },
+  { header: 'Responsible actor', className: 'text-[#aaa6b5]', cell: (l) => l.actor },
+  { header: 'Timestamp ↓', className: 'text-[#aaa6b5] whitespace-nowrap', cell: (l) => l.timestamp },
+  { header: 'Status', cell: (l) => <StatusBadge tone={statusTone[l.status]}>{l.status}</StatusBadge> },
+];
+
+export const SystemLogs: React.FC = () => {
+  const [query, setQuery] = useState('');
+  const [type, setType] = useState(ALL_TYPES);
+  const [severity, setSeverity] = useState(ALL_SEVERITIES);
+  const [tab, setTab] = useState<TabKey>('all');
+  const [selected, setSelected] = useState<Log>(logs[0]);
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return logs.filter((l) => {
+      if (q && !`${l.id} ${l.type} ${l.description} ${l.actor}`.toLowerCase().includes(q)) return false;
+      if (type !== ALL_TYPES && !l.type.startsWith(type)) return false;
+      if (severity !== ALL_SEVERITIES && l.severity !== severity) return false;
+      if (tab === 'security') return isSecurity(l);
+      if (tab === 'staff') return isStaff(l);
+      if (tab === 'system') return !isSecurity(l);
+      return true;
+    });
+  }, [query, type, severity, tab]);
+
+  const reset = () => {
+    setQuery('');
+    setType(ALL_TYPES);
+    setSeverity(ALL_SEVERITIES);
+    setTab('all');
+  };
+
+  return (
+    <AdminLayout>
+      <PageHeading
+        eyebrow="PLATFORM OPERATIONS"
+        title="System Logs"
+        description="Security audits, staff actions and system errors. All events are append-only and recorded in UTC."
+        actions={<ExportButton label="Export audit logs" />}
+      />
+
+      <MetricGrid cols={4}>
+        <MetricCard label="Events today" value="148" context="02 Nov · Through 10:30 UTC" />
+        <MetricCard label="Security events today" value="21" context="Includes 8 failed logins" danger />
+        <MetricCard label="Open errors" value="1" context="INC-014 · TF-IDF worker" />
+        <MetricCard label="Retention" value="365 days" context="Restricted administrator access" />
+      </MetricGrid>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-3">
+          <SearchField value={query} onChange={setQuery} placeholder="Search Log ID, event, actor or related record…" hint="⌘ K" />
+          <SecondaryButton>
+            <SlidersHorizontal className="h-[15px] w-[15px]" />
+            More filters
+          </SecondaryButton>
+        </div>
+        <div className="flex flex-wrap items-center gap-[10px]">
+          <FilterSelect label="Event type" value={type} onChange={setType} options={[ALL_TYPES, ...typePrefixes]} />
+          <FilterSelect label="Severity" value={severity} onChange={setSeverity} options={[ALL_SEVERITIES, 'Error', 'Warning', 'Info']} />
+          <SecondaryButton>01–02 Nov 2026 ⌄</SecondaryButton>
+          <SecondaryButton>All actors ⌄</SecondaryButton>
+          <button type="button" onClick={reset} className="text-xs text-[#c2ade7] hover:underline">
+            Reset filters
+          </button>
+        </div>
+      </div>
+
+      <Tabs tabs={tabs} active={tab} onChange={setTab} />
+
+      <div
+        onClick={(e) => {
+          const cells = (e.target as HTMLElement).closest('tr')?.querySelectorAll('td');
+          const type = cells?.[0]?.textContent;
+          const desc = cells?.[1]?.textContent;
+          const hit = logs.find((l) => l.type === type && l.description === desc);
+          if (hit) setSelected(hit);
+        }}
+      >
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(l) => l.id}
+          rowClassName={(l) => `cursor-pointer ${l.id === selected.id ? 'bg-[#383044]' : 'hover:bg-[#2b2a33]'}`}
+          footerLeft={`Showing 1–${rows.length} of 214 events · 01–02 Nov · Related-record context`}
+          footerRight={'‹ Previous   1   2   3   Next ›'}
+        />
+      </div>
+
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <Panel className="flex flex-col gap-4 p-5">
+          <SectionHeading
+            title={`Selected log · ${selected.id}`}
+            subtitle={selected.type}
+            action={
+              <button type="button" onClick={() => navigator.clipboard?.writeText(selected.id)} className="hover:underline">
+                Copy Log ID
+              </button>
+            }
+          />
+          <InfoLine label="Related records">{selected.related ?? selected.description}</InfoLine>
+          <InfoLine label="Actor / source">{selected.source ?? selected.actor}</InfoLine>
+          <InfoLine label="Recorded at">{selected.timestamp.replace(' ·', ' 2026,')} UTC</InfoLine>
+          <InfoLine label="Outcome">{selected.outcome ?? 'Event retained in immutable audit history'}</InfoLine>
+        </Panel>
+
+        <Panel className="flex flex-col gap-4 p-5">
+          <SectionHeading title="Security & audit controls" subtitle="Sanitized, immutable records" />
+          <p className="text-xs leading-normal text-[#aaa6b5]">
+            Role-change event EV-0908 retains before/after roles, actor and authorization AR-0041. Exports exclude credentials and private player content.
+          </p>
+          <div className="flex flex-wrap gap-[10px]">
+            <Link to="/admin/algorithms/MR-0412">
+              <SecondaryButton>Execution Details →</SecondaryButton>
+            </Link>
+            <Link to="/admin/health">
+              <SecondaryButton>Incident INC-014 →</SecondaryButton>
+            </Link>
+          </div>
+          <div className="flex items-center gap-[10px] rounded-md bg-[#1a1a20] p-[14px]">
+            <Info className="h-[18px] w-[18px] shrink-0 text-[#dfc192]" />
+            <p className="flex-1 text-xs leading-normal text-[#aaa6b5]">Acknowledging an incident appends an event; it does not remove the original error.</p>
+          </div>
+        </Panel>
+      </div>
+
+      <WorkspaceFooter />
+    </AdminLayout>
+  );
 };

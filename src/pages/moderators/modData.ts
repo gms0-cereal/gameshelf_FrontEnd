@@ -1,4 +1,4 @@
-import type { Tone } from "./Modui";
+import type { Tone } from "../../components/ui/Modui";
 
 export type ReportPriority = "High" | "Medium" | "Low";
 export type ReportStatus = "Pending" | "Under review" | "Resolved";

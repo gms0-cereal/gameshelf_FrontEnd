@@ -1,14 +1,23 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import ModLayout from "../../components/layout/Modlayout";
-import { CATEGORY_OVERVIEW, REPORTS, priorityTone, type Report } from "./modData";
-import { Badge, Button, Card, DataTable, Notice, PageHeader, Pagination, RowAction, StatCard, type Column } from "./Modui";
-import { getModerationDashboard, type ModerationDashboard } from "./moderationApi";
+import { CATEGORY_OVERVIEW, priorityTone, type Report } from "./modData";
+import { Badge, Button, Card, DataTable, Notice, PageHeader, Pagination, RowAction, StatCard, type Column } from "../../components/ui/Modui";
+import { getModerationDashboard, type ModerationDashboard } from "../../lib/moderationApi";
 
 function OverviewContent({ onOpenReport }: { onOpenReport: () => void }) {
   const [dashboard, setDashboard] = useState<ModerationDashboard | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const queue = REPORTS.filter((r) => r.priority !== "Low").slice(0, 4);
+  const queue = (dashboard?.recent_reports ?? []).slice(0, 4).map((report) => ({
+    id: `${report.kind === "review" ? "R" : report.kind === "comment" ? "C" : "P"}-${report.id}`,
+    reporter: report.reporter.username,
+    category: report.reason,
+    content: report.target.text,
+    contentSub: `${report.target.type} by ${report.target.author}`,
+    date: new Date(report.created_at).toLocaleString(),
+    status: report.status === "reviewing" ? "Under review" : report.status,
+    priority: "Medium",
+  } as Report));
   const max = Math.max(...CATEGORY_OVERVIEW.map(([, n]) => n));
 
   useEffect(() => {
@@ -39,26 +48,26 @@ function OverviewContent({ onOpenReport }: { onOpenReport: () => void }) {
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label="Pending reports" value={dashboard?.pending_reports ?? 12} hint="Awaiting first review" />
-        <StatCard label="Under review" value={dashboard?.under_review ?? 6} hint="Assigned moderator actions" />
-        <StatCard label="Resolved reports" value={dashboard?.resolved_reports ?? 30} hint="Resolved reports" />
-        <StatCard label="Active sanctions" value="—" hint="Sanction API not available yet" />
-        <StatCard label="Pending appeals" value="—" hint="Appeal API not available yet" />
+        <StatCard label="Pending reports" value={dashboard?.pending_reports ?? "—"} hint="Awaiting first review" />
+        <StatCard label="Under review" value={dashboard?.under_review ?? "—"} hint="Assigned moderator actions" />
+        <StatCard label="Resolved reports" value={dashboard?.resolved_reports ?? "—"} hint="Resolved reports" />
+        <StatCard label="Active sanctions" value={dashboard?.active_sanctions ?? "—"} hint="Unavailable if not returned by the API" />
+        <StatCard label="Pending appeals" value={dashboard?.pending_appeals ?? "—"} hint="Unavailable if not returned by the API" />
       </div>
 
       {loadError && <Notice tone="info" className="mb-4">{loadError}</Notice>}
       <Notice className="mb-4">
-        1 high-priority report needs review. A-031 is awaiting an independent appeal decision.
+        Live counts and assignments come from the moderation API. Review the queue for the latest records.
       </Notice>
 
       <div className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
         <Card
           title="Prioritized work queue"
-          subtitle="10 open reports · Ordered by impact, then age"
+          subtitle={`${queue.length} recent reports · Ordered by the moderation API`}
           action={<span className="text-[10px] text-zinc-400">Reports Queue →</span>}
         >
           <DataTable columns={columns} rows={queue} onRowClick={onOpenReport} />
-          <Pagination summary="4 of 18 open · Oldest pending 3h 12m" />
+          <Pagination summary={`${queue.length} recent reports returned`} />
         </Card>
 
         <Card title="Report-category overview" subtitle="48 reports · 04 Oct–02 Nov">
