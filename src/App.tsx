@@ -41,7 +41,7 @@ import ModReport from "./components/moderators/ModReport";
 import ModSanctions from "./components/moderators/ModSanctions";
 import ModAppealManage from "./components/moderators/ModAppealManage";
 import ModHistory from "./components/moderators/ModHistory";
-
+import RoleRoute from "./components/RoleRoute";
 
 const queryClient = new QueryClient();
 
@@ -79,23 +79,28 @@ const App = () => (
               <Route path="/discover" element={<Discover />} />
               <Route path="/interests" element={<ChooseInterest />} />
               <Route path="/appeal-report" element={<AppealReportPage />} />
-              {/* Admin Routes */}
-              <Route path="/admin" element={<Dashboard />} />
-              <Route path="/admin/games" element={<Games />} />
-              <Route path="/admin/analytics" element={<PlatformAnalytics />} />
-              <Route path="/admin/logs" element={<SystemLogs />} />
               {/* Legal Routes */}
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/help" element={<Help />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<Terms />} />
+              {/* Admin Routes */}
+              <Route element={<RoleRoute allowedRoles={["admin"]} />}>
+                <Route path="/admin" element={<Dashboard />} />
+                <Route path="/admin/games" element={<Games />} />
+                <Route path="/admin/analytics" element={<PlatformAnalytics />} />
+                <Route path="/admin/logs" element={<SystemLogs />} />
+              </Route>
+
               {/* Moderator Routes */}
-              <Route path="/moderator" element={<ModeratorDashboard />} />
-              <Route path="/moderator/reports" element={<ModReport />} />
-              <Route path="/moderator/sanctions" element={<ModSanctions />} />
-              <Route path="/moderator/appeals" element={<ModAppealManage />} />
-              <Route path="/moderator/history" element={<ModHistory />} />
+              <Route element={<RoleRoute allowedRoles={["moderator", "admin"]} />}>
+                <Route path="/moderator" element={<ModeratorDashboard />} />
+                <Route path="/moderator/reports" element={<ModReport />} />
+                <Route path="/moderator/sanctions" element={<ModSanctions />} />
+                <Route path="/moderator/appeals" element={<ModAppealManage />} />
+                <Route path="/moderator/history" element={<ModHistory />} />
+              </Route>
               {/* Settings Route */}
               <Route path="/settings" element={<Settings />} />
             </Routes>

@@ -140,7 +140,8 @@ export default function TopRatedSection({}: TopRatedSectionProps) {
       <ul
         ref={trackRef}
         onScroll={handleScroll}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+
       >
         {loading && games.length === 0
           ? Array.from({ length: 5 }, (_, i) => (
