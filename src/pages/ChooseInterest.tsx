@@ -10,6 +10,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -29,13 +30,95 @@ const VISIBLE_GENRES = 40;
 const VISIBLE_TAGS = 40;
 
 const GENRES = [
-  "Action", "Adventure", "Casual", "Indie", "RPG", "Simulation", "Strategy",
-  "Sports", "Racing", "Puzzle", "Platformer", "Roguelike", "Horror",
-  "Action-Adventure", "Action RPG", "Shooter", "Point & Click", "Beat 'em Up", "Fighting",
-  "JRPG", "Strategy RPG", "Visual Novel", "Party-Based RPG", "MMORPG",
-  "Turn-Based Strategy", "RTS", "Tower Defense", "City Builder",
-  "Arcade", "Sandbox", "Survival", "Roguelite",
-  "Hentai", "Sexual Content", "Nudity", "Adult Content",
+  "Indie", "Action", "Adventure", "RPG", "Simulation", "Strategy", "Casual",
+  "Free To Play", "Early Access", "Massively Multiplayer", "Sports", "Racing",
+  "Gore", "Nudity", "Sexual Content"
+];
+const TAGS = [
+  "Singleplayer", "Action", "Adventure", "Indie", "Multiplayer", "Atmospheric",
+  "Story Rich", "RPG", "Strategy", "Simulation", "Open World", "Casual", "Co-op",
+  "Great Soundtrack", "2D", "First-Person", "Funny", "Exploration", "Shooter",
+  "Third Person", "Fantasy", "Sandbox", "Horror", "Puzzle", "Online Co-Op",
+  "Sci-fi", "Survival", "Difficult", "FPS", "3D", "Anime", "Cute",
+  "Female Protagonist", "Gore", "Pixel Graphics", "Violent", "Comedy", "PvP",
+  "Psychological Horror", "Early Access", "Free to Play", "Controller",
+  "Character Customization", "Colorful", "Realistic", "Action-Adventure",
+  "Building", "Family Friendly", "Tactical", "Action RPG", "Choices Matter",
+  "Platformer", "Sexual Content", "Management", "Dark", "Classic", "Retro",
+  "Relaxing", "Arcade", "Crafting", "War", "Mystery", "Nudity", "Hack and Slash",
+  "Physics", "Rogue-like", "Visual Novel", "Local Co-Op", "Turn-Based",
+  "Multiple Endings", "Base-Building", "Local Multiplayer", "Stealth", "Combat",
+  "Massively Multiplayer", "Historical", "Survival Horror", "Replay Value",
+  "Point & Click", "Moddable", "Rogue-lite", "PvE", "Turn-Based Strategy",
+  "Stylized", "Military", "Mature", "Space", "Third-Person Shooter", "RTS",
+  "Top-Down", "Post-apocalyptic", "Dark Fantasy", "Resource Management",
+  "Isometric", "Zombies", "Procedural Generation", "Medieval", "Memes",
+  "Side Scroller", "JRPG", "Turn-Based Combat", "Economy", "Immersive Sim",
+  "Short", "Cartoony", "Drama", "Fast-Paced", "Walking Simulator", "Magic",
+  "Hand-drawn", "City Builder", "Team-Based", "Dating Sim", "VR", "Romance",
+  "Surreal", "Competitive", "Futuristic", "Action Roguelike", "Cinematic",
+  "Emotional", "Sports", "Racing", "Driving", "Turn-Based Tactics", "Dungeon Crawler",
+  "Dark Humor", "Fighting", "Old School", "3D Platformer", "Puzzle-Platformer",
+  "Choose Your Own Adventure", "Cyberpunk", "Souls-like", "Detective",
+  "Interactive Fiction", "Beat 'em up", "Life Sim", "Metroidvania", "LGBTQ+",
+  "2.5D", "2D Platformer", "1990's", "Parkour", "Automobile Sim", "Hentai",
+  "Lore-Rich", "Crime", "Robots", "Open World Survival Craft", "Card Game",
+  "MMORPG", "Real Time Tactics", "Level Editor", "Aliens", "Remake",
+  "Minimalist", "Cartoon", "Destruction", "Linear", "Grand Strategy",
+  "World War II", "Perma Death", "Bullet Hell", "Party-Based RPG",
+  "4 Player Local", "Loot", "Psychological", "Alternate History", "Narration",
+  "Colony Sim", "Investigation", "Dystopian", "Tower Defense", "Thriller",
+  "Nature", "Beautiful", "Strategy RPG", "Wargame", "Tactical RPG",
+  "Board Game", "Cult Classic", "Top-Down Shooter", "Demons", "Supernatural",
+  "Blood", "Lovecraftian", "Music", "NSFW", "Split Screen", "Deckbuilding",
+  "Shoot 'Em Up", "Education", "e-sports", "Soundtrack", "Martial Arts",
+  "Real-Time with Pause", "Co-op Campaign", "Comic Book", "Arena Shooter",
+  "CRPG", "Flight", "Addictive", "Steampunk", "Mythology", "Swordplay",
+  "Farming Sim", "Psychedelic", "2D Fighter", "4X", "1980s", "Time Management",
+  "Real-Time", "Conversation", "Logic", "Clicker", "Hidden Object", "Mechs",
+  "Idler", "Text-Based", "Class-Based", "Heist", "Automation",
+  "Inventory Management", "Agriculture", "Trading", "Capitalism", "Noir",
+  "Score Attack", "America", "Gothic", "Modern", "Dragons", "Card Battler",
+  "Experimental", "Gun Customization", "Twin Stick Shooter", "Cozy", "Nonlinear",
+  "Tabletop", "Kickstarter", "Space Sim", "Vehicular Combat", "Collectathon",
+  "Nostalgia", "Rhythm", "Assassin", "Ninja", "Science", "Boomer Shooter",
+  "Dark Comedy", "Trains", "Looter Shooter", "Epic", "Spectacle fighter",
+  "Superhero", "Political", "Narrative", "Voxel", "Escape Room",
+  "Transportation", "Artificial Intelligence", "Fishing", "Touch-Friendly",
+  "RPGMaker", "Philosophical", "Naval", "Cats", "Hex Grid", "Diplomacy",
+  "Battle Royale", "Pirates", "Precision Platformer", "Illuminati",
+  "Villain Protagonist", "3D Vision", "Politics", "Roguelike Deckbuilder",
+  "Time Travel", "Cooking", "Abstract", "3D Fighter", "Tanks", "Wholesome",
+  "Creature Collector", "Quick-Time Events", "Games Workshop", "Parody",
+  "Cold War", "Software", "Design & Illustration", "Hacking", "Episodic",
+  "Mining", "God Game", "Utilities", "Immersive", "Tutorial", "Mouse only",
+  "Character Action Game", "Hunting", "Mod", "Bullet Time", "Party Game",
+  "Underwater", "Conspiracy", "Satire", "Hero Shooter", "Political Sim",
+  "Vampire", "FMV", "Dwarf", "Dinosaurs", "Western", "Naval Combat", "Runner",
+  "Word Game", "MOBA", "Warhammer 40K", "Trading Card Game", "Auto Battler",
+  "Combat Racing", "Party", "Asynchronous Multiplayer", "Time Manipulation",
+  "Programming", "LEGO", "Dynamic Narration", "Sailing", "Farming", "Minigames",
+  "Dog", "World War I", "Social Deduction", "Game Development", "Crowdfunded",
+  "Sniper", "Gambling", "Football (Soccer)", "Mars", "Masterpiece", "Horses",
+  "Motorbike", "Sequel", "Animation & Modeling", "Based On A Novel", "Typing",
+  "Action RTS", "Offroad", "Lara Croft", "Vikings", "Extraction Shooter", "Rome",
+  "TrackIR", "Dungeons & Dragons", "Silent Protagonist", "Transhumanism",
+  "GameMaker", "Grid-Based Movement", "Bikes", "Music-Based Procedural Generation",
+  "Time Attack", "Jet", "Musou", "Otome", "6DOF", "Football (American)", "Faith",
+  "Match 3", "Submarine", "Jump Scare", "Underground", "Snow", "Unforgiving",
+  "Roguevania", "Job Simulator", "Werewolves", "Video Production",
+  "Traditional Roguelike", "Spaceships", "Wrestling", "Experience",
+  "Outbreak Sim", "Foreign", "Solitaire", "Web Publishing", "Movie", "Benchmark",
+  "On-Rails Shooter", "Software Training", "Medical Sim", "Audio Production",
+  "Intentionally Awkward Controls", "Mystery Dungeon", "Trivia", "Photo Editing",
+  "Golf", "Boxing", "Archery", "Gaming", "Shop Keeper", "Basketball", "Chess",
+  "Pinball", "Skateboarding", "Well-Written", "Skating", "Reboot",
+  "Electronic Music", "Cycling", "BMX", "Motocross", "Mini Golf", "Dice",
+  "Boss Rush", "Asymmetric VR", "Snowboarding", "ATV", "Hardware",
+  "Rock Music", "Fox", "Sokoban", "Pool", "Ambient", "Tennis", "Birds",
+  "Bowling", "Baseball", "Voice Control", "Lemmings", "Cricket", "Elf",
+  "Coding", "Mahjong", "Skiing", "Hobby Sim", "Snooker", "Hockey", "Spelling",
+  "Electronic", "Batman", "Instrumental Music", "360 Video"
 ];
 
 type Accent = "purple" | "cyan" | "emerald";
@@ -87,7 +170,10 @@ function errorMessage(err: unknown) {
 function Chip({ active, onClick, children, accent = "purple" }: { active: boolean; onClick: () => void; children: ReactNode; accent?: Accent }) {
   const style = ACCENT_STYLES[accent];
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       type="button"
       onClick={onClick}
       aria-pressed={active}
@@ -97,14 +183,19 @@ function Chip({ active, onClick, children, accent = "purple" }: { active: boolea
     >
       {active && <Check className={`size-3.5 shrink-0 ${style.icon}`} strokeWidth={2} aria-hidden="true" />}
       {children}
-    </button>
+    </motion.button>
   );
 }
 
 function Step({ number, title, description, accent = "purple", children }: { number: string; title: string; description: string; accent?: Accent; children: ReactNode }) {
   const hex = ACCENT_STYLES[accent].hex;
   return (
-    <section className="rounded-2xl border border-[#302438] bg-[#141419] p-5 sm:p-6">
+    <motion.section
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="rounded-2xl border border-[#302438] bg-[#141419] p-5 sm:p-6"
+    >
       <div className="flex items-start gap-3">
         <span
           className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
@@ -118,7 +209,7 @@ function Step({ number, title, description, accent = "purple", children }: { num
         </div>
       </div>
       <div className="mt-5">{children}</div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -237,9 +328,9 @@ export default function ChooseInterest() {
   const chipGenres = useMemo(() => Array.from(new Set([...genres, ...visibleGenres])), [genres, visibleGenres]);
 
   const visibleTags = useMemo(() => {
-    if (!options) return [];
     const search = tagQuery.trim().toLowerCase();
-    const names = (options.tags ?? []).map((tag) => tag.name).filter((name) => !search || name.toLowerCase().includes(search));
+    const sourceTags = options?.tags ? options.tags.map(t => t.name) : TAGS;
+    const names = sourceTags.filter((name) => !search || name.toLowerCase().includes(search));
     return search ? names.slice(0, 100) : names.slice(0, VISIBLE_TAGS);
   }, [options, tagQuery]);
 
@@ -311,7 +402,12 @@ export default function ChooseInterest() {
         <Navbar />
 
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16">
-          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex min-h-[65px] flex-wrap items-center justify-between gap-4"
+          >
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#B39ACF]">
                 <Sparkles className="size-3.5" aria-hidden="true" />
@@ -327,7 +423,7 @@ export default function ChooseInterest() {
               <span className="text-xs text-[#A0A0A8]">Your selections</span>
               <span className="text-sm font-semibold tabular-nums text-[#E6E1EA]">{totalSelections}</span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Full-width container layout */}
           <div className="flex w-full flex-col gap-5">
@@ -354,7 +450,7 @@ export default function ChooseInterest() {
             {/* 1. Genres */}
             <Step number="01" title="Favorite genres" description="Choose the kinds of games you usually enjoy. These help shape genre-based recommendations." accent="purple">
               {optionsError && <p role="alert" className="mb-3 text-xs text-[#E58B91]">{optionsError}</p>}
-              <SearchField id="genre-search" value={genreQuery} onChange={setGenreQuery} placeholder="Search genres: RPG, Strategy, Adventure…" label="Search genres" accent="purple" />
+              <SearchField id="genre-search" value={genreQuery} onChange={setGenreQuery} placeholder="Search genres: Action, RPG, Strategy…" label="Search genres" accent="purple" />
 
               <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Available genres">
                 {chipGenres.map((name) => (
@@ -415,7 +511,7 @@ export default function ChooseInterest() {
                   {results.slice(0, 6).map((game) => {
                     const added = likedIds.has(game.appid);
                     return (
-                      <li key={game.appid}>
+                      <motion.li key={game.appid} whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
                         <button
                           type="button"
                           onClick={() => toggleLiked(game)}
@@ -431,7 +527,7 @@ export default function ChooseInterest() {
                           </span>
                           {added ? <Check className="size-4 shrink-0 text-[#B39ACF]" /> : <Plus className="size-4 shrink-0 text-[#38BDF8]" />}
                         </button>
-                      </li>
+                      </motion.li>
                     );
                   })}
                 </ul>
@@ -444,22 +540,31 @@ export default function ChooseInterest() {
                     <span className="text-[11px] tabular-nums text-[#B39ACF]">{liked.length}/{MAX_LIKED_GAMES}</span>
                   </div>
                   <ul className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                    {liked.map((game) => (
-                      <li key={game.appid} className="group relative overflow-hidden rounded-xl border border-[#302438] bg-[#1D1D25]">
-                        <Cover src={game.cover} className="h-24 w-full transition-transform duration-300 group-hover:scale-[1.02]" />
-                        <div className="flex min-w-0 items-center justify-between gap-2 p-3">
-                          <p className="truncate text-xs font-medium text-[#E6E1EA]">{game.title}</p>
-                          <button
-                            type="button"
-                            onClick={() => toggleLiked(game)}
-                            aria-label={`Remove ${game.title}`}
-                            className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[#302438] bg-black text-[#A0A0A8] hover:border-[#E58B91]/50 hover:text-[#E58B91]"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </div>
-                      </li>
-                    ))}
+                    <AnimatePresence>
+                      {liked.map((game) => (
+                        <motion.li
+                          key={game.appid}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                          className="group relative overflow-hidden rounded-xl border border-[#302438] bg-[#1D1D25]"
+                        >
+                          <Cover src={game.cover} className="h-24 w-full transition-transform duration-300 group-hover:scale-[1.02]" />
+                          <div className="flex min-w-0 items-center justify-between gap-2 p-3">
+                            <p className="truncate text-xs font-medium text-[#E6E1EA]">{game.title}</p>
+                            <button
+                              type="button"
+                              onClick={() => toggleLiked(game)}
+                              aria-label={`Remove ${game.title}`}
+                              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[#302438] bg-black text-[#A0A0A8] hover:border-[#E58B91]/50 hover:text-[#E58B91]"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        </motion.li>
+                      ))}
+                    </AnimatePresence>
                   </ul>
                 </div>
               )}
@@ -468,7 +573,9 @@ export default function ChooseInterest() {
             {error && <p role="alert" className="rounded-xl border border-[#E58B91]/30 bg-[#2B171C] px-4 py-3 text-xs text-[#E58B91]">{error}</p>}
 
             <div className="flex flex-wrap items-center gap-4 border-t border-[#302438] pt-5">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="button"
                 onClick={handleSave}
                 disabled={saveDisabled}
@@ -476,7 +583,7 @@ export default function ChooseInterest() {
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {submitting ? "Saving preferences…" : "Save Preferences"}
-              </button>
+              </motion.button>
               <Link to={AFTER_SAVE_PATH} className="text-xs text-[#A0A0A8] transition-colors hover:text-[#C2ADE0]">
                 Skip for now
               </Link>
