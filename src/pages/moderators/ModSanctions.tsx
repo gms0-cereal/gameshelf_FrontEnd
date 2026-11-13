@@ -1,88 +1,186 @@
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ModLayout from "../../components/layout/Modlayout";
-import { useEffect, useState } from "react";
-import type { PriorSanction } from "./modData";
-import { getSanctions } from "../../lib/moderationApi";
-import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, FilterSelect, Label, Notice, PageHeader, Pagination, RowAction, SearchInput, TextArea, type Column } from "../../components/ui/Modui";
+import { priorityTone, reportStatusTone } from "./modeTones";
+import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, Notice, PageHeader, Pagination, type Column } from "../../components/ui/Modui";
+import { ModInput, ModSelect, ModTextArea } from "../../components/ui/ModForm";
+import {
+  createSanction,
+  errorMessage,
+  getSanctionCase,
+  revokeSanction,
+  updateModerationReport,
+  type ReportKind,
+  type ReportStatus,
+  type SanctionCase,
+  type SanctionRow,
+} from "../../lib/moderationApi";
 
-function EnforcementCase({
-  onBack,
-  onOpenReview,
-}: {
-  onBack: () => void;
-  onOpenReview: () => void;
-}) {
-  const [confirmed, setConfirmed] = useState(false);
-  const [sanctions, setSanctions] = useState<PriorSanction[]>([]);
+// Must match UserSanction.Type.choices in Django. `temporary` = requires a duration.
+const SANCTION_TYPES = [
+  { value: "warning", label: "Warning", temporary: false },
+  { value: "suspension", label: "Temporary suspension", temporary: true },
+  { value: "restriction", label: "Temporary restriction", temporary: true },
+  { value: "ban", label: "Permanent ban", temporary: false },
+];
+
+function EnforcementCase({ kind, reportId, onBack }: { kind: ReportKind; reportId: number; onBack: () => void }) {
+  const [data, setData] = useState<SanctionCase | null>(null);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [type, setType] = useState(SANCTION_TYPES[0].value);
+  const [duration, setDuration] = useState("7");
+  const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await getSanctionCase(reportId, kind));
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(errorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [reportId, kind]);
 
   useEffect(() => {
-    getSanctions()
-      .then(setSanctions)
-      .catch(() => setLoadError("Sanctions are unavailable. Check your moderator access and try again."));
-  }, []);
+    setLoading(true);
+    load();
+  }, [load]);
 
-  const columns: Column<PriorSanction>[] = [
+  async function run(fn: () => Promise<unknown>, okMessage: string) {
+    setBusy(true);
+    setActionError(null);
+    setSuccess(null);
+    try {
+      await fn();
+      await load(); // refresh from Django, never from local guesses
+      setSuccess(okMessage);
+    } catch (e) {
+      setActionError(errorMessage(e, "The action failed. Nothing was changed."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const setStatus = (status: ReportStatus, msg: string) =>
+    run(() => updateModerationReport(kind, reportId, status), msg);
+
+  const selected = SANCTION_TYPES.find((t) => t.value === type)!;
+  const report = data?.report;
+  const target = data?.reportedUser ?? null;
+  const reportOpen = report?.rawStatus === "open" || report?.rawStatus === "reviewing";
+  const canSubmit = !!target && reason.trim().length > 0 && confirmed && !busy;
+
+  function submitSanction() {
+    if (!target || !report) return;
+    run(async () => {
+      await createSanction({
+        user_id: target.id,
+        report_id: reportId,
+        report_kind: kind,
+        sanction_type: type,
+        duration: selected.temporary ? Number(duration) : null,
+        reason: reason.trim(),
+        internal_notes: notes.trim(),
+      });
+      // Django records the sanction but doesn't close the report, so we do it.
+      if (report.rawStatus === "open" || report.rawStatus === "reviewing") {
+        await updateModerationReport(kind, reportId, "resolved");
+      }
+      setReason("");
+      setNotes("");
+      setConfirmed(false);
+    }, "Sanction issued and report resolved.");
+  }
+
+  function revoke(s: SanctionRow) {
+    const why = window.prompt(`Reason for revoking ${s.id}?`);
+    if (!why || !why.trim()) return;
+    run(() => revokeSanction(s.sanctionId, why.trim()), `${s.id} revoked.`);
+  }
+
+  const columns: Column<SanctionRow>[] = [
     { key: "id", header: "Sanction", render: (s) => s.id },
     { key: "action", header: "Action", render: (s) => s.action },
     { key: "reason", header: "Reason", render: (s) => s.reason },
     { key: "mod", header: "Moderator", render: (s) => s.moderator },
     { key: "window", header: "Start / End", render: (s) => <span className="text-zinc-400">{s.window}</span> },
-    { key: "status", header: "Status", render: (s) => <Badge tone="green">{s.status}</Badge> },
-    { key: "detail", header: "Detail", render: () => <RowAction>Open →</RowAction> },
+    { key: "status", header: "Status", render: (s) => <Badge tone={s.tone}>{s.status}</Badge> },
+    {
+      key: "revoke",
+      header: "Revoke",
+      render: (s) =>
+        s.rawStatus === "active" || s.rawStatus === "permanent" ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={(e) => {
+              e.stopPropagation();
+              revoke(s);
+            }}
+            className="text-[10px] text-violet-300 hover:text-white disabled:opacity-50"
+          >
+            Revoke
+          </button>
+        ) : (
+          <span className="text-[10px] text-zinc-600">—</span>
+        ),
+    },
   ];
+
+  if (loading) return <p className="text-[11px] text-zinc-400">Loading report...</p>;
+  if (loadError || !data || !report) {
+    return (
+      <>
+        <BackButton onClick={onBack}>Back to queue</BackButton>
+        <Notice tone="info" className="mt-3">{loadError ?? "Report not found."}</Notice>
+      </>
+    );
+  }
+
+  const activeCount = data.sanctions.filter((s) => s.rawStatus === "active" || s.rawStatus === "permanent").length;
 
   return (
     <>
       <PageHeader
         title="Sanctions & Enforcement"
-        subtitle="Prepare a proportionate action. Nothing is applied until the confirmation step is completed."
+        subtitle="Review the report, then dismiss it or issue a proportionate sanction. Every action is saved by Django and recorded in Moderation History."
       />
 
-      <Notice className="mb-3">
-        Draft prepared for R-1048 · AshRunner remains Active. The reported review is still published.
-      </Notice>
+      {success && <Notice className="mb-3">{success}</Notice>}
+      {actionError && <p className="mb-3 text-[10.5px] text-amber-300">{actionError}</p>}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <BackButton onClick={onBack}>Back to queue</BackButton>
-        <span className="text-[10px] text-zinc-500">R-1048 · Toxic / abusive review · Reported 02 Nov 2026 09:24 UTC</span>
-        <Badge tone="amber">Pending</Badge>
-        <Badge tone="red">High</Badge>
-        <span className="text-[10px] text-zinc-500">Assigned to Maya Ross · Not yet adjudicated</span>
+        <span className="text-[10px] text-zinc-500">{report.id} · {report.category} · Reported {report.date}</span>
+        <Badge tone={reportStatusTone(report.status)}>{report.status}</Badge>
+        <Badge tone={priorityTone(report.priority)}>{report.priority}</Badge>
       </div>
 
       <div className="mb-4 grid gap-4 lg:grid-cols-[1.7fr_1fr]">
         <div className="space-y-4">
-          <Card
-            title="Reported content"
-            subtitle="Hollow Knight · RV-0526 · Posted 01 Nov, 20:11 UTC"
-            action={<button type="button" onClick={onOpenReview} className="text-[10px] text-zinc-300 hover:text-white">Review details ↗</button>}
-          >
+          <Card title="Reported content" subtitle={report.contentSub}>
             <div className="mb-2 flex items-center gap-2">
-              <Avatar initials="A" />
-              <div className="text-[11px]">
-                <p className="text-zinc-200">AshRunner</p>
-                <p className="text-[9.5px] text-zinc-500">@ashrunner_hk</p>
-              </div>
+              <Avatar initials={(report.reportedUser[0] ?? "?").toUpperCase()} />
+              <p className="text-[11px] text-zinc-200">{report.reportedUser || "Unknown user"}</p>
             </div>
-            <h4 className="mb-1.5 text-[13px] font-semibold text-zinc-100">A frustrating first run</h4>
-            <p className="mb-3 text-[11.5px] leading-relaxed text-zinc-300">
-              “The combat was not for me. The repeated ops became tiring, and the progression felt too slow. I do not understand the
-              praise for the pacing. Players who disagree should stop replying to my reviews.”
-            </p>
-            <Notice className="mb-3">
-              Possible disrespect / toxic language · User report only. No automated determination of abuse.
-            </Notice>
-            <div className="flex gap-2">
-              <Button>Open game page ↗</Button>
-              <Button>Open user profile ↗</Button>
-            </div>
+            <p className="text-[11.5px] leading-relaxed text-zinc-300">{report.content || "No content available."}</p>
+            <Notice className="mt-3">User report only. No automated determination of a violation.</Notice>
           </Card>
 
-          <Card title="Reporter explanation" subtitle="Reporter: Hades · U-1160 · 02 Nov, 09:19 UTC">
+          <Card title="Reporter explanation" subtitle={`Reporter: ${report.reporter}`}>
             <p className="text-[11.5px] leading-relaxed text-zinc-300">
-              “The final sentence of this review is directed at other players. Please check whether this breaks the respectful
-              discussion guidelines. I am not reporting the low score itself.”
+              <span className="text-zinc-500">Reason · </span>{report.category}
+            </p>
+            <p className="mt-2 text-[11.5px] leading-relaxed text-zinc-300">
+              {report.details || "The reporter gave no additional details."}
             </p>
             <p className="mt-2 text-[9.5px] text-zinc-500">
               Reporter identity is visible only to authorized safety staff. Do not share with the reported user.
@@ -91,56 +189,87 @@ function EnforcementCase({
         </div>
 
         <div className="space-y-4">
-          <Card title="Reported user" action={<span className="text-[10px] text-zinc-400">Profile ↗</span>}>
-            <div className="mb-2 flex items-center gap-2">
-              <Avatar initials="A" />
-              <div className="text-[11px]">
-                <p className="text-zinc-200">AshRunner</p>
-                <p className="text-[9.5px] text-zinc-500">U-1024 · Joined 26 Jul 2026</p>
-              </div>
-            </div>
-            <Field label="Account status">Active · No current restriction</Field>
-            <Field label="Prior record">1 warning · S-0201 · 28 Oct 2026</Field>
-            <Field label="Policy context">Respectful discussion §2.1</Field>
+          <Card title="Reported user">
+            {target ? (
+              <>
+                <div className="mb-2 flex items-center gap-2">
+                  <Avatar initials={target.username[0]?.toUpperCase() ?? "?"} />
+                  <div className="text-[11px]">
+                    <p className="text-zinc-200">{target.username}</p>
+                    <p className="text-[9.5px] text-zinc-500">User #{target.id}</p>
+                  </div>
+                </div>
+                <Field label="Active sanctions">{activeCount === 0 ? "None" : activeCount}</Field>
+                <Field label="Prior record">{data.sanctions.length} sanction(s) on file</Field>
+              </>
+            ) : (
+              <p className="text-[11px] text-zinc-400">The reported user could not be determined (content may have been removed).</p>
+            )}
           </Card>
 
-          <Card title="Next step" subtitle="Proposed enforcement before action">
-            <TextArea label="Internal investigation note" rows={3} placeholder="Add your assessment and policy reference…" />
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="danger">Mark under review</Button>
-              <Button>Dismiss report</Button>
-              <Button>Escalate</Button>
+          <Card title="Report decision" subtitle="Updates the report in Django">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="danger"
+                disabled={busy || report.rawStatus === "reviewing"}
+                onClick={() => setStatus("reviewing", "Report marked as under review.")}
+              >
+                Mark under review
+              </Button>
+              <Button
+                disabled={busy || report.rawStatus === "dismissed"}
+                onClick={() => setStatus("dismissed", "Report dismissed.")}
+              >
+                Dismiss report
+              </Button>
+              {(report.rawStatus === "resolved" || report.rawStatus === "dismissed") && (
+                <Button disabled={busy} onClick={() => setStatus("reviewing", "Report reopened for review.")}>
+                  Reopen
+                </Button>
+              )}
             </div>
-            <p className="mt-2 text-[9.5px] text-zinc-500">
-              Sanctions require a proposed confirmation. Dismissal and escalation require a recorded reason.
-            </p>
           </Card>
         </div>
       </div>
 
-      <Card
-        title="Prepare enforcement"
-        subtitle="Draft · Responsible moderator: Maya Ross"
-        className="mb-4"
-      >
-        <div className="mb-3 grid gap-3 md:grid-cols-[2fr_1.3fr_1fr_1.2fr]">
-          <FilterSelect label="Violation reason *" options={["Respectful discussion §2.1 · Pending evidence assessment"]} />
-          <FilterSelect label="Sanction type *" options={["Temporary mute · Proposed", "Warning", "Temporary suspension", "Remove / hide content"]} />
-          <FilterSelect label="Duration *" options={["24 hours", "3 days", "7 days"]} />
-          <div>
-            <Label>Status</Label>
-            <p className="pt-1.5 text-[10.5px] text-zinc-300">On confirmation · Not scheduled</p>
-          </div>
+      <Card title="Prepare enforcement" subtitle="Nothing is applied until you confirm" className="mb-4">
+        <div className="mb-3 grid gap-3 md:grid-cols-2">
+          <ModSelect label="Sanction type *" value={type} onChange={(e) => setType(e.target.value)}>
+            {SANCTION_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </ModSelect>
+          {selected.temporary ? (
+            <ModInput
+              label="Duration (days) *"
+              type="number"
+              min={1}
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+            />
+          ) : (
+            <div>
+              <span className="mb-1 block text-[9px] uppercase tracking-[0.1em] text-zinc-500">Duration</span>
+              <p className="pt-1.5 text-[10.5px] text-zinc-400">Not applicable for this sanction type</p>
+            </div>
+          )}
         </div>
-        <TextArea label="Moderator notes *" rows={3} placeholder="Add your assessment and policy reference…" />
-        <p className="mb-3 mt-2 text-[9.5px] text-zinc-500">
-          Available: Warning · Temporary mute · Temporary suspension · Remove / hide content
-        </p>
-        <Notice tone="info" className="mb-3">
-          A mute prevents new reviews and replies; reading and personal library access remain available. Duration applies only to
-          temporary actions.
-        </Notice>
-        <TextArea label="User-facing reason *" rows={3} placeholder="Explain the specific incident, guidelines and appeal route…" />
+        <div className="space-y-3">
+          <ModTextArea
+            label="User-facing reason *"
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Explain the specific incident, the guidelines, and the appeal route…"
+          />
+          <ModTextArea
+            label="Internal moderator notes"
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Staff-only assessment and policy reference…"
+          />
+        </div>
         <label className="mt-3 flex items-start gap-2 text-[10.5px] text-zinc-300">
           <input
             type="checkbox"
@@ -148,157 +277,59 @@ function EnforcementCase({
             onChange={(e) => setConfirmed(e.target.checked)}
             className="mt-0.5 accent-violet-500"
           />
-          I reviewed the content and surrounding context. I understand this action will notify AshRunner and create an audit record.
+          I reviewed the content and context. I understand this action will create an audit record
+          {target ? ` and apply to ${target.username}` : ""}.
         </label>
         <div className="mt-3 flex gap-2">
-          <Button variant="danger" disabled={!confirmed}>Review &amp; confirm sanction</Button>
-          <Button>Cancel proposal</Button>
+          <Button variant="danger" disabled={!canSubmit} onClick={submitSanction}>
+            {busy ? "Saving…" : "Confirm sanction"}
+          </Button>
+          <Button
+            disabled={busy}
+            onClick={() => {
+              setReason("");
+              setNotes("");
+              setConfirmed(false);
+            }}
+          >
+            Clear
+          </Button>
         </div>
-        <p className="mt-2 text-[9.5px] text-zinc-500">
-          Next, you will confirm the sanction and duration. Nothing is applied until then.
-        </p>
+        {!reportOpen && (
+          <p className="mt-2 text-[9.5px] text-zinc-500">
+            This report is already {report.status.toLowerCase()}; its status won't change when a sanction is issued.
+          </p>
+        )}
       </Card>
 
-      <Card title="Prior-sanctions table" subtitle="AshRunner · Complete moderation history">
-        <SearchInput placeholder="Search sanction history…" className="mb-3 w-full" />
-        <DataTable columns={columns} rows={sanctions} />
-        <Pagination summary={`${sanctions.length} sanctions returned by the API`} />
+      <Card title="Prior-sanctions table" subtitle={target ? `${target.username} · Complete moderation history` : undefined}>
+        {data.sanctions.length === 0 ? (
+          <p className="text-[11px] text-zinc-400">No active sanctions.</p>
+        ) : (
+          <DataTable columns={columns} rows={data.sanctions} />
+        )}
+        <Pagination summary={`${data.sanctions.length} sanctions on file`} />
       </Card>
-      {loadError && <Notice tone="info" className="mt-3">{loadError}</Notice>}
-    </>
-  );
-}
-
-function ReviewDetails({ onBack }: { onBack: () => void }) {
-  const [spoiler, setSpoiler] = useState(true);
-
-  return (
-    <>
-      <PageHeader title="Review Details" subtitle="RV-0526 · LunaByte · Published 02 Nov 2026 at 09:12 UTC" />
-      <div className="-mt-2 mb-4 flex items-center gap-2">
-        <BackButton onClick={onBack}>Sanctions &amp; Enforcement</BackButton>
-        <Badge tone="green">Published</Badge>
-        <Badge tone="purple">Possible spoiler</Badge>
-        <span className="text-[10px] text-zinc-500">Evidence retained · No decision recorded</span>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.9fr_1fr]">
-        <div className="space-y-4">
-          <Card>
-            <div className="flex items-center gap-3">
-              <div className="h-14 w-24 shrink-0 rounded-md bg-gradient-to-br from-sky-900 to-indigo-950" />
-              <div className="flex-1">
-                <p className="text-[12px] font-semibold text-zinc-100">Hollow Knight</p>
-                <p className="text-[10px] text-zinc-500">Metroidvania · Adventure</p>
-                <p className="mt-1 text-[16px] font-semibold text-zinc-50">
-                  Reviewer score <span className="text-zinc-300">9 / 10</span>
-                </p>
-                <p className="text-[9.5px] text-zinc-500">Public score 4.8 / 10 from 346 sample ratings</p>
-              </div>
-              <span className="self-start text-[10px] text-zinc-400">Game page ↗</span>
-            </div>
-          </Card>
-
-          <Card title="A world worth getting lost in" subtitle="Complete review · Reported passage explained">
-            <p className="mb-2 text-[11.5px] leading-relaxed text-zinc-300">
-              A rewarding adventure with satisfying exploration and memorable encounters. Every new ability made me want to switch up
-              old paths. The atmosphere and music stayed with me long after I stopped playing.
-            </p>
-            <p className="mb-3 text-[11.5px] leading-relaxed text-zinc-300">
-              Some routes ask for patience, but discovering a shortcut made the challenge worthwhile. I would recommend this to anyone
-              who enjoys exploration.
-            </p>
-            <div className="rounded-md border border-[#2a2a33] bg-[#121217] p-3">
-              <p className="mb-1 text-[9px] uppercase tracking-[0.1em] text-zinc-500">Spoiler evidence · Restricted story view</p>
-              <p className="text-[11px] italic text-zinc-300">
-                “The final encounter will show the journey, ironically when you return to the temple…”
-              </p>
-              <p className="mt-1 text-[9.5px] text-zinc-500">The passage was reported in public excerpt. Evidence was not changed.</p>
-            </div>
-            <p className="mt-3 text-[9.5px] text-zinc-500">
-              Surrounding context: Moderator review · 14 replies · No previous edits
-            </p>
-          </Card>
-
-          <Card title="Flag & evidence context" subtitle="Reported explanation">
-            <p className="mb-3 text-[11px] text-zinc-300">
-              “The ending discussion should be behind a spoiler warning. The rest of the review is useful.”
-            </p>
-            <Notice>Possible unrelated section · 1 report · No decision recorded</Notice>
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          <Card title="Reviewer" action={<span className="text-[10px] text-zinc-400">User profile ↗</span>}>
-            <div className="mb-2 flex items-center gap-2">
-              <Avatar initials="L" />
-              <div className="text-[11px]">
-                <p className="text-zinc-200">LunaByte</p>
-                <p className="text-[9.5px] text-zinc-500">U-1156 · Member since 02 Nov</p>
-              </div>
-            </div>
-            <Field label="Account">Active · Regular user</Field>
-            <Field label="Prior violations">None confirmed</Field>
-            <Field label="Other contributions">12 reviews · 47 votes</Field>
-          </Card>
-
-          <Card title="Moderation decision" subtitle="Actions use the 'Tag' system for this item">
-            <div className="mb-3 flex items-center justify-between rounded-md border border-[#2a2a33] bg-[#121217] px-3 py-2">
-              <div>
-                <p className="text-[11px] text-zinc-200">Spoiler protection</p>
-                <p className="text-[9px] text-zinc-500">Public text is concealed when the flag is turned on</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={spoiler}
-                onClick={() => setSpoiler((v) => !v)}
-                className={`h-4 w-8 rounded-full p-0.5 transition-colors ${spoiler ? "bg-violet-600" : "bg-zinc-700"}`}
-              >
-                <span className={`block h-3 w-3 rounded-full bg-white transition-transform ${spoiler ? "translate-x-4" : ""}`} />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <FilterSelect label="Policy reason *" options={["Spoiler rules §3.2"]} />
-              <TextArea label="Internal note *" rows={3} placeholder="Record why this review needs a spoiler flag…" />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="danger">Hide review</Button>
-              <Button>Delete…</Button>
-            </div>
-            <div className="mt-2">
-              <Button disabled>Restore · Not hidden</Button>
-            </div>
-            <div className="mt-2">
-              <Button variant="primary">Save spoiler flag</Button>
-            </div>
-            <p className="mt-2 text-[9px] text-zinc-500">
-              Hiding is reversible. Deleting requires a second moderator's confirmation and preserves the evidence snapshot.
-            </p>
-          </Card>
-
-          <Card title="Preservation record">
-            <Field label="Snapshot">RV-0526-v1 · 02 Nov, 09:19 UTC</Field>
-            <Field label="Status">Original text kept</Field>
-            <Field label="Assigned editor">Unassigned · Moderator access only</Field>
-          </Card>
-        </div>
-      </div>
     </>
   );
 }
 
 export default function ModSanctions() {
   const navigate = useNavigate();
-  const [view, setView] = useState<"case" | "review">("case");
-  const crumbs = ["Moderator", "Sanctions & Enforcement"];
+  const [params] = useSearchParams();
+  const kind = params.get("kind") as ReportKind | null;
+  const reportId = Number(params.get("report"));
+  const valid = (kind === "review" || kind === "comment" || kind === "playlist") && Number.isInteger(reportId) && reportId > 0;
 
   return (
-    <ModLayout crumbs={view === "review" ? [...crumbs, "Review Details"] : crumbs}>
-      {view === "review" ? (
-        <ReviewDetails onBack={() => setView("case")} />
+    <ModLayout crumbs={["Moderator", "Sanctions & Enforcement"]}>
+      {valid ? (
+        <EnforcementCase kind={kind!} reportId={reportId} onBack={() => navigate("/moderator/reports")} />
       ) : (
-        <EnforcementCase onBack={() => navigate("/moderator/reports")} onOpenReview={() => setView("review")} />
+        <>
+          <PageHeader title="Sanctions & Enforcement" subtitle="Open a report from the Reports Queue to review it and take action." />
+          <Button onClick={() => navigate("/moderator/reports")}>Go to Reports Queue</Button>
+        </>
       )}
     </ModLayout>
   );
