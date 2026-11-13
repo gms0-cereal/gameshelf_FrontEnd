@@ -270,23 +270,53 @@ export function Tabs<T extends string>({
   );
 }
 
-export function SearchInput({ placeholder, className = "" }: { placeholder: string; className?: string }) {
+export function SearchInput({
+  placeholder,
+  className = "",
+  value,
+  onChange,
+}: {
+  placeholder: string;
+  className?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
   return (
     <input
       placeholder={placeholder}
+      value={value}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       className={`rounded-lg border border-[#454650] bg-[#1a1a20] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-[#bda6e4] focus:outline-none ${className}`}
     />
   );
 }
 
-export function FilterSelect({ options, label }: { options: string[]; label?: string }) {
+export type FilterOption = string | { value: string; label: string };
+
+export function FilterSelect({
+  options,
+  label,
+  value,
+  onChange,
+}: {
+  options: FilterOption[];
+  label?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
   return (
     <label className="flex flex-col gap-1">
       {label && <Label>{label}</Label>}
-      <select className="rounded-lg border border-[#454650] bg-[#1a1a20] px-2.5 py-1.5 text-xs text-slate-200 focus:border-[#bda6e4] focus:outline-none">
-        {options.map((o) => (
-          <option key={o}>{o}</option>
-        ))}
+      <select
+        value={value}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        className="rounded-lg border border-[#454650] bg-[#1a1a20] px-2.5 py-1.5 text-xs text-slate-200 focus:border-[#bda6e4] focus:outline-none"
+      >
+        {options.map((o) => {
+          const v = typeof o === "string" ? o : o.value;
+          const l = typeof o === "string" ? o : o.label;
+          return <option key={v} value={v}>{l}</option>;
+        })}
       </select>
     </label>
   );
