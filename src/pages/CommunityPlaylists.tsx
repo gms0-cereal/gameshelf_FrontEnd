@@ -144,8 +144,6 @@ export default function CommunityPlaylists() {
     setSearchText(q);
   }, [q]);
 
-  // Functional update: always builds on the latest URL params, so several
-  // changes in one event (e.g. set genre + reset page) can't overwrite each other.
   const update = (next: Record<string, string | null>) => {
     setParams(
       (prev) => {
@@ -207,6 +205,8 @@ export default function CommunityPlaylists() {
   const visiblePages = useMemo(() => generatePageList(page, totalPages), [page, totalPages]);
   const summary = `Showing ${count.toLocaleString()} playlists`;
 
+  const activeQueryKey = `${page}-${genre}-${platform}-${sort}-${q}`;
+
   return (
     <div className="min-h-screen w-full bg-[#000000]">
       <div
@@ -217,7 +217,12 @@ export default function CommunityPlaylists() {
 
         <main className="flex flex-1 flex-col gap-8 px-5 pb-16 pt-11 md:px-8 xl:px-16 overflow-x-hidden">
           {/* Header */}
-          <div className="flex min-h-[65px] flex-wrap items-center justify-between gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="flex min-h-[65px] flex-wrap items-center justify-between gap-4"
+          >
             <div className="flex flex-col gap-2">
               <p className="text-[13px] leading-4 text-[#B39ACF] uppercase tracking-wider">
                 PLAYER CURATED COLLECTIONS
@@ -239,10 +244,13 @@ export default function CommunityPlaylists() {
                 </Link>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Filters section */}
-          <section
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
             aria-label="Search and filters"
             className="flex flex-col gap-5 rounded-2xl border border-[#302438] bg-[#17191E] p-6 shadow-none"
           >
@@ -288,25 +296,31 @@ export default function CommunityPlaylists() {
               />
 
               <div className="flex items-end">
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
                   type="button"
                   onClick={clearFilters}
                   className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#302438] bg-[#000000] text-xs font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B]"
                 >
                   <RotateCcw className="size-3.5" aria-hidden="true" /> Reset
-                </button>
+                </motion.button>
               </div>
             </div>
 
             <div className="flex items-center justify-between gap-3 text-[11px] text-[#A0A0A8]">
               <span role="status">{summary}</span>
             </div>
-          </section>
+          </motion.section>
 
           {error && (
-            <p role="alert" className="py-12 text-center text-sm text-[#E58B91]">
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              role="alert"
+              className="py-12 text-center text-sm text-[#E58B91]"
+            >
               {error}
-            </p>
+            </motion.p>
           )}
 
           {/* Results Section Shell (Always Rendered to Prevent Layout Shift) */}
@@ -316,41 +330,70 @@ export default function CommunityPlaylists() {
                 Results
               </h2>
               <p className="text-[11px] text-[#A0A0A8]">
-                {loading ? "Loading…" : `${playlists.length} playlists on this page`}
+                {loading && playlists.length === 0
+                  ? "Loading…"
+                  : `${playlists.length} playlists on this page`}
               </p>
             </div>
 
             <div className="min-h-[500px]">
-              {loading ? (
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-[240px] animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]"
-                      aria-hidden="true"
-                    />
-                  ))}
-                </div>
-              ) : playlists.length > 0 ? (
-                <AnimatePresence mode="wait">
+              <AnimatePresence mode="wait">
+                {loading && playlists.length === 0 ? (
                   <motion.div
-                    key={`${page}-${genre}-${platform}-${sort}-${q}`}
+                    key="skeleton-grid"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: 0.2 }}
                     className="grid grid-cols-1 gap-5 lg:grid-cols-2"
                   >
-                    {playlists.map((p) => (
-                      <PlaylistListCard key={p.id} playlist={p} />
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-[240px] animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]"
+                        aria-hidden="true"
+                      />
                     ))}
                   </motion.div>
-                </AnimatePresence>
-              ) : (
-                <p className="py-12 text-center text-sm text-[#A0A0A8]">
-                  No playlists found. Try changing or clearing the filters.
-                </p>
-              )}
+                ) : playlists.length > 0 ? (
+                  <motion.div
+                    key={activeQueryKey}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className={`grid grid-cols-1 gap-5 lg:grid-cols-2 transition-opacity duration-200 ${
+                      loading ? "opacity-60" : ""
+                    }`}
+                  >
+                    {playlists.map((p) => (
+                      <motion.div
+                        key={p.id}
+                        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                          scale: 1,
+                          transition: { duration: 0.25, ease: "easeOut" },
+                        }}
+                      >
+                        <PlaylistListCard playlist={p} />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.p
+                    key="empty-results"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="py-12 text-center text-sm text-[#A0A0A8]"
+                  >
+                    No playlists found. Try changing or clearing the filters.
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </div>
           </section>
 
@@ -376,13 +419,20 @@ export default function CommunityPlaylists() {
                     disabled={loading}
                     onClick={() => changePage(Number(n))}
                     aria-current={n === page ? "page" : undefined}
-                    className={`flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-xl border px-3 text-xs font-medium transition-colors ${
+                    className={`relative flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-xl border px-3 text-xs font-medium transition-colors ${
                       n === page
-                        ? "border-[#B39ACF] bg-[#B39ACF] font-bold text-[#17101F] hover:bg-[#C2ADE0]"
+                        ? "border-[#B39ACF] font-bold text-[#17101F]"
                         : "border-[#302438] bg-[#17191E] text-[#B39ACF] hover:border-[#554363] hover:bg-[#20232B]"
                     }`}
                   >
-                    {n}
+                    {n === page && (
+                      <motion.span
+                        layoutId="community-playlists-active-page"
+                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                        className="absolute inset-0 rounded-[11px] bg-[#B39ACF]"
+                      />
+                    )}
+                    <span className="relative z-10">{n}</span>
                   </button>
                 )
               )}

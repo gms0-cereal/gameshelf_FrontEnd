@@ -8,6 +8,7 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -169,61 +170,73 @@ function AddToListMenu({ appId }: { appId: number }) {
 
   return (
     <div ref={ref} className="relative">
-      <Button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        disabled={busy}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="h-10 gap-2 rounded-xl border-0 bg-[#B39ACF] px-4 text-[13px] font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
-      >
-        <Plus className="size-4" strokeWidth={1.7} aria-hidden="true" />
-        {currentLabel ?? "Add to My List"}
-        <ChevronDown className="size-4" strokeWidth={1.7} aria-hidden="true" />
-      </Button>
-
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute left-0 top-12 z-30 w-[200px] overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] p-1.5 shadow-xl"
+      <motion.div whileTap={{ scale: 0.97 }}>
+        <Button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          disabled={busy}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className="h-10 gap-2 rounded-xl border-0 bg-[#B39ACF] px-4 text-[13px] font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
         >
-          {LIST_STATUS_OPTIONS.map(({ value, label }) => {
-            const isSelected = entry?.status === value;
-            return (
-              <li key={value} role="option" aria-selected={isSelected}>
+          <Plus className="size-4" strokeWidth={1.7} aria-hidden="true" />
+          {currentLabel ?? "Add to My List"}
+          <ChevronDown
+            className={`size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            strokeWidth={1.7}
+            aria-hidden="true"
+          />
+        </Button>
+      </motion.div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            role="listbox"
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="absolute left-0 top-12 z-30 w-[200px] overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] p-1.5 shadow-xl"
+          >
+            {LIST_STATUS_OPTIONS.map(({ value, label }) => {
+              const isSelected = entry?.status === value;
+              return (
+                <li key={value} role="option" aria-selected={isSelected}>
+                  <button
+                    type="button"
+                    onClick={() => choose(value, label)}
+                    className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors ${
+                      isSelected
+                        ? "bg-[#B39ACF]/20 text-[#E6E1EA]"
+                        : "text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E6E1EA]"
+                    }`}
+                  >
+                    {label}
+                    {isSelected && (
+                      <span className="rounded-full bg-[#B39ACF] px-2 py-0.5 text-[10px] font-semibold text-[#17191E]">
+                        Selected
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+
+            {entry && (
+              <li role="presentation" className="mt-1 border-t border-[#302438] pt-1">
                 <button
                   type="button"
-                  onClick={() => choose(value, label)}
-                  className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors ${
-                    isSelected
-                      ? "bg-[#B39ACF]/20 text-[#E6E1EA]"
-                      : "text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E6E1EA]"
-                  }`}
+                  onClick={remove}
+                  className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-xs text-[#E58B91] hover:bg-[#2B171C]"
                 >
-                  {label}
-                  {isSelected && (
-                    <span className="rounded-full bg-[#B39ACF] px-2 py-0.5 text-[10px] font-semibold text-[#17191E]">
-                      Selected
-                    </span>
-                  )}
+                  Remove from list
                 </button>
               </li>
-            );
-          })}
-
-          {entry && (
-            <li role="presentation" className="mt-1 border-t border-[#302438] pt-1">
-              <button
-                type="button"
-                onClick={remove}
-                className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-xs text-[#E58B91] hover:bg-[#2B171C]"
-              >
-                Remove from list
-              </button>
-            </li>
-          )}
-        </ul>
-      )}
+            )}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -259,10 +272,10 @@ function TrailerTile({
         src={movie.thumbnail}
         alt=""
         loading="lazy"
-        className="h-full w-full object-cover contrast-110 saturate-125"
+        className="h-full w-full object-cover contrast-110 saturate-125 transition-transform duration-300 group-hover:scale-105"
       />
-      <span className="absolute inset-0 flex items-center justify-center bg-black/30">
-        <span className="flex size-14 items-center justify-center rounded-full bg-[#B39ACF] text-[#17191E]">
+      <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/20">
+        <span className="flex size-14 items-center justify-center rounded-full bg-[#B39ACF] text-[#17191E] shadow-lg transition-transform duration-200 group-hover:scale-110">
           <Play className="size-6" fill="currentColor" aria-hidden="true" />
         </span>
       </span>
@@ -274,21 +287,23 @@ function TrailerTile({
 
   if (!source) {
     return (
-      <a href={fallbackUrl} target="_blank" rel="noreferrer" className={frame}>
+      <a href={fallbackUrl} target="_blank" rel="noreferrer" className={`group ${frame}`}>
         {overlay}
       </a>
     );
   }
 
   return (
-    <button
+    <motion.button
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.99 }}
       type="button"
       onClick={() => setPlaying(true)}
       aria-label={`Play ${movie.name}`}
-      className={`${frame} cursor-pointer`}
+      className={`group ${frame} cursor-pointer`}
     >
       {overlay}
-    </button>
+    </motion.button>
   );
 }
 
@@ -356,7 +371,12 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
     sources[0];
 
   return (
-    <section className="flex flex-col gap-5">
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="flex flex-col gap-5"
+    >
       <SectionHeading title="System requirements" note="From the Steam store page" />
 
       <Card className="gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none">
@@ -366,41 +386,61 @@ function SystemRequirements({ game }: { game: SteamGameDetail }) {
             aria-label="Platform"
             className="flex w-fit gap-1 rounded-xl border border-[#302438] bg-[#000000] p-1"
           >
-            {sources.map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                role="tab"
-                aria-selected={active.key === s.key}
-                onClick={() => setActiveKey(s.key)}
-                className={`h-8 cursor-pointer rounded-lg px-4 text-xs font-medium transition-colors ${
-                  active.key === s.key
-                    ? "bg-[#B39ACF] text-[#17191E] font-semibold"
-                    : s.hasData || s.supported
-                    ? "text-[#A0A0A8] hover:text-[#E6E1EA]"
-                    : "text-[#554363] hover:text-[#A0A0A8]"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
+            {sources.map((s) => {
+              const isSelected = active.key === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => setActiveKey(s.key)}
+                  className={`relative h-8 cursor-pointer rounded-lg px-4 text-xs font-medium transition-colors ${
+                    isSelected
+                      ? "text-[#17191E] font-semibold"
+                      : s.hasData || s.supported
+                      ? "text-[#A0A0A8] hover:text-[#E6E1EA]"
+                      : "text-[#554363] hover:text-[#A0A0A8]"
+                  }`}
+                >
+                  {isSelected && (
+                    <motion.span
+                      layoutId="sys-req-active-tab"
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      className="absolute inset-0 rounded-lg bg-[#B39ACF]"
+                    />
+                  )}
+                  <span className="relative z-10">{s.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {active.hasData ? (
-            <div className="grid gap-8 md:grid-cols-2">
-              <RequirementColumn title="Minimum" rows={active.minimum} />
-              <RequirementColumn title="Recommended" rows={active.recommended} />
-            </div>
-          ) : (
-            <p className="text-sm text-[#A0A0A8]">
-              {active.supported
-                ? `The publisher hasn’t listed ${active.label} requirements for this game.`
-                : `This game isn’t available on ${active.label}.`}
-            </p>
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active.key}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18 }}
+            >
+              {active.hasData ? (
+                <div className="grid gap-8 md:grid-cols-2">
+                  <RequirementColumn title="Minimum" rows={active.minimum} />
+                  <RequirementColumn title="Recommended" rows={active.recommended} />
+                </div>
+              ) : (
+                <p className="text-sm text-[#A0A0A8]">
+                  {active.supported
+                    ? `The publisher hasn’t listed ${active.label} requirements for this game.`
+                    : `This game isn’t available on ${active.label}.`}
+                </p>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </CardContent>
       </Card>
-    </section>
+    </motion.section>
   );
 }
 
@@ -608,14 +648,6 @@ export default function GameDetails() {
   const storeUrl = `https://store.steampowered.com/app/${appid}`;
   const reviewsPath = `/gamedetails/${appid}/reviews?write=1`;
 
-  const summary = reviewData?.summary;
-  // const totalReviews = summary?.total_reviews ?? 0;
-  // const communityScore =
-  //   totalReviews > 0
-  //     ? ((summary?.total_positive ?? 0) / totalReviews) * 10
-  //     : game?.metacritic
-  //       ? game.metacritic.score / 10
-  //       : null;
   const communityScore = game?.bayesian_score ?? null;
   const totalReviews = game?.rating_count ?? 0;
   const screenshots = game?.screenshots?.slice(0, SCREENSHOT_LIMIT) ?? [];
@@ -629,9 +661,14 @@ export default function GameDetails() {
       >
         <Navbar />
 
-         <main className="flex flex-1 flex-col gap-10 px-5 pb-16 pt-8 md:px-8 xl:px-16">
+        <main className="flex flex-1 flex-col gap-10 px-5 pb-16 pt-8 md:px-8 xl:px-16">
           {/* Breadcrumb */}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-[#A0A0A8]">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-[#A0A0A8]"
+          >
             <nav aria-label="Breadcrumb" className="flex items-center gap-1.5">
               <Link to="/home" className="cursor-pointer hover:text-[#E6E1EA]">
                 Home
@@ -642,16 +679,22 @@ export default function GameDetails() {
               <span className="text-[#E6E1EA]">{game?.name ?? "…"}</span>
             </nav>
             <span>Game Details</span>
-          </div>
+          </motion.div>
 
           {loading && (
-            <p role="status" className="py-24 text-center text-sm text-[#A0A0A8]">
-              Loading game…
-            </p>
+            <div role="status" className="flex flex-col gap-6 py-8">
+              <div className="h-[320px] w-full animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]" />
+              <div className="h-[240px] w-full animate-pulse rounded-2xl border border-[#302438] bg-[#17191E]" />
+            </div>
           )}
 
           {error && (
-            <div role="alert" className="flex flex-col items-center gap-4 py-24">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              role="alert"
+              className="flex flex-col items-center gap-4 py-24"
+            >
               <p className="text-sm text-[#E58B91]">{error}</p>
               <Button
                 asChild
@@ -659,13 +702,16 @@ export default function GameDetails() {
               >
                 <Link to="/home">Back to Home</Link>
               </Button>
-            </div>
+            </motion.div>
           )}
 
           {game && (
             <>
               {/* Hero Banner */}
-              <section
+              <motion.section
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
                 aria-labelledby="game-title"
                 className="relative z-20 flex min-h-[320px] items-center rounded-2xl px-6 py-10 md:px-11"
               >
@@ -703,10 +749,15 @@ export default function GameDetails() {
                     {platforms}
                   </p>
                 </div>
-              </section>
+              </motion.section>
 
               {/* Unified Single-Container Layout */}
-              <section className="flex flex-col gap-5">
+              <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
+                className="flex flex-col gap-5"
+              >
                 <Card className="gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none">
                   <CardContent className="flex flex-col gap-6 p-6">
                     {/* Top Row: List Status & Review Button (Left) | Community Score & Like (Right) */}
@@ -714,15 +765,17 @@ export default function GameDetails() {
                       <div className="flex flex-wrap items-center gap-3">
                         <AddToListMenu appId={game.steam_appid} />
 
-                        <Button
-                          asChild
-                          className="h-10 gap-2 rounded-xl border border-[#302438] bg-[#000000] px-4 text-[13px] font-semibold text-[#E6E1EA] shadow-none hover:border-[#554363] hover:bg-[#20232B]"
-                        >
-                          <Link to={reviewsPath}>
-                            <PenLine className="size-4 text-[#B39ACF]" strokeWidth={1.7} aria-hidden="true" />
-                            Rate / Write Review
-                          </Link>
-                        </Button>
+                        <motion.div whileTap={{ scale: 0.97 }}>
+                          <Button
+                            asChild
+                            className="h-10 gap-2 rounded-xl border border-[#302438] bg-[#000000] px-4 text-[13px] font-semibold text-[#E6E1EA] shadow-none hover:border-[#554363] hover:bg-[#20232B]"
+                          >
+                            <Link to={reviewsPath}>
+                              <PenLine className="size-4 text-[#B39ACF]" strokeWidth={1.7} aria-hidden="true" />
+                              Rate / Write Review
+                            </Link>
+                          </Button>
+                        </motion.div>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-6">
@@ -737,7 +790,8 @@ export default function GameDetails() {
                           </span>
                         </div>
 
-                        <button
+                        <motion.button
+                          whileTap={{ scale: 0.92 }}
                           type="button"
                           onClick={toggleLike}
                           disabled={likeBusy}
@@ -747,7 +801,7 @@ export default function GameDetails() {
                           }`}
                         >
                           <Heart
-                            className={`size-4 ${like.liked ? "fill-[#E58B91] text-[#E58B91]" : ""}`}
+                            className={`size-4 transition-transform ${like.liked ? "fill-[#E58B91] text-[#E58B91] scale-110" : ""}`}
                             strokeWidth={1.7}
                             aria-hidden="true"
                           />
@@ -757,7 +811,7 @@ export default function GameDetails() {
                               ({like.like_count.toLocaleString()})
                             </span>
                           )}
-                        </button>
+                        </motion.button>
                       </div>
                     </div>
 
@@ -811,62 +865,87 @@ export default function GameDetails() {
                     </dl>
                   </CardContent>
                 </Card>
-              </section>
+              </motion.section>
 
               {/* Trailer */}
               {trailer && (
-                <section className="flex flex-col gap-5">
+                <motion.section
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.12, ease: "easeOut" }}
+                  className="flex flex-col gap-5"
+                >
                   <SectionHeading title="Trailer" note="From the Steam store page" />
                   <div className="max-w-[760px]">
                     <TrailerTile movie={trailer} fallbackUrl={storeUrl} />
                   </div>
-                </section>
+                </motion.section>
               )}
 
               {/* DLC */}
               {dlc.length > 0 && (
-                <section className="flex flex-col gap-5">
+                <motion.section
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.14, ease: "easeOut" }}
+                  className="flex flex-col gap-5"
+                >
                   <SectionHeading title="DLC" note="Extra content for this game" />
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {dlc.map((item) => (
-                      <Link
+                      <motion.div
                         key={item.steam_appid}
-                        to={`/gamedetails/${item.steam_appid}`}
-                        className="group overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] transition-colors hover:border-[#554363]"
+                        whileHover={{ y: -4 }}
+                        whileTap={{ scale: 0.985 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                        className="flex"
                       >
-                        <img
-                          src={item.header_image}
-                          alt={item.name}
-                          loading="lazy"
-                          className="aspect-[460/215] w-full object-cover contrast-110 saturate-125"
-                        />
-                        <div className="flex flex-col gap-1 p-4">
-                          <p className="truncate text-sm font-medium group-hover:text-[#B39ACF]">
-                            {item.name}
-                          </p>
-                          <p className="text-xs text-[#A0A0A8]">
-                            {item.is_free
-                              ? "Free"
-                              : (item.price_overview?.final_formatted ?? "DLC")}
-                          </p>
-                        </div>
-                      </Link>
+                        <Link
+                          to={`/gamedetails/${item.steam_appid}`}
+                          className="group flex w-full flex-col overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] transition-colors hover:border-[#554363]"
+                        >
+                          <img
+                            src={item.header_image}
+                            alt={item.name}
+                            loading="lazy"
+                            className="aspect-[460/215] w-full object-cover contrast-110 saturate-125 transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="flex flex-col gap-1 p-4">
+                            <p className="truncate text-sm font-medium group-hover:text-[#B39ACF]">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-[#A0A0A8]">
+                              {item.is_free
+                                ? "Free"
+                                : (item.price_overview?.final_formatted ?? "DLC")}
+                            </p>
+                          </div>
+                        </Link>
+                      </motion.div>
                     ))}
                   </div>
-                </section>
+                </motion.section>
               )}
 
               {/* Screenshots (In-page Modal Lightbox) */}
               {screenshots.length > 0 && (
-                <section className="flex flex-col gap-5">
+                <motion.section
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.16, ease: "easeOut" }}
+                  className="flex flex-col gap-5"
+                >
                   <SectionHeading
                     title="Pictures from the game"
                     note="Click any screenshot to view in full size"
                   />
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {screenshots.map((shot) => (
-                      <button
+                      <motion.button
                         key={shot.id}
+                        whileHover={{ y: -3 }}
+                        whileTap={{ scale: 0.985 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 28 }}
                         type="button"
                         onClick={() => setActiveScreenshot(shot.path_full)}
                         aria-label="Enlarge screenshot"
@@ -878,10 +957,10 @@ export default function GameDetails() {
                           loading="lazy"
                           className="aspect-video w-full object-cover contrast-110 saturate-125 transition-transform duration-300 group-hover:scale-105"
                         />
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
-                </section>
+                </motion.section>
               )}
 
               {/* System requirements */}
@@ -891,7 +970,13 @@ export default function GameDetails() {
               <SimilarGames appId={game.steam_appid} />
 
               {/* Reviews */}
-              <section id="reviews" className="scroll-mt-6">
+              <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.18, ease: "easeOut" }}
+                id="reviews"
+                className="scroll-mt-6"
+              >
                 <Card className="gap-0 rounded-2xl border border-[#302438] bg-[#17191E] py-0 text-[#E6E1EA] shadow-none">
                   <CardContent className="flex flex-col gap-5 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -909,112 +994,154 @@ export default function GameDetails() {
                             { value: "gameshelf", label: "GameShelf" },
                             { value: "external", label: "Other sites" },
                           ] as const
-                        ).map(({ value, label }) => (
-                          <button
-                            key={value}
-                            type="button"
-                            role="tab"
-                            aria-selected={reviewTab === value}
-                            onClick={() => setReviewTab(value)}
-                            className={`h-8 cursor-pointer rounded-lg px-4 text-xs font-medium transition-colors ${
-                              reviewTab === value
-                                ? "bg-[#B39ACF] text-[#17191E] font-semibold"
-                                : "text-[#A0A0A8] hover:text-[#E6E1EA]"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
+                        ).map(({ value, label }) => {
+                          const isSelected = reviewTab === value;
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              role="tab"
+                              aria-selected={isSelected}
+                              onClick={() => setReviewTab(value)}
+                              className={`relative h-8 cursor-pointer rounded-lg px-4 text-xs font-medium transition-colors ${
+                                isSelected
+                                  ? "text-[#17191E] font-semibold"
+                                  : "text-[#A0A0A8] hover:text-[#E6E1EA]"
+                              }`}
+                            >
+                              {isSelected && (
+                                <motion.span
+                                  layoutId="review-type-active-tab"
+                                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                  className="absolute inset-0 rounded-lg bg-[#B39ACF]"
+                                />
+                              )}
+                              <span className="relative z-10">{label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {reviewTab === "gameshelf" ? (
-                      <div className="flex flex-col gap-4">
-                        {reviewsError && (
-                          <p role="alert" className="text-sm text-[#E58B91]">
-                            Couldn’t load reviews right now.
-                          </p>
-                        )}
-                        {reviewsLoading && gsReviews.length === 0 ? (
-                          <p role="status" className="text-sm text-[#A0A0A8]">
-                            Loading reviews…
-                          </p>
-                        ) : gsReviews.length === 0 ? (
-                          <div className="flex flex-col items-center gap-3 py-8 text-center">
-                            <p className="text-sm text-[#A0A0A8]">
-                              No reviews on GameShelf yet. Be the first to share your thoughts!
+                    <AnimatePresence mode="wait">
+                      {reviewTab === "gameshelf" ? (
+                        <motion.div
+                          key="gameshelf-reviews"
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.18 }}
+                          className="flex flex-col gap-4"
+                        >
+                          {reviewsError && (
+                            <p role="alert" className="text-sm text-[#E58B91]">
+                              Couldn’t load reviews right now.
                             </p>
-                            <Button
-                              asChild
-                              className="h-9 rounded-xl bg-[#B39ACF] px-4 text-xs font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
-                            >
-                              <Link to={reviewsPath}>Write Review</Link>
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-4">
-                            {gsReviews.map((review) => (
-                              <GameshelfReviewItem
-                                key={review.id}
-                                review={review}
-                                onUpdate={replaceReview}
-                                onDelete={removeReview}
-                              />
-                            ))}
+                          )}
+                          {reviewsLoading && gsReviews.length === 0 ? (
+                            <div role="status" className="flex flex-col gap-3">
+                              {Array.from({ length: 3 }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="h-24 animate-pulse rounded-xl border border-[#302438] bg-[#000000]/50"
+                                />
+                              ))}
+                            </div>
+                          ) : gsReviews.length === 0 ? (
+                            <div className="flex flex-col items-center gap-3 py-8 text-center">
+                              <p className="text-sm text-[#A0A0A8]">
+                                No reviews on GameShelf yet. Be the first to share your thoughts!
+                              </p>
+                              <Button
+                                asChild
+                                className="h-9 rounded-xl bg-[#B39ACF] px-4 text-xs font-semibold text-[#17191E] hover:bg-[#C2ADE0]"
+                              >
+                                <Link to={reviewsPath}>Write Review</Link>
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-4">
+                              {gsReviews.map((review) => (
+                                <GameshelfReviewItem
+                                  key={review.id}
+                                  review={review}
+                                  onUpdate={replaceReview}
+                                  onDelete={removeReview}
+                                />
+                              ))}
 
-                            {gsHasNext && (
-                              <div className="flex justify-center pt-2">
-                                <Button
-                                  type="button"
-                                  onClick={loadMoreGsReviews}
-                                  disabled={reviewsLoading}
-                                  className="h-9 rounded-xl border border-[#302438] bg-[#000000] px-5 text-xs font-medium text-[#E6E1EA] hover:border-[#554363] hover:bg-[#20232B]"
-                                >
-                                  {reviewsLoading ? "Loading…" : "Load more reviews"}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                       <ThirdPartyReviews
-                      appId={game.steam_appid}
-                      gameName={game.name}
-                    />
-
-                    )}
+                              {gsHasNext && (
+                                <div className="flex justify-center pt-2">
+                                  <Button
+                                    type="button"
+                                    onClick={loadMoreGsReviews}
+                                    disabled={reviewsLoading}
+                                    className="h-9 rounded-xl border border-[#302438] bg-[#000000] px-5 text-xs font-medium text-[#E6E1EA] hover:border-[#554363] hover:bg-[#20232B]"
+                                  >
+                                    {reviewsLoading ? "Loading…" : "Load more reviews"}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="external-reviews"
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.18 }}
+                        >
+                          <ThirdPartyReviews
+                            appId={game.steam_appid}
+                            gameName={game.name}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </CardContent>
                 </Card>
-              </section>
+              </motion.section>
             </>
           )}
         </main>
 
-        {activeScreenshot && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Enlarged screenshot"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
-            onClick={() => setActiveScreenshot(null)}
-          >
-            <button
-              type="button"
+        <AnimatePresence>
+          {activeScreenshot && (
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Enlarged screenshot"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
               onClick={() => setActiveScreenshot(null)}
-              aria-label="Close lightbox"
-              className="absolute right-6 top-6 flex size-10 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
             >
-              <X className="size-5" />
-            </button>
-            <img
-              src={activeScreenshot}
-              alt="Enlarged game screenshot"
-              className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        )}
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                type="button"
+                onClick={() => setActiveScreenshot(null)}
+                aria-label="Close lightbox"
+                className="absolute right-6 top-6 flex size-10 cursor-pointer items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] hover:bg-[#20232B]"
+              >
+                <X className="size-5" />
+              </motion.button>
+              <motion.img
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                src={activeScreenshot}
+                alt="Enlarged game screenshot"
+                className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <Footer />
       </div>
