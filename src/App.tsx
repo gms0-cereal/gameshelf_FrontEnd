@@ -23,6 +23,7 @@ import SetBirthdayPage from "./components/Profile/SetBirthdayModal";
 import AppealReportPage from "./pages/AppealReportPage";
 import { SettingsProvider } from "./context/Settingscontext";
 import Discover from "./pages/Discover";
+import MyRestrictions from "./pages/account/MyRestrictions";
 // Admin Dashboard Imports
 import { Dashboard } from './pages/admin/Dashboard';
 import { PlatformAnalytics } from './pages/admin/PlatformAnalytics';
@@ -84,6 +85,8 @@ const App = () => (
               <Route path="/discover" element={<Discover />} />
               <Route path="/interests" element={<ChooseInterest />} />
               <Route path="/appeal-report" element={<AppealReportPage />} />
+
+              <Route path="/account/restrictions" element={<MyRestrictions />} />
               {/* Legal Routes */}
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />

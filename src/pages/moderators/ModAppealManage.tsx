@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import ModLayout from "../../components/layout/Modlayout";
 import { useDebounced } from "../../lib/useDebounced";
-// and add SearchInput to the existing Modui import list
 import { Avatar, BackButton, Badge, Button, Card, DataTable, Field, Notice, PageHeader, Pagination, SearchInput, RowAction, StatCard, Tabs, type Column } from "../../components/ui/Modui";
 import { ModSelect, ModTextArea } from "../../components/ui/ModForm";
 import {
+  claimAppeal,
   decideAppeal,
   errorMessage,
   getAppeal,
@@ -178,6 +178,21 @@ function AppealDetails({ appealId, onBack }: { appealId: number; onBack: () => v
     }
   }
 
+  async function claim() {
+    setBusy(true);
+    setActionError(null);
+    setSuccess(null);
+    try {
+      await claimAppeal(appealId);
+      await load();
+      setSuccess("Appeal claimed. It is now under review.");
+    } catch (e) {
+      setActionError(errorMessage(e, "Could not claim this appeal."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading) return <p className="text-[11px] text-zinc-400">Loading appeal...</p>;
   if (loadError || !detail) {
     return (
@@ -188,7 +203,7 @@ function AppealDetails({ appealId, onBack }: { appealId: number; onBack: () => v
     );
   }
 
-  const { appeal, sanction, actions } = detail;
+  const { appeal, sanction, actions = [] } = detail;
   const decidable = appeal.rawStatus === "pending" || appeal.rawStatus === "under_review";
   const evidence = appeal.evidence ? JSON.stringify(appeal.evidence, null, 2) : null;
 
@@ -199,7 +214,9 @@ function AppealDetails({ appealId, onBack }: { appealId: number; onBack: () => v
         <BackButton onClick={onBack}>Appeals Management</BackButton>
         <Badge tone={statusTone(appeal.rawStatus)}>{appeal.status}</Badge>
         <span className="text-[10px] text-zinc-500">
-          Original sanction {sanction.id} is {sanction.status.toLowerCase()}
+          {sanction
+            ? `Original sanction ${sanction.id} is ${sanction.status?.toLowerCase() ?? "unknown"}`
+            : "No linked sanction"}
         </span>
       </div>
 
@@ -219,13 +236,19 @@ function AppealDetails({ appealId, onBack }: { appealId: number; onBack: () => v
 
         <Card title="Original sanction">
           <div className="mb-3 flex items-center gap-2">
-            <Avatar initials={appeal.username[0]?.toUpperCase() ?? "?"} />
+            <Avatar initials={appeal.username?.[0]?.toUpperCase() ?? "?"} />
             <p className="text-[11px] text-zinc-200">{appeal.username}</p>
           </div>
-          <Field label="Sanction">{sanction.id} · {sanction.action}</Field>
-          <Field label="Reason given">{sanction.reason}</Field>
-          <Field label="Period">{sanction.window}</Field>
-          <Field label="Original actor">{sanction.moderator} · Cannot adjudicate this appeal</Field>
+          {sanction ? (
+            <>
+              <Field label="Sanction">{sanction.id} · {sanction.action}</Field>
+              <Field label="Reason given">{sanction.reason}</Field>
+              <Field label="Period">{sanction.window}</Field>
+              <Field label="Original actor">{sanction.moderator} · Cannot adjudicate this appeal</Field>
+            </>
+          ) : (
+            <p className="text-[11px] text-zinc-400">No sanction is linked to this appeal.</p>
+          )}
           {!decidable && (
             <>
               <Field label="Decided by">{appeal.reviewer || "—"}</Field>
@@ -251,6 +274,11 @@ function AppealDetails({ appealId, onBack }: { appealId: number; onBack: () => v
 
         {decidable && (
           <Card title="Decision" subtitle="Saved to Django and recorded in Moderation History">
+            {appeal.rawStatus === "pending" && (
+              <div className="mb-3">
+                <Button disabled={busy} onClick={claim}>Claim for review</Button>
+              </div>
+            )}
             <div className="space-y-3">
               <ModSelect label="Outcome *" value={decision} onChange={(e) => setDecision(e.target.value as typeof decision)}>
                 <option value="">Select an outcome</option>

@@ -247,6 +247,7 @@ function historyLabel(a: ApiHistory): string {
   const m = a.metadata ?? {};
   if (m.event === "sanction_revoked") return "Sanction revoked";
   if (m.appeal_decision) return `Appeal ${m.appeal_decision}`;
+    if (m.event === "appeal_claimed") return "Appeal claimed";
   if (a.action_type === "dismiss_report") return "Report dismissed";
   if (m.status) return `Report marked ${m.status}`;
   if (a.action_type === "warn") return "Warning issued";
@@ -452,3 +453,27 @@ export async function downloadHistoryCsv() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export type MySanction = {
+  id: number;
+  sanction_type: string;
+  reason: string;
+  starts_at: string;
+  ends_at: string | null;
+  status: "active" | "permanent" | "expired" | "revoked";
+  can_appeal: boolean;
+  appeal_status: "pending" | "under_review" | "approved" | "rejected" | null;
+};
+
+export function getMySanctions() {
+  return request<MySanction[]>("my-sanctions/");
+}
+
+export function submitAppeal(sanctionId: number, reason: string) {
+  return request("appeals/", "post", { sanction_id: sanctionId, reason });
+}
+
+export async function claimAppeal(appealId: number) {
+  return mapAppeal(await request<ApiAppeal>(`appeals/${appealId}/claim/`, "post"));
+}
+
