@@ -40,6 +40,7 @@ export default function Home() {
   const [communityPlaylists, setCommunityPlaylists] = useState<Playlist[]>([]);
 
   // 1. Fetch User Game List & Taste Profile for dynamic rotation
+ // 1. Fetch User Game List & Taste Profile for dynamic rotation
   useEffect(() => {
     let cancelled = false;
 
@@ -57,7 +58,18 @@ export default function Home() {
           setUserListMap(map);
         }
 
-        // Fetch Taste Profile & Favorites for rotation
+        // Check Session Storage for Hero Banner & Playlists to make it snappy
+        const cachedHero = sessionStorage.getItem("cached_hero_games");
+        const cachedPlaylists = sessionStorage.getItem("cached_community_playlists");
+
+        if (cachedHero) {
+          try { setHeroGames(JSON.parse(cachedHero)); } catch {}
+        }
+        if (cachedPlaylists) {
+          try { setCommunityPlaylists(JSON.parse(cachedPlaylists)); } catch {}
+        }
+
+        // Fetch Taste Profile & Favorites for rotation + fresh fetches in background
         const [profileRes, favRes, popularRes, playlistRes] = await Promise.allSettled([
           getTasteProfile(),
           getFavoriteGames(),
@@ -106,12 +118,15 @@ export default function Home() {
               bio: card.short_description || "",
             }));
             setHeroGames(summaries);
+            sessionStorage.setItem("cached_hero_games", JSON.stringify(summaries));
           }
         }
 
         // Playlists
         if (playlistRes.status === "fulfilled") {
-          setCommunityPlaylists(playlistRes.value.results || []);
+          const playlists = playlistRes.value.results || [];
+          setCommunityPlaylists(playlists);
+          sessionStorage.setItem("cached_community_playlists", JSON.stringify(playlists));
         }
       } catch {
         // Fallbacks handled gracefully by child components

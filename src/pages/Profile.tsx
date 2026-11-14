@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -97,7 +98,10 @@ function ProfileBanner({
   const hasCustomBanner = Boolean(profileUser?.banner_url);
 
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       aria-labelledby="player-name"
       className="relative isolate flex min-h-[220px] items-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-6 md:min-h-[260px] md:p-8"
     >
@@ -185,7 +189,7 @@ function ProfileBanner({
           </Button>
         )}
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -194,13 +198,11 @@ function ProfileDetailsAndStats({
   libraryCount,
   playlistCount,
   friendCount,
-  reviewsCount,
 }: {
   profileUser: UserProfile | null;
   libraryCount: number;
   playlistCount: number;
   friendCount: number;
-  reviewsCount: number;
 }) {
   const joinedDate = profileUser?.joined
     ? new Date(profileUser.joined).toLocaleDateString("en-US", {
@@ -228,16 +230,13 @@ function ProfileDetailsAndStats({
       color: "text-[#34D399]",
       icon: Users,
     },
-    {
-      label: "Reviews",
-      value: reviewsCount,
-      color: "text-[#FBBF24]",
-      icon: Star,
-    },
   ];
 
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
       aria-label="Profile Details and Statistics"
       className="flex flex-col gap-6 pt-1"
     >
@@ -259,12 +258,12 @@ function ProfileDetailsAndStats({
           </p>
         </div>
 
-        <dl className="grid grid-cols-4 gap-2 rounded-2xl border border-[#302438] bg-[#17191E] p-4 text-center shadow-none">
+        <dl className="grid grid-cols-3 gap-2 rounded-2xl border border-[#302438] bg-[#17191E] p-4 text-center shadow-none">
           {stats.map(({ label, value, color, icon: Icon }, index) => (
             <div
               key={label}
               className={`flex flex-col items-center justify-center gap-1 ${
-                index !== 3 ? "border-r border-[#252832]" : ""
+                index !== 2 ? "border-r border-[#252832]" : ""
               }`}
             >
               <Icon
@@ -284,7 +283,7 @@ function ProfileDetailsAndStats({
           ))}
         </dl>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -294,7 +293,10 @@ function FavoriteGames({
   favorites: UserFavoriteGameEntry[];
 }) {
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.12, ease: "easeOut" }}
       aria-labelledby="favorite-games-title"
       className="flex flex-col gap-5"
     >
@@ -313,40 +315,47 @@ function FavoriteGames({
         <div className="max-h-[420px] overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#302438_#17191E] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-[#17191E] [&::-webkit-scrollbar-thumb]:bg-[#302438] [&::-webkit-scrollbar-thumb]:rounded-md">
           <div className="grid grid-cols-2 gap-4 pb-2 sm:grid-cols-3 lg:grid-cols-4">
             {favorites.map((game) => (
-              <Link
+              <motion.div
                 key={game.id}
-                to={
-                  game.steam_app_id
-                    ? `/gamedetails/${game.steam_app_id}`
-                    : "#"
-                }
-                className="group flex flex-col overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] transition-colors hover:border-[#554363]"
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.985 }}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                className="flex"
               >
-                <div className="aspect-[3/2] w-full overflow-hidden bg-[#000000]">
-                  {game.cover_image_url ? (
-                    <img
-                      src={game.cover_image_url}
-                      alt={game.title}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Gamepad2 className="size-8 text-[#B39ACF]" />
-                    </div>
-                  )}
-                </div>
+                <Link
+                  to={
+                    game.steam_app_id
+                      ? `/gamedetails/${game.steam_app_id}`
+                      : "#"
+                  }
+                  className="group flex w-full flex-col overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] transition-colors hover:border-[#554363]"
+                >
+                  <div className="aspect-[3/2] w-full overflow-hidden bg-[#000000]">
+                    {game.cover_image_url ? (
+                      <img
+                        src={game.cover_image_url}
+                        alt={game.title}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Gamepad2 className="size-8 text-[#B39ACF]" />
+                      </div>
+                    )}
+                  </div>
 
-                <div className="p-3">
-                  <p className="truncate text-sm font-medium text-[#E6E1EA] transition-colors group-hover:text-[#B39ACF]">
-                    {game.title}
-                  </p>
+                  <div className="p-3">
+                    <p className="truncate text-sm font-medium text-[#E6E1EA] transition-colors group-hover:text-[#B39ACF]">
+                      {game.title}
+                    </p>
 
-                  <p className="mt-0.5 truncate text-[11px] text-[#A0A0A8]">
-                    {game.genres?.join(" / ") || "Game"}
-                  </p>
-                </div>
-              </Link>
+                    <p className="mt-0.5 truncate text-[11px] text-[#A0A0A8]">
+                      {game.genres?.join(" / ") || "Game"}
+                    </p>
+                  </div>
+                </Link>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -364,7 +373,7 @@ function FavoriteGames({
           </p>
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }
 
@@ -377,7 +386,13 @@ function UserPlaylistsSection({ playlists }: { playlists: Playlist[] }) {
     });
 
   return (
-    <section aria-labelledby="user-playlists-title" className="flex flex-col gap-5">
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.16, ease: "easeOut" }}
+      aria-labelledby="user-playlists-title"
+      className="flex flex-col gap-5"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <ListVideo className="size-5 text-[#B39ACF]" />
@@ -416,8 +431,8 @@ function UserPlaylistsSection({ playlists }: { playlists: Playlist[] }) {
       {playlists.length > 0 ? (
         <div
           ref={playlistsRef}
-         className="-mx-1 flex snap-x snap-mandatory gap-14 overflow-x-auto px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-         >
+          className="-mx-1 flex snap-x snap-mandatory gap-14 overflow-x-auto px-1 pt-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {playlists.map((playlist) => (
             <div
               key={playlist.id}
@@ -436,7 +451,7 @@ function UserPlaylistsSection({ playlists }: { playlists: Playlist[] }) {
           </p>
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }
 
@@ -451,7 +466,10 @@ function FriendsBar({
   ) => void;
 }) {
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
       aria-labelledby="friends-title"
       className="flex flex-col gap-5"
     >
@@ -483,8 +501,11 @@ function FriendsBar({
                 friend.nickname?.trim() || friend.username;
 
               return (
-                <button
+                <motion.button
                   key={friend.id}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   type="button"
                   onClick={(e) => onSelectFriend(friend, e)}
                   className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-[#302438] bg-[#17191E] p-2.5 text-center transition-colors hover:border-[#554363]"
@@ -513,7 +534,7 @@ function FriendsBar({
                       @{friend.username}
                     </p>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -531,7 +552,7 @@ function FriendsBar({
           </p>
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }
 
@@ -558,7 +579,7 @@ export default function Profile() {
     { top: number; left: number } | undefined
   >(undefined);
 
-  const [openUpward, setOpenUpward] = useState(false);
+  const [, setOpenUpward] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -688,7 +709,6 @@ export default function Profile() {
             libraryCount={libraryTotal}
             playlistCount={playlistTotal}
             friendCount={profileUser.friend_count ?? friends.length}
-            reviewsCount={profileUser.reviews_count ?? 0}
           />
 
           <FavoriteGames favorites={favorites} />

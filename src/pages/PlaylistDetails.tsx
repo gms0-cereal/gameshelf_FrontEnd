@@ -232,8 +232,6 @@ const PlaylistDetail = () => {
     copyControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.4 } });
 
   // Toast handed over by another page (e.g. "Playlist updated." after editing).
-  // The ref makes sure it shows exactly once: in dev, React StrictMode runs effects
-  // twice, and both runs would otherwise read the same location state and toast twice.
   const handoffToastShown = useRef(false);
   useEffect(() => {
     const message = (location.state as { toast?: string } | null)?.toast;
@@ -322,7 +320,6 @@ const PlaylistDetail = () => {
   }, [id]);
 
   // Like / unlike. Updates instantly, then syncs with the server's real count
-  // (which includes likes from other users) and rolls back if the request fails.
   const handleLikeToggle = async () => {
     if (!playlist || liking) return;
     const playlistId = Number(id);
@@ -347,7 +344,6 @@ const PlaylistDetail = () => {
           : null
       );
     } catch {
-      // Rollback on error (e.g. not logged in)
       setPlaylist((prev) =>
         prev ? ({ ...prev, is_liked: previousIsLiked, like_count: previousLikeCount } as any) : null
       );
@@ -356,9 +352,6 @@ const PlaylistDetail = () => {
     }
   };
 
-  // Copy this playlist into the viewer's own library (once only), then open the new copy.
-  // The "already copied" / error toasts are throttled so spam-clicking doesn't flood the screen;
-  // the button still shakes on every click so the user gets feedback.
   const handleCopy = async () => {
     if (!playlist || copying) return;
     const playlistId = Number(id);
@@ -379,18 +372,16 @@ const PlaylistDetail = () => {
       const created = await copyPlaylist(playlistId);
       writeCopied(playlistId);
       setAlreadyCopied(true);
-      setCopying(false); // show the "Already copied" check state before leaving
+      setCopying(false);
       pushToast("success", "Playlist copied to your library!");
       const newOwner = created.owner?.username;
       if (newOwner) {
-        // Give the success animation time to play before opening the new copy
         await new Promise((resolve) => window.setTimeout(resolve, COPY_SUCCESS_DELAY_MS));
         navigate(`/playlists/${encodeURIComponent(newOwner)}/${created.id}`);
       }
     } catch (err) {
       const status = isAxiosError(err) ? err.response?.status : undefined;
       const detail: string | undefined = isAxiosError(err) ? err.response?.data?.detail : undefined;
-      // The server rejects a second copy (409 / "already copied" message)
       if (status === 409 || (detail && /already|once/i.test(detail))) {
         writeCopied(playlistId);
         setAlreadyCopied(true);
@@ -408,7 +399,6 @@ const PlaylistDetail = () => {
     }
   };
 
-  // Genres compiled from every game in the playlist
   const genreCounts = useMemo(() => {
     const counts = new Map<string, number>();
     playlist?.games.forEach((g) =>
@@ -432,25 +422,20 @@ const PlaylistDetail = () => {
   const shownGenres = showAllGenres ? genreCounts : genreCounts.slice(0, TOP_GENRES_SHOWN);
   const hiddenGenres = genreCounts.length - TOP_GENRES_SHOWN;
   const isLiked = Boolean((playlist as any)?.is_liked);
-  // Owner if the server says so, or if the signed-in user is the playlist's owner.
-  // The second check makes sure a freshly made copy always shows the add/edit buttons.
   const isOwner =
     Boolean((playlist as any)?.is_owner) ||
     (!!currentUser?.username &&
       !!ownerUsername &&
       currentUser.username.toLowerCase() === ownerUsername.toLowerCase());
-  // Anyone can copy a playlist that isn't theirs (once)
   const canCopy = !isOwner;
 
-  // Hand the playlist to the create page so it opens already filled in
-  // (title, description, visibility and games). The page can also load it by id.
   const editLinkProps = playlist
     ? { to: `/playlists/${playlist.id}/edit`, state: { playlist } }
     : null;
 
   if (
     playlist &&
-    playlist.id === Number(id) && // ignore stale data from the previous route
+    playlist.id === Number(id) &&
     ownerUsername &&
     username?.toLowerCase() !== ownerUsername.toLowerCase()
   ) {
@@ -480,7 +465,12 @@ const PlaylistDetail = () => {
             {/* Header: details left, compiled genres right */}
             <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
               <div>
-                <div className="flex items-center gap-3">
+                <motion.div
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="flex items-center gap-3"
+                >
                   <div className="relative inline-block" ref={profileCardRef}>
                     <button
                       type="button"
@@ -527,15 +517,26 @@ const PlaylistDetail = () => {
                       </span>
                     </p>
                   </div>
-                </div>
+                </motion.div>
 
-                <h1 className="mt-4 text-[32px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
+                <motion.h1
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.05, ease: "easeOut" }}
+                  className="mt-4 text-[32px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]"
+                >
                   {playlist.title}
-                </h1>
+                </motion.h1>
 
-                <div className="mt-5 flex flex-wrap items-center gap-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+                  className="mt-5 flex flex-wrap items-center gap-3"
+                >
                   {/* Interactive Like Button */}
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     type="button"
                     onClick={handleLikeToggle}
                     disabled={liking}
@@ -549,7 +550,7 @@ const PlaylistDetail = () => {
                   >
                     <Heart className={`size-4 ${isLiked ? "fill-[#E58B91] text-[#E58B91]" : "text-[#B39ACF]"}`} aria-hidden="true" />
                     <span>{playlist.like_count}</span>
-                  </button>
+                  </motion.button>
 
                   {/* Copy button: shown on every playlist that belongs to someone else */}
                   {canCopy && (
@@ -603,18 +604,26 @@ const PlaylistDetail = () => {
 
                   {/* Owner only: opens the create page already filled in with this playlist. */}
                   {isOwner && editLinkProps && (
-                    <Link
-                      {...editLinkProps}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#302438] bg-[#17191E] px-4 py-2.5 text-[13px] font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
-                    >
-                      <Pencil className="size-4 text-[#B39ACF]" aria-hidden="true" />
-                      <span>Edit playlist</span>
-                    </Link>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }}>
+                      <Link
+                        {...editLinkProps}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#302438] bg-[#17191E] px-4 py-2.5 text-[13px] font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]"
+                      >
+                        <Pencil className="size-4 text-[#B39ACF]" aria-hidden="true" />
+                        <span>Edit playlist</span>
+                      </Link>
+                    </motion.div>
                   )}
-                </div>
+                </motion.div>
               </div>
 
-              <aside aria-label="Top genres" className="rounded-2xl border border-[#302438] bg-[#17191E] p-6 shadow-none">
+              <motion.aside
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.12, ease: "easeOut" }}
+                aria-label="Top genres"
+                className="rounded-2xl border border-[#302438] bg-[#17191E] p-6 shadow-none"
+              >
                 <p className="font-mono text-[10px] uppercase tracking-widest text-[#77717F]">Top genres</p>
                 {genreCounts.length === 0 ? (
                   <p className="mt-3 text-xs text-[#A0A0A8]">No genre info for these games yet.</p>
@@ -623,8 +632,10 @@ const PlaylistDetail = () => {
                     {shownGenres.map(([name, n]) => {
                       const active = genreFilter === name;
                       return (
-                        <button
+                        <motion.button
                           key={name}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.95 }}
                           type="button"
                           onClick={() => setGenreFilter(active ? null : name)}
                           aria-pressed={active}
@@ -635,7 +646,7 @@ const PlaylistDetail = () => {
                           }`}
                         >
                           {name} <span className="ml-1 text-[11px] text-[#A0A0A8]">{n}</span>
-                        </button>
+                        </motion.button>
                       );
                     })}
                     {hiddenGenres > 0 && (
@@ -649,11 +660,16 @@ const PlaylistDetail = () => {
                     )}
                   </div>
                 )}
-              </aside>
+              </motion.aside>
             </div>
 
             {/* Toolbar */}
-            <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.16, ease: "easeOut" }}
+              className="mt-10 flex flex-wrap items-center justify-between gap-3"
+            >
               <p className="text-[12px] text-[#A0A0A8]" aria-live="polite">
                 <span className="font-semibold text-[#E6E1EA]">{visibleGames.length}</span> items
                 {genreFilter && (
@@ -699,27 +715,46 @@ const PlaylistDetail = () => {
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Games */}
             {view === "grid" ? (
-              // Larger, cover-only cards (title + genres are hidden; title shows as a hover tooltip)
-              <ul className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <motion.ul
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+              >
                 {visibleGames.map((game) => (
-                  <li key={game.id}>
-                    <GameLink game={game} className="group block">
+                  <motion.li
+                    key={game.id}
+                    whileHover={{ y: -4 }}
+                    whileTap={{ scale: 0.985 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                    className="flex"
+                  >
+                    <GameLink game={game} className="group block w-full">
                       <Cover
                         src={coverFor(game)}
                         className="aspect-[16/9] w-full rounded-2xl border border-[#302438] bg-[#17191E] transition-transform duration-200 group-hover:scale-[1.02] group-hover:border-[#554363]"
                       />
                     </GameLink>
-                  </li>
+                  </motion.li>
                 ))}
-              </ul>
+              </motion.ul>
             ) : (
-              <ol className="mt-6 space-y-3">
+              <motion.ol
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="mt-6 space-y-3"
+              >
                 {visibleGames.map((game, i) => (
-                  <li key={game.id}>
+                  <motion.li
+                    key={game.id}
+                    whileHover={{ x: 2 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  >
                     <GameLink
                       game={game}
                       className="flex items-center gap-4 rounded-2xl border border-[#302438] bg-[#17191E] p-4 hover:border-[#554363]"
@@ -734,9 +769,9 @@ const PlaylistDetail = () => {
                         {game.note && <p className="mt-1 text-xs text-[#E6E1EA]/80">{game.note}</p>}
                       </div>
                     </GameLink>
-                  </li>
+                  </motion.li>
                 ))}
-              </ol>
+              </motion.ol>
             )}
 
             {visibleGames.length === 0 && (
