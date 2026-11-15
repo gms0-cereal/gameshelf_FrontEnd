@@ -46,8 +46,8 @@ export const SecondaryButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElem
   />
 );
 
-export const ExportButton: React.FC<{ label: string }> = ({ label }) => (
-  <SecondaryButton onClick={() => window.print()}>
+export const ExportButton: React.FC<{ label: string; onClick?: () => void }> = ({ label, onClick }) => (
+  <SecondaryButton onClick={onClick ?? (() => window.print())}>
     <Download className="h-[15px] w-[15px]" />
     {label}
   </SecondaryButton>
@@ -509,10 +509,9 @@ export const adminConfig: WorkspaceConfig = {
     { name: 'Platform Analytics', path: '/admin/analytics', icon: ChartNoAxesCombined },
     { name: 'User Management', path: '/admin/users', icon: Users },
     { name: 'Role & Permissions', path: '/admin/roles', icon: ShieldCheck },
-    { name: 'Game Catalog Management', path: '/admin/games', icon: Gamepad2 },
     { name: 'System Logs', path: '/admin/logs', icon: ScrollText },
     { name: 'Website Settings', path: '/admin/settings', icon: Settings2 },
-    { name: 'My Account', path: '/admin/account', icon: UserRound },
+    // { name: 'My Account', path: '/admin/account', icon: UserRound },
   ],
 };
 
