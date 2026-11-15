@@ -1,10 +1,40 @@
 
-import { useCallback } from "react";
 import api from "../lib/api";
+
+// ---------------------------------------------------------------------------
+// Multi-platform pricing (Nexarda / Store Offers)
+// ---------------------------------------------------------------------------
+
+export interface SteamGameRating {
+  rating?: string;
+  descriptors?: string;
+  required_age?: string;
+  use_age_gate?: string;
+}
+
+export interface ExternalGamePrice {
+  url: string;
+  store: {
+    name: string;
+    type?: string;
+    image?: string;
+    official?: boolean;
+  };
+  edition?: string;
+  edition_full?: string;
+  region?: string;
+  platform?: string;
+  available: boolean;
+  price: number;
+  discount?: number;
+  currency?: string;
+  currency_symbol?: string;
+}
 
 // ---------------------------------------------------------------------------
 // Core game models
 // ---------------------------------------------------------------------------
+
 export interface GameListItem {
   id: number;
   title: string;
@@ -23,6 +53,10 @@ export interface GameDetail extends GameListItem {
   tags: string[];
   developers: string[];
   publishers: string[];
+  ratings?: Record<string, SteamGameRating>;
+  required_age?: string;
+  website?: string;
+  external_prices?: ExternalGamePrice[];
 }
 
 export interface Paginated<T> {
@@ -45,8 +79,9 @@ export interface PopularGameItem {
 }
 
 // ---------------------------------------------------------------------------
-// Steam list
+// Steam game list
 // ---------------------------------------------------------------------------
+
 export interface SteamGame {
   appid: number;
   name: string;
@@ -59,9 +94,10 @@ export interface SteamGameListResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Steam game cards (details + GameShelf rating)
+// Steam game cards
 // Returned by /games/steam/summaries/ and /games/steam/?expand=1
 // ---------------------------------------------------------------------------
+
 export interface SteamGameCard {
   appid: number;
   name: string;
@@ -92,6 +128,9 @@ export interface SteamGameCard {
 
   // Logged-in user's own rating
   my_score: number | null;
+
+  // Multi-platform pricing
+  external_prices?: ExternalGamePrice[];
 }
 
 export interface SteamGameCardListResponse {
@@ -101,9 +140,10 @@ export interface SteamGameCardListResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Steam details
-// store.steampowered.com/api/appdetails -> data
+// Steam game details
+// Source: store.steampowered.com/api/appdetails -> data
 // ---------------------------------------------------------------------------
+
 export interface SteamScreenshot {
   id: number;
   path_thumbnail: string;
@@ -132,43 +172,64 @@ export interface SteamGameDetail {
   about_the_game: string;
   header_image: string;
   background_raw?: string;
+
   developers?: string[];
   publishers?: string[];
-  genres?: { id: string; description: string }[];
+
+  genres?: {
+    id: string;
+    description: string;
+  }[];
+
   platforms?: {
     windows: boolean;
     mac: boolean;
     linux: boolean;
   };
+
   release_date?: {
     coming_soon: boolean;
     date: string;
   };
+
   price_overview?: {
     final_formatted: string;
     discount_percent: number;
   };
+
   metacritic?: {
     score: number;
     url: string;
   };
+
   screenshots?: SteamScreenshot[];
   movies?: SteamMovie[];
   dlc?: number[];
+
   pc_requirements?: SteamRequirements | [];
   mac_requirements?: SteamRequirements | [];
   linux_requirements?: SteamRequirements | [];
 
+  // Age ratings
+  ratings?: Record<string, SteamGameRating>;
+  required_age?: string;
+  website?: string;
+
+  // GameShelf ratings
   bayesian_score?: number | null;
   community_rating?: number | null;
   average_rating?: number | null;
   rating_count?: number;
   my_score?: number | null;
+
+  // Multi-platform pricing
+  external_prices?: ExternalGamePrice[];
 }
 
 // ---------------------------------------------------------------------------
 // Similar games
 // ---------------------------------------------------------------------------
+
 export interface SimilarGameResult {
   game: {
     id: number;
@@ -186,8 +247,10 @@ export interface SimilarGameResult {
     average_rating?: number | null;
     rating_count?: number;
   };
+
   score: number;
   rank: number;
+
   reason?: {
     shared_features?: string[];
   };
@@ -213,21 +276,38 @@ export async function getSimilarGames(
 // ---------------------------------------------------------------------------
 // Steam reviews
 // ---------------------------------------------------------------------------
+
 export interface SteamReview {
   recommendationid: string;
+
   author: {
     steamid: string;
     playtime_forever?: number;
   };
+
   review: string;
   voted_up: boolean;
   votes_up: number;
   timestamp_created: number;
 }
 
+export interface SteamReviewsResponse {
+  summary: {
+    total_positive?: number;
+    total_negative?: number;
+    total_reviews?: number;
+    review_score_desc?: string;
+  };
+
+  reviews: SteamReview[];
+  cursor: string;
+  total_matching: number;
+}
+
 // ---------------------------------------------------------------------------
 // GameShelf community reviews
 // ---------------------------------------------------------------------------
+
 export interface GameShelfReview {
   id: number | string;
   username: string;
@@ -251,18 +331,6 @@ function normalizeReview(raw: any): GameShelfReview {
     created_at: raw.created_at ?? null,
     likes: raw.like_count ?? 0,
   };
-}
-
-export interface SteamReviewsResponse {
-  summary: {
-    total_positive?: number;
-    total_negative?: number;
-    total_reviews?: number;
-    review_score_desc?: string;
-  };
-  reviews: SteamReview[];
-  cursor: string;
-  total_matching: number;
 }
 
 // GET /reviews/<id>
@@ -387,8 +455,10 @@ export async function getSteamGameReviews(
 }
 
 // ---------------------------------------------------------------------------
-// My list (requires the user to be logged in)
+// My list
+// Requires the user to be logged in
 // ---------------------------------------------------------------------------
+
 export type ListStatus =
   | "playing"
   | "plan_to_play"
@@ -505,6 +575,7 @@ export async function getListStatus(
 // ---------------------------------------------------------------------------
 // Browse (search + filter)
 // ---------------------------------------------------------------------------
+
 export interface BrowseGame {
   appid: number;
   name: string;
@@ -523,6 +594,9 @@ export interface BrowseGame {
   average_rating?: number | null;
   rating_count?: number;
   my_score?: number | null;
+
+  // Multi-platform pricing
+  external_prices?: ExternalGamePrice[];
 }
 
 export interface BrowseResponse {
@@ -591,6 +665,7 @@ export async function getTopRatedGames(
 // ---------------------------------------------------------------------------
 // Popular now
 // ---------------------------------------------------------------------------
+
 export async function fetchPopularNowGames(
   days = 31,
   signal?: AbortSignal
