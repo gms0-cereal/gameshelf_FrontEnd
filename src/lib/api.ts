@@ -15,4 +15,15 @@ const api = axios.create({
   withXSRFToken: true,
 });
 
+// When the backend answers 503 with maintenance: true, tell the app to re-check the site status.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 503 && error.response.data?.maintenance) {
+      window.dispatchEvent(new Event("gameshelf:maintenance"));
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default api;
