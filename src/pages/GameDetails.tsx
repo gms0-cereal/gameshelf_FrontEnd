@@ -7,21 +7,22 @@ import { toast } from "sonner";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-
 import {
-  GameDetailsHeader,
-  GameOverview,
-  GamePricing,
-  GameMedia,
-  GameDLC,
-  GameDetailsReviews,
-  AgeRatingsSection,
-  SystemRequirements,
+  getRatingStats,
+  type RatingStats,
+} from "@/services/Reviewservice";
+import {
+  VisualDocumentation,
+  MarketIntelligence,
+  GameDescription,
+  GameInformation,
+  TechnicalDossier,
+  Classification,
+  Expansions,
+  RelatedArchive,
+  Community,
   ScreenshotLightbox,
 } from "@/components/gd_comp";
-
-// import SimilarGamesCarousel from "@/components/gd_comp/SimilarGamesCarousel";
-import SimilarGamesCarousel from "@/components/gd_comp/SimilarGamesCarousel";
 
 import {
   getSteamGameDetails,
@@ -87,7 +88,7 @@ export default function GameDetails() {
   // ----------------------------------------------------------
   // MAIN PAGE STATE
   // ----------------------------------------------------------
-
+  const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
   const [game, setGame] = useState<SteamGameDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +97,27 @@ export default function GameDetails() {
 
   const [activeScreenshot, setActiveScreenshot] =
     useState<string | null>(null);
+  // ----------------------------------------------------------
+  // Your reviews
+  // ----------------------------------------------------------
 
+  useEffect(() => {
+    if (!appid) return;
+
+    let cancelled = false;
+
+    getRatingStats(Number(appid))
+      .then((data) => {
+        if (!cancelled) setRatingStats(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRatingStats(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appid]);
   // ----------------------------------------------------------
   // REVIEW STATE
   // ----------------------------------------------------------
@@ -260,6 +281,10 @@ export default function GameDetails() {
       cancelled = true;
     };
   }, [appid]);
+
+  // ----------------------------------------------------------
+  // TOGGLE LIKE
+  // ----------------------------------------------------------
 
   async function toggleLike() {
     if (!appid || likeBusy) return;
@@ -563,75 +588,23 @@ export default function GameDetails() {
 
               {/* ------------------------------------------------
                   01 / VISUAL DOCUMENTATION
-              ------------------------------------------------ */}
-
-              <section
-                id="visual-documentation"
-                aria-labelledby="visual-documentation-title"
-                className="flex flex-col gap-5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs tracking-widest text-[#B39ACF]">
-                    01
-                  </span>
-
-                  <h2
-                    id="visual-documentation-title"
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E6E1EA]"
-                  >
-                    Visual Documentation
-                  </h2>
-
-                  <div className="h-px flex-1 bg-[#302438]" />
-                </div>
-
-                <div className="flex flex-col gap-5">
-                  <GameDetailsHeader
-                    game={game}
-                    heroImage={heroImage}
-                    genres={genres}
-                    platforms={platforms}
-                  />
-
-                  <GameMedia
-                    trailer={trailer}
-                    screenshots={screenshots}
-                    storeUrl={storeUrl}
-                    onSelectScreenshot={setActiveScreenshot}
-                  />
-                </div>
-              </section>
-
-              {/* ------------------------------------------------
                   02 / MARKET INTELLIGENCE
-
-                  GameOverview currently contains both market
-                  information and description/game information.
-                  Its presentation will be separated in the
-                  component redesign pass.
               ------------------------------------------------ */}
 
-              <section
-                id="market-intelligence"
-                aria-labelledby="market-intelligence-title"
-                className="flex flex-col gap-5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs tracking-widest text-[#B39ACF]">
-                    02
-                  </span>
+              <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
 
-                  <h2
-                    id="market-intelligence-title"
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E6E1EA]"
-                  >
-                    Market Intelligence
-                  </h2>
+                <VisualDocumentation
+                  game={game}
+                  heroImage={heroImage}
+                  genres={genres}
+                  platforms={platforms}
+                  trailer={trailer}
+                  screenshots={screenshots}
+                  storeUrl={storeUrl}
+                  onSelectScreenshot={setActiveScreenshot}
+                />
 
-                  <div className="h-px flex-1 bg-[#302438]" />
-                </div>
-
-                <GameOverview
+                <MarketIntelligence
                   game={game}
                   reviewsPath={reviewsPath}
                   communityScore={communityScore}
@@ -640,183 +613,73 @@ export default function GameDetails() {
                   likeCount={like.like_count}
                   likeBusy={likeBusy}
                   onToggleLike={toggleLike}
+                  myScore={ratingStats?.my_score ?? null}
                 />
-              </section>
+
+              </div>
 
               {/* ------------------------------------------------
                   03 / GAME DESCRIPTION
-
-                  The description and game-information card
-                  will be separated from GameOverview in the
-                  next component pass.
+                  03 / GAME INFORMATION
               ------------------------------------------------ */}
+
+              <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
+
+                <GameDescription game={game} />
+
+                <GameInformation game={game} />
+
+              </div>
 
               {/* ------------------------------------------------
                   04 / TECHNICAL DOSSIER
               ------------------------------------------------ */}
 
-              <section
-                id="technical-dossier"
-                aria-labelledby="technical-dossier-title"
-                className="flex flex-col gap-5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs tracking-widest text-[#B39ACF]">
-                    04
-                  </span>
-
-                  <h2
-                    id="technical-dossier-title"
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E6E1EA]"
-                  >
-                    Technical Dossier
-                  </h2>
-
-                  <div className="h-px flex-1 bg-[#302438]" />
-                </div>
-
-                <SystemRequirements game={game} />
-              </section>
+              <TechnicalDossier game={game} />
 
               {/* ------------------------------------------------
                   05 / CLASSIFICATION & ADDITIONAL INFORMATION
               ------------------------------------------------ */}
 
-              <section
-                id="classification"
-                aria-labelledby="classification-title"
-                className="flex flex-col gap-5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs tracking-widest text-[#B39ACF]">
-                    05
-                  </span>
-
-                  <h2
-                    id="classification-title"
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E6E1EA]"
-                  >
-                    Classification & Additional Information
-                  </h2>
-
-                  <div className="h-px flex-1 bg-[#302438]" />
-                </div>
-
-                <div className="grid gap-5 xl:grid-cols-2">
-                  <AgeRatingsSection game={game} />
-
-                  <div className="rounded-2xl border border-[#302438] bg-[#17191E] p-5">
-                    <GamePricing
-                      externalList={externalList}
-                      lowestExternalPrice={lowestExternalPrice}
-                      basePriceText={basePriceText}
-                    />
-                  </div>
-                </div>
-
-                {/* Languages and feature tags will be added
-                    when the classification component is built. */}
-              </section>
+              <Classification
+                game={game}
+                externalList={externalList}
+                lowestExternalPrice={lowestExternalPrice}
+                basePriceText={basePriceText}
+              />
 
               {/* ------------------------------------------------
-                  06 / COMMUNITY
+                  06 / EXPANSIONS
+                  07 / RELATED ARCHIVE
               ------------------------------------------------ */}
 
-              <section
-                id="community"
-                aria-labelledby="community-title"
-                className="flex flex-col gap-5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs tracking-widest text-[#B39ACF]">
-                    06
-                  </span>
+              <div className="grid items-start gap-5 xl:grid-cols-2">
 
-                  <h2
-                    id="community-title"
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E6E1EA]"
-                  >
-                    Community
-                  </h2>
+                <Expansions dlc={dlc} />
 
-                  <div className="h-px flex-1 bg-[#302438]" />
-                </div>
+                <RelatedArchive appId={game.steam_appid} />
 
-                <GameDetailsReviews
-                  appId={game.steam_appid}
-                  gameName={game.name}
-                  reviewsPath={reviewsPath}
-                  reviewTab={reviewTab}
-                  setReviewTab={setReviewTab}
-                  gsReviews={gsReviews}
-                  gsHasNext={gsHasNext}
-                  reviewsLoading={reviewsLoading}
-                  reviewsError={reviewsError}
-                  loadMoreGsReviews={loadMoreGsReviews}
-                  replaceReview={replaceReview}
-                  removeReview={removeReview}
-                />
-              </section>
-
-              {/* ------------------------------------------------
-                  07 / EXPANSIONS
-                  08 / RELATED ARCHIVE
-              ------------------------------------------------ */}
-
-              <div className="grid items-start gap-10 xl:grid-cols-2">
-
-                {/* 07 / EXPANSIONS */}
-
-                <section
-                  id="expansions"
-                  aria-labelledby="expansions-title"
-                  className="flex min-w-0 flex-col gap-5"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs tracking-widest text-[#B39ACF]">
-                      07
-                    </span>
-
-                    <h2
-                      id="expansions-title"
-                      className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E6E1EA]"
-                    >
-                      Expansions
-                    </h2>
-
-                    <div className="h-px flex-1 bg-[#302438]" />
-                  </div>
-
-                  <GameDLC dlc={dlc} />
-                </section>
-
-                {/* 08 / RELATED ARCHIVE */}
-
-                <section
-                  id="related-archive"
-                  aria-labelledby="related-archive-title"
-                  className="flex min-w-0 flex-col gap-5"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs tracking-widest text-[#B39ACF]">
-                      08
-                    </span>
-
-                    <h2
-                      id="related-archive-title"
-                      className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E6E1EA]"
-                    >
-                      Related Archive
-                    </h2>
-
-                    <div className="h-px flex-1 bg-[#302438]" />
-                  </div>
-
-                  <SimilarGamesCarousel
-                    appId={game.steam_appid}
-                  />
-                </section>
               </div>
+
+              {/* ------------------------------------------------
+                  08 / COMMUNITY
+              ------------------------------------------------ */}
+
+              <Community
+                appId={game.steam_appid}
+                gameName={game.name}
+                reviewsPath={reviewsPath}
+                reviewTab={reviewTab}
+                setReviewTab={setReviewTab}
+                gsReviews={gsReviews}
+                gsHasNext={gsHasNext}
+                reviewsLoading={reviewsLoading}
+                reviewsError={reviewsError}
+                loadMoreGsReviews={loadMoreGsReviews}
+                replaceReview={replaceReview}
+                removeReview={removeReview}
+              />
+
             </div>
           )}
         </main>

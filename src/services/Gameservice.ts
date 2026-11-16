@@ -57,6 +57,10 @@ export interface GameDetail extends GameListItem {
   required_age?: string;
   website?: string;
   external_prices?: ExternalGamePrice[];
+  categories?: {
+    id: number;
+    description: string;
+  }[];
 }
 
 export interface Paginated<T> {
@@ -224,6 +228,10 @@ export interface SteamGameDetail {
 
   // Multi-platform pricing
   external_prices?: ExternalGamePrice[];
+  categories?: {
+    id: number;
+    description: string;
+  }[];
 }
 
 // ---------------------------------------------------------------------------
