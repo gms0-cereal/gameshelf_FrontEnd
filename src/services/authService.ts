@@ -1,10 +1,13 @@
 import api from "@/lib/api";
+// CAPTCHA: adjust this path to wherever your Captcha.tsx file is
+import type { CaptchaPayload } from "@/components/captcha/Captcha";
 
-export interface RegisterBody {
+// CAPTCHA: register and login now carry the captcha fields too
+export type RegisterBody = {
   username: string;
   email: string;
   password: string;
-}
+} & CaptchaPayload;
 
 export interface LoginBody {
   username: string;

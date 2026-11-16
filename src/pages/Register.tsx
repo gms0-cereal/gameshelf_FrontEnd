@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { register } from "@/services/authService";
+// CAPTCHA: adjust this path to wherever your Captcha.tsx file is (same one Login.tsx uses)
+import Captcha, { type CaptchaPayload } from "@/components/captcha/Captcha";
 
 const ROTATING_HERO_GAMES = [
   {
@@ -69,6 +71,12 @@ export default function Register() {
   });
   const [loading, setLoading] = useState(false);
 
+  // CAPTCHA: the payload from the widget, a counter that forces a fresh widget,
+  // and the number of wrong slider drops (3 = switch to Google reCAPTCHA)
+  const [captcha, setCaptcha] = useState<CaptchaPayload | null>(null);
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
+  const [captchaFails, setCaptchaFails] = useState(0);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length);
@@ -84,6 +92,13 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // CAPTCHA: block submit until it is solved
+    if (!captcha) {
+      toast.error("Please complete the captcha first.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -91,6 +106,7 @@ export default function Register() {
         username: formData.username.trim(),
         email: formData.email.trim(),
         password: formData.password,
+        ...captcha, // CAPTCHA: sends captcha_type, captcha_token, etc. to Django
       });
 
       toast.success("Account created successfully! Please log in.");
@@ -105,6 +121,10 @@ export default function Register() {
         : "Failed to create account. Please try again.";
 
       toast.error(String(message));
+
+      // CAPTCHA: a challenge is single-use, so any failed submit needs a fresh one
+      setCaptcha(null);
+      setCaptchaAttempt((n) => n + 1);
     } finally {
       setLoading(false);
     }
@@ -116,7 +136,7 @@ export default function Register() {
 
       <main className="flex flex-1 flex-col justify-center px-5 py-8 md:px-8 xl:px-16">
         <div className="grid w-full gap-8 lg:grid-cols-12 lg:items-center">
-          
+
           {/* Form Side */}
           <div className="flex w-full flex-col justify-center lg:col-span-5">
             <Card className="w-full rounded-2xl border border-[#302438] bg-[#17191E] p-2 text-[#E6E1EA] shadow-2xl">
@@ -196,10 +216,18 @@ export default function Register() {
                     </div>
                   </div>
 
+                  {/* CAPTCHA */}
+                  <Captcha
+                    key={captchaAttempt}
+                    fails={captchaFails}
+                    onFail={() => setCaptchaFails((n) => n + 1)}
+                    onChange={setCaptcha}
+                  />
+
                   <Button
                     type="submit"
-                    disabled={loading}
-                    className="mt-2 h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
+                    disabled={loading || !captcha}
+                    className="mt-2 h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {loading ? "Creating Account..." : "Continue to Setup"}
                     <ArrowRight className="size-4" />
@@ -217,132 +245,129 @@ export default function Register() {
           </div>
 
           {/* Banner Side */}
+          <div className="hidden w-full lg:col-span-7 lg:block">
+            <div className="relative flex min-h-[460px] w-full flex-col justify-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-8 md:p-10">
 
-{/* Banner Side */}
-<div className="hidden w-full lg:col-span-7 lg:block">
-  <div className="relative flex min-h-[460px] w-full flex-col justify-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-8 md:p-10">
+              {/* Animated Game Cover */}
+              <div className="absolute inset-0 overflow-hidden">
+                <AnimatePresence mode="sync" initial={false}>
+                  <motion.img
+                    key={activeGame.cover}
+                    src={activeGame.cover}
+                    alt={activeGame.title}
+                    initial={{
+                      opacity: 0,
+                      scale: 1.08,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                    }}
+                    exit={{
+                      opacity: 0,
+                      scale: 1.02,
+                    }}
+                    transition={{
+                      opacity: {
+                        duration: 1.2,
+                        ease: "easeInOut",
+                      },
+                      scale: {
+                        duration: 10,
+                        ease: "linear",
+                      },
+                    }}
+                    className="absolute inset-0 h-full w-full object-cover contrast-110 saturate-125"
+                  />
+                </AnimatePresence>
 
-    {/* Animated Game Cover */}
-    <div className="absolute inset-0 overflow-hidden">
-      <AnimatePresence mode="sync" initial={false}>
-        <motion.img
-          key={activeGame.cover}
-          src={activeGame.cover}
-          alt={activeGame.title}
-          initial={{
-            opacity: 0,
-            scale: 1.08,
-          }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-          }}
-          exit={{
-            opacity: 0,
-            scale: 1.02,
-          }}
-          transition={{
-            opacity: {
-              duration: 1.2,
-              ease: "easeInOut",
-            },
-            scale: {
-              duration: 10,
-              ease: "linear",
-            },
-          }}
-          className="absolute inset-0 h-full w-full object-cover contrast-110 saturate-125"
-        />
-      </AnimatePresence>
+                {/* Gradient Overlay */}
+                <div
+                  className="absolute inset-0 z-[1]"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0.95) 100%)",
+                  }}
+                />
+              </div>
 
-      {/* Gradient Overlay */}
-      <div
-        className="absolute inset-0 z-[1]"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0.95) 100%)",
-        }}
-      />
-    </div>
+              {/* Animated Game Information */}
+              <div className="relative z-10 flex flex-col gap-2">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={activeGame.title}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{
+                      duration: 0.65,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="flex flex-col gap-2"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#B39ACF]">
+                      {activeGame.genre}
+                    </p>
 
-    {/* Animated Game Information */}
-    <div className="relative z-10 flex flex-col gap-2">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={activeGame.title}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{
-            duration: 0.65,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          className="flex flex-col gap-2"
-        >
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#B39ACF]">
-            {activeGame.genre}
-          </p>
+                    <h2 className="text-3xl font-semibold leading-tight text-[#E6E1EA] md:text-4xl">
+                      {activeGame.title}
+                    </h2>
 
-          <h2 className="text-3xl font-semibold leading-tight text-[#E6E1EA] md:text-4xl">
-            {activeGame.title}
-          </h2>
+                    <p className="max-w-[500px] text-xs text-[#A0A0A8]">
+                      Build your collection and receive recommendations based on your preferences.
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
 
-          <p className="max-w-[500px] text-xs text-[#A0A0A8]">
-            Build your collection and receive recommendations based on your preferences.
-          </p>
-        </motion.div>
-      </AnimatePresence>
-    </div>
+              {/* Carousel Controls */}
+              <div className="relative z-10 mt-6 flex items-center justify-between">
+                <div className="flex gap-1.5">
+                  {ROTATING_HERO_GAMES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        idx === currentSlide
+                          ? "w-6 bg-[#B39ACF]"
+                          : "w-2 bg-[#A0A0A8]/40 hover:bg-[#A0A0A8]"
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
 
-    {/* Carousel Controls */}
-    <div className="relative z-10 mt-6 flex items-center justify-between">
-      <div className="flex gap-1.5">
-        {ROTATING_HERO_GAMES.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentSlide(idx)}
-            className={`h-2 rounded-full transition-all duration-500 ${
-              idx === currentSlide
-                ? "w-6 bg-[#B39ACF]"
-                : "w-2 bg-[#A0A0A8]/40 hover:bg-[#A0A0A8]"
-            }`}
-            aria-label={`Go to slide ${idx + 1}`}
-          />
-        ))}
-      </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentSlide(
+                        (prev) =>
+                          (prev - 1 + ROTATING_HERO_GAMES.length) %
+                          ROTATING_HERO_GAMES.length
+                      )
+                    }
+                    className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() =>
-            setCurrentSlide(
-              (prev) =>
-                (prev - 1 + ROTATING_HERO_GAMES.length) %
-                ROTATING_HERO_GAMES.length
-            )
-          }
-          className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
-        >
-          <ChevronLeft className="size-4" />
-        </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentSlide(
+                        (prev) => (prev + 1) % ROTATING_HERO_GAMES.length
+                      )
+                    }
+                    className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            setCurrentSlide(
-              (prev) => (prev + 1) % ROTATING_HERO_GAMES.length
-            )
-          }
-          className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </div>
-    </div>
-
-  </div>
-</div>
-
+            </div>
+          </div>
 
         </div>
       </main>

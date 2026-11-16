@@ -29,7 +29,9 @@ const TOP_GENRES_SHOWN = 10;
 const TOAST_COOLDOWN_MS = 30_000;
 
 // How long the copy button's success state stays visible before opening the new copy.
-const COPY_SUCCESS_DELAY_MS = 1200;
+const COPY_SUCCESS_DELAY_MS = 1400;
+
+const COPY_SUCCESS_MESSAGE = "You've copied the gamelist! Find it in your library.";
 
 const SORTS = [
   { value: "order", label: "Curated (author's order)" },
@@ -142,6 +144,29 @@ const OwnerAvatar = memo(({ src, name }: { src?: string | null; name: string }) 
 });
 OwnerAvatar.displayName = "OwnerAvatar";
 
+/** Checkmark that draws itself in (used for the copy success state). */
+function AnimatedCheck() {
+  return (
+    <motion.svg
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <motion.path
+        d="M4 12.5 L10 18 L20 6"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }}
+      />
+    </motion.svg>
+  );
+}
+
 /** Wraps a game in a link to its details page when it has a Steam id. */
 function GameLink({ game, className, children }: { game: PlaylistGame; className: string; children: React.ReactNode }) {
   return game.steam_appid ? (
@@ -189,6 +214,7 @@ const PlaylistDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [liking, setLiking] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [justCopied, setJustCopied] = useState(false); // true only during the success animation
   const [alreadyCopied, setAlreadyCopied] = useState(false);
 
   const [sort, setSort] = useState<Sort>("order");
@@ -226,10 +252,15 @@ const PlaylistDetail = () => {
     [pushToast]
   );
 
-  // Copy button animation controls (used for the "already copied" shake)
+  // Copy button animation controls ("already copied" shake + success pop)
   const copyControls = useAnimationControls();
   const shakeCopyButton = () =>
     copyControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.4 } });
+  const popCopyButton = () =>
+    copyControls.start({
+      scale: [1, 1.18, 0.94, 1.06, 1],
+      transition: { duration: 0.6, ease: "easeOut" },
+    });
 
   // Toast handed over by another page (e.g. "Playlist updated." after editing).
   const handoffToastShown = useRef(false);
@@ -295,6 +326,7 @@ const PlaylistDetail = () => {
     setPlaylist(null); // don't show the previous playlist while the new one loads
     setMiniProfileUser(null); // don't reuse the previous owner's profile card
     setShowMiniProfile(false);
+    setJustCopied(false);
     setAlreadyCopied(readCopied(playlistId));
 
     getPlaylist(playlistId)
@@ -353,7 +385,7 @@ const PlaylistDetail = () => {
   };
 
   const handleCopy = async () => {
-    if (!playlist || copying) return;
+    if (!playlist || copying || justCopied) return;
     const playlistId = Number(id);
     if (!Number.isInteger(playlistId)) return;
 
@@ -371,13 +403,20 @@ const PlaylistDetail = () => {
     try {
       const created = await copyPlaylist(playlistId);
       writeCopied(playlistId);
-      setAlreadyCopied(true);
       setCopying(false);
-      pushToast("success", "Playlist copied to your library!");
+      setAlreadyCopied(true);
+
+      // Success: animate the button + show the toast
+      setJustCopied(true);
+      popCopyButton();
+      pushToast("success", COPY_SUCCESS_MESSAGE);
+
       const newOwner = created.owner?.username;
       if (newOwner) {
         await new Promise((resolve) => window.setTimeout(resolve, COPY_SUCCESS_DELAY_MS));
         navigate(`/playlists/${encodeURIComponent(newOwner)}/${created.id}`);
+      } else {
+        window.setTimeout(() => setJustCopied(false), COPY_SUCCESS_DELAY_MS);
       }
     } catch (err) {
       const status = isAxiosError(err) ? err.response?.status : undefined;
@@ -428,6 +467,15 @@ const PlaylistDetail = () => {
       !!ownerUsername &&
       currentUser.username.toLowerCase() === ownerUsername.toLowerCase());
   const canCopy = !isOwner;
+
+  // Which visual state the copy button is in
+  const copyPhase: "copying" | "success" | "copied" | "idle" = copying
+    ? "copying"
+    : justCopied
+      ? "success"
+      : alreadyCopied
+        ? "copied"
+        : "idle";
 
   const editLinkProps = playlist
     ? { to: `/playlists/${playlist.id}/edit`, state: { playlist } }
@@ -554,52 +602,79 @@ const PlaylistDetail = () => {
 
                   {/* Copy button: shown on every playlist that belongs to someone else */}
                   {canCopy && (
-                    <motion.button
-                      type="button"
-                      onClick={handleCopy}
-                      disabled={copying}
-                      aria-disabled={alreadyCopied}
-                      animate={copyControls}
-                      whileHover={!alreadyCopied && !copying ? { scale: 1.04 } : undefined}
-                      whileTap={{ scale: 0.95 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
-                        alreadyCopied
-                          ? "border-[#554363] bg-[#17191E] text-[#A0A0A8]"
-                          : "border-[#B39ACF] bg-[#B39ACF] text-[#17191E] hover:bg-[#B39ACF]/85"
-                      }`}
-                    >
-                      <AnimatePresence mode="wait" initial={false}>
-                        <motion.span
-                          key={copying ? "copying" : alreadyCopied ? "copied" : "idle"}
-                          initial={{ opacity: 0, scale: 0.4, rotate: -90 }}
-                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                          exit={{ opacity: 0, scale: 0.4, rotate: 90 }}
-                          transition={{ type: "spring", stiffness: 180, damping: 18 }}
-                          className="inline-flex"
-                        >
-                          {copying ? (
-                            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                          ) : alreadyCopied ? (
-                            <Check className="size-4" aria-hidden="true" />
-                          ) : (
-                            <Copy className="size-4" aria-hidden="true" />
-                          )}
-                        </motion.span>
+                    <div className="relative">
+                      {/* Ripple ring that expands outward on a successful copy */}
+                      <AnimatePresence>
+                        {justCopied && (
+                          <motion.span
+                            key="copy-ring"
+                            aria-hidden="true"
+                            initial={{ opacity: 0.8, scale: 1 }}
+                            animate={{ opacity: 0, scale: 1.7 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            className="pointer-events-none absolute inset-0 rounded-xl border-2 border-[#34D399]"
+                          />
+                        )}
                       </AnimatePresence>
 
-                      <AnimatePresence mode="wait" initial={false}>
-                        <motion.span
-                          key={copying ? "copying" : alreadyCopied ? "copied" : "idle"}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{ duration: 0.35, ease: "easeInOut" }}
-                        >
-                          {copying ? "Copying..." : alreadyCopied ? "Already copied" : "Make a copy"}
-                        </motion.span>
-                      </AnimatePresence>
-                    </motion.button>
+                      <motion.button
+                        type="button"
+                        onClick={handleCopy}
+                        disabled={copying}
+                        aria-disabled={alreadyCopied}
+                        animate={copyControls}
+                        whileHover={copyPhase === "idle" ? { scale: 1.04 } : undefined}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        className={`relative inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+                          copyPhase === "success"
+                            ? "border-[#34D399] bg-[#34D399] text-[#17191E]"
+                            : copyPhase === "copied"
+                              ? "border-[#554363] bg-[#17191E] text-[#A0A0A8]"
+                              : "border-[#B39ACF] bg-[#B39ACF] text-[#17191E] hover:bg-[#B39ACF]/85"
+                        }`}
+                      >
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.span
+                            key={copyPhase}
+                            initial={{ opacity: 0, scale: 0.4, rotate: -90 }}
+                            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                            exit={{ opacity: 0, scale: 0.4, rotate: 90 }}
+                            transition={{ type: "spring", stiffness: 180, damping: 18 }}
+                            className="inline-flex"
+                          >
+                            {copyPhase === "copying" ? (
+                              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                            ) : copyPhase === "success" ? (
+                              <AnimatedCheck />
+                            ) : copyPhase === "copied" ? (
+                              <Check className="size-4" aria-hidden="true" />
+                            ) : (
+                              <Copy className="size-4" aria-hidden="true" />
+                            )}
+                          </motion.span>
+                        </AnimatePresence>
+
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.span
+                            key={copyPhase}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.35, ease: "easeInOut" }}
+                          >
+                            {copyPhase === "copying"
+                              ? "Copying..."
+                              : copyPhase === "success"
+                                ? "Copied!"
+                                : copyPhase === "copied"
+                                  ? "Already copied"
+                                  : "Make a copy"}
+                          </motion.span>
+                        </AnimatePresence>
+                      </motion.button>
+                    </div>
                   )}
 
                   {/* Owner only: opens the create page already filled in with this playlist. */}
