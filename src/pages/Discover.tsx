@@ -1,6 +1,14 @@
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Calendar, ChevronDown, Gamepad2, Search, Star } from "lucide-react";
+import {
+  Calendar,
+  ChevronDown,
+  ExternalLink,
+  Gamepad2,
+  Search,
+  Star,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -346,6 +354,33 @@ export default function Discover() {
 
   const activeQueryKey = `${q}-${genre}-${platform}-${sort}-${page}`;
 
+  const externalArchives = [
+    {
+      title: "Google Play",
+      subtitle: "Android & Mobile Games",
+      description: "Explore popular mobile games and Android releases.",
+      url: "https://play.google.com/store/games?gl=ph",
+    },
+    {
+      title: "itch.io",
+      subtitle: "Independent Games",
+      description: "Discover indie games, game jams and hidden gems.",
+      url: "https://itch.io/games",
+    },
+    {
+      title: "Retro Replay",
+      subtitle: "Classic Console Games",
+      description: "Browse GameCube, Wii, PSP, PlayStation and Xbox games.",
+      url: "https://retro-replay.com/db/",
+    },
+    {
+      title: "MobyGames",
+      subtitle: "Video Game Database",
+      description: "Explore gaming history across hundreds of platforms.",
+      url: "https://www.mobygames.com/",
+    },
+  ];
+
   return (
     <div className="min-h-screen w-full bg-[#000000]">
       <div
@@ -517,6 +552,50 @@ export default function Discover() {
               onChange={changePage}
             />
           )}
+
+          {/* Beyond the Archive */}
+          <section className="mt-8 flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B39ACF]">
+                Beyond the Archive
+              </p>
+              <h2 className="text-xl font-semibold text-[#E6E1EA]">
+                More games to discover
+              </h2>
+              <p className="text-xs text-[#A0A0A8]">
+                Explore games beyond the GameShelf catalogue.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {externalArchives.map((archive) => (
+                <a
+                  key={archive.title}
+                  href={archive.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex min-h-[132px] flex-col justify-between rounded-2xl border border-[#302438] bg-[#17191E] p-4 transition-all duration-200 hover:border-[#554363] hover:bg-[#20232B]"
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-semibold text-[#E6E1EA] transition-colors group-hover:text-[#C2ADE0]">
+                      {archive.title}
+                    </span>
+                    <span className="text-[11px] font-medium text-[#B39ACF]">
+                      {archive.subtitle}
+                    </span>
+                    <p className="text-xs leading-5 text-[#A0A0A8]">
+                      {archive.description}
+                    </p>
+                  </div>
+
+                  <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#B39ACF] transition-colors group-hover:text-[#C2ADE0]">
+                    EXPLORE
+                    <ExternalLink className="size-3" />
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
         </main>
 
         <Footer />
