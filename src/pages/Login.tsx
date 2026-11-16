@@ -114,10 +114,15 @@ export default function Login() {
         password: formData.password,
       });
 
-      await refreshUser();
+      const user = await refreshUser();
 
       toast.success("Logged in successfully!");
-      navigate(redirectTo, { replace: true });
+
+      const destination = user?.onboarding_completed
+        ? redirectTo
+        : "/interests";
+
+      navigate(destination, { replace: true });
     } catch (error) {
       const message = isAxiosError(error)
         ? error.response?.data?.detail ||

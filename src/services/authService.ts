@@ -46,10 +46,11 @@ export interface AuthUser {
   gender: string | null;
   pronouns: string | null;
   library_visibility: string;
-  birth_day: string | null; // Fixed from Date
+  birth_day: string | null; 
   friends_visibility: string;
   created_at: string;
   hide_mature: boolean;
+  onboarding_completed: boolean;
 }
 
 export async function getCsrf(): Promise<void> {
