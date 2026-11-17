@@ -24,6 +24,9 @@ import AppealReportPage from "./pages/AppealReportPage";
 import { SettingsProvider } from "./context/Settingscontext";
 import Discover from "./pages/Discover";
 import MyRestrictions from "./pages/account/MyRestrictions";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
+
 // Admin Dashboard Imports
 import { Dashboard } from './pages/admin/Dashboard';
 import { PlatformAnalytics } from './pages/admin/PlatformAnalytics';
@@ -86,7 +89,9 @@ const App = () => (
                 <Route path="/discover" element={<Discover />} />
                 <Route path="/interests" element={<ChooseInterest />} />
                 <Route path="/appeal-report" element={<AppealReportPage />} />
-
+                
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/account/restrictions" element={<MyRestrictions />} />
                 {/* Legal Routes */}
                 <Route path="/about" element={<About />} />

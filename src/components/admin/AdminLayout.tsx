@@ -7,10 +7,11 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
-  Bell, ChartNoAxesCombined, ChevronDown, CircleCheck, Database, Download, Gamepad2, Info, LayoutDashboard,
+  ChartNoAxesCombined, ChevronDown, CircleCheck, Database, Download, Gamepad2, Info, LayoutDashboard,
   PanelLeftClose, PanelLeftOpen, ScrollText, Search, Settings2, ShieldCheck, UserRound, Users, Workflow, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 // ───────────────────────── UI primitives ─────────────────────────
 
@@ -340,7 +341,6 @@ export const PreferenceRow: React.FC<{
     <Toggle checked={checked} onChange={onChange} disabled={disabled} label={title} />
   </div>
 );
-
 // ───────────────────────── Workspace shell ─────────────────────────
 
 export interface WorkspaceNavItem {
@@ -359,10 +359,7 @@ export interface WorkspaceConfig {
   workspaceLabel: string;
   searchPlaceholder: string;
   nav: WorkspaceNavItem[];
-  user: { initials: string; name: string; role: string };
   accountPath: string;
-  /** First line of the sidebar footer */
-  statusLine: string;
 }
 
 interface WorkspaceShellProps {
@@ -373,6 +370,7 @@ interface WorkspaceShellProps {
 export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ config, children }) => {
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const currentUser = useCurrentUser();
 
   // Longest matching nav path wins, so /admin/users/U-1140 still shows "User Management"
   const current =
@@ -437,7 +435,6 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ config, children
         <div className="mt-auto flex flex-col gap-5">
           {!collapsed && (
             <div className="text-[11px] leading-[2] text-[#aaa6b5]">
-              <p>{config.statusLine}</p>
               <Link to="/" className="text-[#c2ade7] hover:underline">
                 ↗ View GameShelf
               </Link>
@@ -470,18 +467,14 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ config, children
             />
           </div>
 
-          <button type="button" aria-label="Notifications" className="text-[#aaa6b5] hover:text-[#f0eef5]">
-            <Bell className="h-[18px] w-[18px]" />
-          </button>
-
           <Link to={config.accountPath} className="flex items-center gap-[10px] text-left">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#383044] text-[11px] font-semibold text-[#c2ade7]">
-              {config.user.initials}
+              {currentUser.initials}
             </span>
             <span className="hidden sm:block">
-              <span className="block text-[11px] leading-[1.7]">{config.user.name}</span>
+              <span className="block text-[11px] leading-[1.7]">{currentUser.name}</span>
               <span className="flex items-center gap-1 text-[10px] leading-[1.7] text-[#aaa6b5]">
-                {config.user.role} <ChevronDown className="h-3 w-3" />
+                {currentUser.role} <ChevronDown className="h-3 w-3" />
               </span>
             </span>
           </Link>
@@ -502,8 +495,6 @@ export const adminConfig: WorkspaceConfig = {
   workspaceLabel: 'Administrator workspace',
   searchPlaceholder: 'Search operations…',
   accountPath: '/admin/account',
-  statusLine: '● 1 service degraded',
-  user: { initials: 'AC', name: 'Alex Chen', role: 'Administrator' },
   nav: [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard, end: true },
     { name: 'Platform Analytics', path: '/admin/analytics', icon: ChartNoAxesCombined },

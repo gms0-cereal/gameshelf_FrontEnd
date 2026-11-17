@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import logo from "../Logo/Gameshelf_Logo.png";
 import { Link, NavLink } from "react-router-dom";
-import { Bell, ChevronRight, CircleHelp, LayoutDashboard, LogOut, Menu, ScrollText, ShieldAlert, UserRound } from "lucide-react";
+import { ChevronRight, CircleHelp, LayoutDashboard, LogOut, Menu, ScrollText, ShieldAlert, UserRound } from "lucide-react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 /* Shell for every moderator page: sidebar, top bar, footer.
    Sidebar links are real routes; "My Account" goes to your existing /profile page. */
@@ -16,6 +17,7 @@ const NAV: { label: string; to: string; end?: boolean }[] = [
 
 export default function ModLayout({ crumbs, children }: { crumbs: string[]; children: ReactNode }) {
   const navIcons = [LayoutDashboard, ShieldAlert, ScrollText, CircleHelp, ScrollText];
+  const currentUser = useCurrentUser();
 
   return (
     <div className="flex min-h-screen bg-[#141417] font-sans text-slate-100">
@@ -72,12 +74,12 @@ export default function ModLayout({ crumbs, children }: { crumbs: string[]; chil
               <Menu className="h-5 w-5" />
             </button>
             <p className="flex items-center text-xs">
-            {crumbs.map((c, i) => (
-              <span key={c} className="flex items-center">
-                {i > 0 && <ChevronRight className="mx-1 h-3 w-3" />}
-                <span className={i === crumbs.length - 1 ? "font-medium text-white" : ""}>{c}</span>
-              </span>
-            ))}
+              {crumbs.map((c, i) => (
+                <span key={c} className="flex items-center">
+                  {i > 0 && <ChevronRight className="mx-1 h-3 w-3" />}
+                  <span className={i === crumbs.length - 1 ? "font-medium text-white" : ""}>{c}</span>
+                </span>
+              ))}
             </p>
           </div>
           <div className="flex items-center gap-2 text-slate-400">
@@ -86,20 +88,17 @@ export default function ModLayout({ crumbs, children }: { crumbs: string[]; chil
               className="hidden w-72 rounded-lg border border-[#454650] bg-[#1a1a20] px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 transition focus:border-[#bda6e4] focus:outline-none sm:block"
             />
             <button type="button" className="rounded-lg p-2 transition hover:bg-[#383044] hover:text-white">
-              <Bell className="h-4 w-4" />
-            </button>
-            <button type="button" className="rounded-lg p-2 transition hover:bg-[#383044] hover:text-white">
               <CircleHelp className="h-4 w-4" />
             </button>
-            <div className="hidden items-center gap-2 sm:flex">
+            <Link to="/profile" className="hidden items-center gap-2 sm:flex">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#383044] text-[10px] font-semibold text-[#bda6e4]">
-                MR
+                {currentUser.initials}
               </span>
               <span className="leading-tight">
-                <span className="block text-[10px] text-slate-200">Maya Ross</span>
-                <span className="block text-[9px] text-slate-500">Moderator</span>
+                <span className="block text-[10px] text-slate-200">{currentUser.name}</span>
+                <span className="block text-[9px] text-slate-500">{currentUser.role}</span>
               </span>
-            </div>
+            </Link>
           </div>
         </header>
 

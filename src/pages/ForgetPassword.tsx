@@ -1,15 +1,62 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { ArrowLeft, Info, Loader2, Mail } from "lucide-react";
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
-import { useAuth } from "../context/AuthContext";
-//import { requestPasswordReset } from "../services/authService";
-import {forgotPassword} from "../services/authService";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Mail, MailCheck } from "lucide-react";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { AnimatePresence, motion } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { forgotPassword } from "@/services/authService";
 
-// Same artwork as the Login page.
-const HERO_IMAGE = "/images/login-hero.jpg";
+const ROTATING_HERO_GAMES = [
+  {
+    title: "Hollow Knight: Silksong",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1030300/header.jpg",
+    genre: "Action / Platformer / Metroidvania",
+  },
+  {
+    title: "Armored Core VI Fires of Rubicon",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1888160/header.jpg",
+    genre: "Action / Mecha / Sci-Fi",
+  },
+  {
+    title: "Black Myth: Wukong",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg",
+    genre: "Action RPG / Mythology",
+  },
+  {
+    title: "Lies of P",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1627720/header.jpg",
+    genre: "Souls-like / Dark Fantasy",
+  },
+  {
+    title: "Counter-Strike 2",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg",
+    genre: "FPS / Tactical Competitive",
+  },
+  {
+    title: "Cuphead",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/268910/header.jpg",
+    genre: "Run & Gun / Classic Animation",
+  },
+  {
+    title: "NieR:Automata",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/524220/header.jpg",
+    genre: "Action RPG / Post-Apocalyptic",
+  },
+  {
+    title: "Dark Souls III",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/374320/header.jpg",
+    genre: "Dark Fantasy / Action RPG",
+  },
+  {
+    title: "Red Dead Redemption 2",
+    cover: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg",
+    genre: "Open World / Western Story",
+  },
+];
 
 const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -38,16 +85,14 @@ function parseApiError(err: unknown): { general?: string; email?: string } {
   return { general: "Something went wrong. Please try again." };
 }
 
-const inputBase =
-  "h-[38px] w-full rounded-lg border bg-transparent pl-3 pr-10 text-[13px] text-[#e6e3f5] placeholder:text-[#9a97b5] focus:outline-none focus:ring-2 focus:ring-[#8b6fd6]/60";
-
-const ForgotPassword = () => {
+export default function ForgotPassword() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | undefined>();
 
@@ -56,13 +101,21 @@ const ForgotPassword = () => {
     if (!authLoading && user) navigate("/", { replace: true });
   }, [authLoading, user, navigate]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const activeGame = ROTATING_HERO_GAMES[currentSlide];
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (submitting) return;
 
     const value = email.trim();
     setError(null);
-    setSent(false);
 
     if (!value) {
       setEmailError("Enter your email.");
@@ -77,7 +130,7 @@ const ForgotPassword = () => {
     setSubmitting(true);
     try {
       await forgotPassword({ email: value });
-      setSent(true);
+      setSentTo(value);
     } catch (err) {
       const parsed = parseApiError(err);
       setError(parsed.general ?? null);
@@ -88,119 +141,252 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#282539] font-sans text-[#e6e3f5]">
+    <div
+      className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       <Navbar />
 
-      <main className="mx-auto grid w-full max-w-[1200px] flex-1 items-center gap-10 px-4 py-10 sm:px-6 md:grid-cols-2 md:gap-14 lg:px-[52px] lg:py-[50px]">
-        {/* Hero panel */}
-        <section
-          aria-label="GameShelf"
-          className="relative hidden min-h-[360px] overflow-hidden rounded-2xl bg-[#1d2b33] bg-cover bg-center md:block md:h-full md:min-h-[550px]"
-          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1b1a2a]/90 via-[#1b1a2a]/20 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-8">
-            <p className="text-xs text-[#c9c6e0]">YOUR GAMES. YOUR STORY.</p>
-            <h2 className="mt-3 max-w-[300px] text-[32px] font-semibold leading-[1.1] text-[#ecebf7]">
-              A home for every adventure.
-            </h2>
-            <p className="mt-5 text-[13px] text-[#c9c6e0]">
-              Discover what’s next. Keep the games you love close.
-            </p>
-          </div>
-        </section>
+      <main className="flex flex-1 flex-col justify-center px-5 py-8 md:px-8 xl:px-16">
+        <div className="grid w-full gap-8 lg:grid-cols-12 lg:items-center">
 
-        {/* Form */}
-        <section className="w-full md:max-w-[473px] md:justify-self-end">
-          <h1 className="text-[28px] font-semibold text-[#e6e3f5]">Forgot Password</h1>
-          <p className="mt-6 text-[13px] text-[#a9a6c2]">
-            Let’s get you back to your shelf. Enter the email linked to your account.
-          </p>
+          {/* Form Side */}
+          <div className="flex w-full flex-col justify-center lg:col-span-5">
+            <Card className="w-full rounded-2xl border border-[#302438] bg-[#17191E] p-2 text-[#E6E1EA] shadow-2xl">
+              {sentTo ? (
+                /* ── Check your email panel ── */
+                <CardContent className="flex flex-col gap-6 p-6 md:p-8">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-[#B39ACF]/15">
+                    <MailCheck className="size-6 text-[#B39ACF]" aria-hidden="true" />
+                  </div>
 
-          <form onSubmit={handleSubmit} noValidate className="mt-6">
-            <div role="alert" aria-live="polite">
-              {error && (
-                <p className="mb-4 rounded-lg border border-[#a8454b] bg-[#a8454b]/15 px-3 py-2 text-[13px] text-[#f4b6ba]">
-                  {error}
-                </p>
+                  <div>
+                    <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.5px] text-[#E6E1EA]">
+                      Check your email
+                    </h1>
+                    <p className="mt-3 text-xs leading-relaxed text-[#A0A0A8]">
+                      If an account exists for{" "}
+                      <span className="font-semibold text-[#E6E1EA]">{sentTo}</span>, a reset link
+                      is on its way. Follow the link to choose a new password.
+                    </p>
+                  </div>
+
+                  <div
+                    role="status"
+                    className="rounded-xl border border-[#302438] bg-[#000000] px-4 py-3 text-xs text-[#A0A0A8]"
+                  >
+                    Can’t find it? Check your spam or promotions folder. The email can take a
+                    minute to arrive.
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setSentTo(null);
+                        setEmail("");
+                      }}
+                      className="h-11 w-full gap-2 rounded-xl border border-[#302438] bg-transparent text-xs font-semibold text-[#E6E1EA] shadow-none hover:bg-[#20232B]"
+                    >
+                      Use a different email
+                    </Button>
+
+                    <Link to="/login">
+                      <Button
+                        type="button"
+                        className="h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
+                      >
+                        Back to Log In
+                        <ArrowRight className="size-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              ) : (
+                /* ── Forgot password form ── */
+                <CardContent className="flex flex-col gap-6 p-6 md:p-8">
+                  <div>
+                    <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.5px] text-[#E6E1EA]">
+                      Forgot Password
+                    </h1>
+                    <p className="mt-1.5 text-xs text-[#A0A0A8]">
+                      Let’s get you back to your shelf. Enter the email linked to your account
+                      and we’ll send you a reset link.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+                    <div role="alert" aria-live="polite">
+                      {error && (
+                        <p className="rounded-xl border border-[#a8454b] bg-[#a8454b]/15 px-3 py-2 text-xs text-[#f4b6ba]">
+                          {error}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="email" className="text-[12px] font-medium text-[#A0A0A8]">
+                        Email Address
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          autoComplete="email"
+                          value={email}
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            if (emailError) setEmailError(undefined);
+                          }}
+                          placeholder="you@example.com"
+                          aria-invalid={!!emailError}
+                          aria-describedby={emailError ? "email-error" : undefined}
+                          className={`h-11 w-full rounded-xl border bg-[#000000] pl-10 pr-4 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF] ${
+                            emailError ? "border-[#a8454b]" : "border-[#302438]"
+                          }`}
+                        />
+                      </div>
+                      {emailError && (
+                        <p id="email-error" className="text-xs text-[#f4b6ba]">
+                          {emailError}
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="mt-2 h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {submitting ? "Sending..." : "Send Reset Link"}
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  </form>
+
+                  <div className="border-t border-[#302438] pt-4 text-center text-xs text-[#A0A0A8]">
+                    <Link
+                      to="/login"
+                      className="inline-flex items-center gap-1.5 font-medium text-[#B39ACF] hover:underline"
+                    >
+                      <ArrowLeft className="size-3.5" aria-hidden="true" />
+                      Back to Log In
+                    </Link>
+                  </div>
+                </CardContent>
               )}
-            </div>
+            </Card>
+          </div>
 
-            <label htmlFor="email" className="block text-xs font-medium text-[#e6e3f5]">
-              Email
-            </label>
-            <div className="relative mt-2">
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (emailError) setEmailError(undefined);
-                }}
-                placeholder="Enter email"
-                aria-invalid={!!emailError}
-                aria-describedby={emailError ? "email-error" : undefined}
-                className={`${inputBase} ${emailError ? "border-[#a8454b]" : "border-[#4a4766]"}`}
-              />
-              <Mail
-                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f8ca9]"
-                aria-hidden="true"
-              />
-            </div>
-            {emailError && (
-              <p id="email-error" className="mt-1 text-xs text-[#f4b6ba]">
-                {emailError}
-              </p>
-            )}
+          {/* Banner Side */}
+          <div className="hidden w-full lg:col-span-7 lg:block">
+            <div className="relative flex min-h-[460px] w-full flex-col justify-end overflow-hidden rounded-2xl border border-[#302438] bg-[#17191E] p-8 md:p-10">
 
-            <p className="mt-7 text-[13px] text-[#a9a6c2]">
-              Your account keeps your list and ratings together.
-            </p>
+              {/* Animated Game Cover */}
+              <div className="absolute inset-0 overflow-hidden">
+                <AnimatePresence mode="sync" initial={false}>
+                  <motion.img
+                    key={activeGame.cover}
+                    src={activeGame.cover}
+                    alt={activeGame.title}
+                    initial={{ opacity: 0, scale: 1.08 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.02 }}
+                    transition={{
+                      opacity: { duration: 1.2, ease: "easeInOut" },
+                      scale: { duration: 10, ease: "linear" },
+                    }}
+                    className="absolute inset-0 h-full w-full object-cover contrast-110 saturate-125"
+                  />
+                </AnimatePresence>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-6 inline-flex h-[34px] min-w-[82px] items-center justify-center gap-2 rounded-md bg-[#a8454b] px-5 text-[13px] font-medium text-white transition-colors hover:bg-[#b9525a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e6e3f5] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-              {submitting ? "Sending…" : "Send Reset Link"}
-            </button>
-          </form>
+                {/* Gradient Overlay */}
+                <div
+                  className="absolute inset-0 z-[1]"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0.95) 100%)",
+                  }}
+                />
+              </div>
 
-          <div aria-live="polite">
-            {sent && (
-              <div
-                role="status"
-                className="mt-6 flex gap-3 rounded-lg border border-[#4a4766] bg-[#35334a] px-4 py-3"
-              >
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#b6a8e8]" aria-hidden="true" />
-                <div>
-                  <p className="text-[13px] font-medium text-[#b6a8e8]">Check your email</p>
-                  <p className="mt-0.5 text-xs text-[#a9a6c2]">
-                    A reset link is on its way. Follow the link to choose a new password.
-                  </p>
+              {/* Animated Game Information */}
+              <div className="relative z-10 flex flex-col gap-2">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={activeGame.title}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex flex-col gap-2"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#B39ACF]">
+                      {activeGame.genre}
+                    </p>
+
+                    <h2 className="text-3xl font-semibold leading-tight text-[#E6E1EA] md:text-4xl">
+                      {activeGame.title}
+                    </h2>
+
+                    <p className="max-w-[500px] text-xs text-[#A0A0A8]">
+                      Your account keeps your list and ratings together.
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Carousel Controls */}
+              <div className="relative z-10 mt-6 flex items-center justify-between">
+                <div className="flex gap-1.5">
+                  {ROTATING_HERO_GAMES.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        idx === currentSlide
+                          ? "w-6 bg-[#B39ACF]"
+                          : "w-2 bg-[#A0A0A8]/40 hover:bg-[#A0A0A8]"
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentSlide(
+                        (prev) => (prev - 1 + ROTATING_HERO_GAMES.length) % ROTATING_HERO_GAMES.length
+                      )
+                    }
+                    className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+                    aria-label="Previous game"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentSlide((prev) => (prev + 1) % ROTATING_HERO_GAMES.length)}
+                    className="flex size-8 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E]/80 text-[#E6E1EA] backdrop-blur-sm transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+                    aria-label="Next game"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
                 </div>
               </div>
-            )}
+
+            </div>
           </div>
 
-          <p className="mt-6 text-[13px]">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 text-[#b6a8e8] hover:underline"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              Back to Log In
-            </Link>
-          </p>
-        </section>
+        </div>
       </main>
 
       <Footer />
     </div>
   );
-};
-
-export default ForgotPassword;
+}
