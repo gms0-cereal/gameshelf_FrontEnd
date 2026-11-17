@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { Mail, Lock, User, ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, ChevronLeft, ChevronRight, Eye, EyeOff, MailCheck } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,6 @@ const ROTATING_HERO_GAMES = [
 ];
 
 export default function Register() {
-  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -70,6 +69,10 @@ export default function Register() {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+
+  // After a successful signup we show the "check your email" panel
+  // instead of the form. Holds the address the verification link was sent to.
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   // CAPTCHA: the payload from the widget, a counter that forces a fresh widget,
   // and the number of wrong slider drops (3 = switch to Google reCAPTCHA)
@@ -102,17 +105,17 @@ export default function Register() {
     setLoading(true);
 
     try {
+      const email = formData.email.trim();
+
       await register({
         username: formData.username.trim(),
-        email: formData.email.trim(),
+        email,
         password: formData.password,
         ...captcha, // CAPTCHA: sends captcha_type, captcha_token, etc. to Django
       });
 
-      toast.success("Account created successfully! Please log in.");
-      navigate("/login", {
-        state: { username: formData.username.trim() },
-      });
+      // Show the "check your email" panel
+      setRegisteredEmail(email);
     } catch (error) {
       const message = isAxiosError(error)
         ? error.response?.data?.detail ||
@@ -140,107 +143,145 @@ export default function Register() {
           {/* Form Side */}
           <div className="flex w-full flex-col justify-center lg:col-span-5">
             <Card className="w-full rounded-2xl border border-[#302438] bg-[#17191E] p-2 text-[#E6E1EA] shadow-2xl">
-              <CardContent className="flex flex-col gap-6 p-6 md:p-8">
-                <div>
-                  <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.5px] text-[#E6E1EA]">
-                    Create an Account
-                  </h1>
-                  <p className="mt-1.5 text-xs text-[#A0A0A8]">
-                    Join GameShelf to curate your catalog and track your favorite games.
-                  </p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="username" className="text-[12px] font-medium text-[#A0A0A8]">
-                      Username
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
-                      <input
-                        id="username"
-                        name="username"
-                        type="text"
-                        required
-                        value={formData.username}
-                        onChange={handleChange}
-                        placeholder="gamer123"
-                        className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-4 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
-                      />
-                    </div>
+              {registeredEmail ? (
+                /* ── Check your email panel ── */
+                <CardContent className="flex flex-col gap-6 p-6 md:p-8">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-[#B39ACF]/15">
+                    <MailCheck className="size-6 text-[#B39ACF]" aria-hidden="true" />
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="email" className="text-[12px] font-medium text-[#A0A0A8]">
-                      Email Address
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
-                      <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="you@example.com"
-                        className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-4 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
-                      />
-                    </div>
+                  <div>
+                    <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.5px] text-[#E6E1EA]">
+                      Check your email
+                    </h1>
+                    <p className="mt-3 text-xs leading-relaxed text-[#A0A0A8]">
+                      Your account has been created. We sent a verification link to{" "}
+                      <span className="font-semibold text-[#E6E1EA]">{registeredEmail}</span>.
+                      Open it to verify your email address, then log in.
+                    </p>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="password" className="text-[12px] font-medium text-[#A0A0A8]">
-                      Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
-                      <input
-                        id="password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={formData.password}
-                        onChange={handleChange}
-                        placeholder="••••••••"
-                        className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-10 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77717F] hover:text-[#E6E1EA]"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* CAPTCHA */}
-                  <Captcha
-                    key={captchaAttempt}
-                    fails={captchaFails}
-                    onFail={() => setCaptchaFails((n) => n + 1)}
-                    onChange={setCaptcha}
-                  />
-
-                  <Button
-                    type="submit"
-                    disabled={loading || !captcha}
-                    className="mt-2 h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0] disabled:cursor-not-allowed disabled:opacity-50"
+                  <div
+                    role="status"
+                    className="rounded-xl border border-[#302438] bg-[#000000] px-4 py-3 text-xs text-[#A0A0A8]"
                   >
-                    {loading ? "Creating Account..." : "Continue to Setup"}
-                    <ArrowRight className="size-4" />
-                  </Button>
-                </form>
+                    Can’t find it? Check your spam or promotions folder. The email can take a minute to arrive.
+                  </div>
 
-                <div className="border-t border-[#302438] pt-4 text-center text-xs text-[#A0A0A8]">
-                  Already have an account?{" "}
-                  <Link to="/login" className="font-medium text-[#B39ACF] hover:underline">
-                    Log in
+                  <Link to="/login" state={{ username: formData.username.trim() }}>
+                    <Button
+                      type="button"
+                      className="h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0]"
+                    >
+                      Go to Log In
+                      <ArrowRight className="size-4" />
+                    </Button>
                   </Link>
-                </div>
-              </CardContent>
+                </CardContent>
+              ) : (
+                /* ── Registration form ── */
+                <CardContent className="flex flex-col gap-6 p-6 md:p-8">
+                  <div>
+                    <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.5px] text-[#E6E1EA]">
+                      Create an Account
+                    </h1>
+                    <p className="mt-1.5 text-xs text-[#A0A0A8]">
+                      Join GameShelf to curate your catalog and track your favorite games.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="username" className="text-[12px] font-medium text-[#A0A0A8]">
+                        Username
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
+                        <input
+                          id="username"
+                          name="username"
+                          type="text"
+                          required
+                          value={formData.username}
+                          onChange={handleChange}
+                          placeholder="gamer123"
+                          className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-4 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="email" className="text-[12px] font-medium text-[#A0A0A8]">
+                        Email Address
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={handleChange}
+                          placeholder="you@example.com"
+                          className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-4 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="password" className="text-[12px] font-medium text-[#A0A0A8]">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#77717F]" />
+                        <input
+                          id="password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          required
+                          value={formData.password}
+                          onChange={handleChange}
+                          placeholder="••••••••"
+                          className="h-11 w-full rounded-xl border border-[#302438] bg-[#000000] pl-10 pr-10 text-xs text-[#E6E1EA] placeholder-[#554363] outline-none transition-colors focus:border-[#B39ACF]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#77717F] hover:text-[#E6E1EA]"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* CAPTCHA */}
+                    <Captcha
+                      key={captchaAttempt}
+                      fails={captchaFails}
+                      onFail={() => setCaptchaFails((n) => n + 1)}
+                      onChange={setCaptcha}
+                    />
+
+                    <Button
+                      type="submit"
+                      disabled={loading || !captcha}
+                      className="mt-2 h-11 w-full gap-2 rounded-xl border-0 bg-[#B39ACF] text-xs font-semibold text-[#17191E] shadow-none hover:bg-[#C2ADE0] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {loading ? "Creating Account..." : "Continue to Setup"}
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  </form>
+
+                  <div className="border-t border-[#302438] pt-4 text-center text-xs text-[#A0A0A8]">
+                    Already have an account?{" "}
+                    <Link to="/login" className="font-medium text-[#B39ACF] hover:underline">
+                      Log in
+                    </Link>
+                  </div>
+                </CardContent>
+              )}
             </Card>
           </div>
 
