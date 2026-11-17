@@ -1,6 +1,6 @@
-
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, ShieldAlert } from "lucide-react";
+import { ChevronDown, ExternalLink, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 import type { SteamGameDetail } from "@/services/Gameservice";
@@ -14,9 +14,13 @@ interface AgeRatingsSectionProps {
   game: SteamGameDetail;
 }
 
+const INITIAL_VISIBLE_RATINGS = 6; // 2 columns x 3 rows
+
 export default function AgeRatingsSection({
   game,
 }: AgeRatingsSectionProps) {
+  const [showAllRatings, setShowAllRatings] = useState(false);
+
   const ratings = Object.entries(game.ratings || {}).filter(
     ([, rating]) => rating?.rating
   );
@@ -25,6 +29,11 @@ export default function AgeRatingsSection({
     game.required_age && Number(game.required_age) > 0
       ? Number(game.required_age)
       : null;
+
+  const hasMoreRatings = ratings.length > INITIAL_VISIBLE_RATINGS;
+  const visibleRatings = showAllRatings
+    ? ratings
+    : ratings.slice(0, INITIAL_VISIBLE_RATINGS);
 
   return (
     <motion.section
@@ -68,55 +77,76 @@ export default function AgeRatingsSection({
             </span>
           </div>
 
-          {/* Regional ratings */}
+          {/* Regional ratings (2 columns x 3 rows max before expanding) */}
           {ratings.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {ratings.map(([region, rating]) => {
-                const descriptors = getRatingDescriptors(
-                  rating.descriptors
-                );
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {visibleRatings.map(([region, rating]) => {
+                  const descriptors = getRatingDescriptors(
+                    rating.descriptors
+                  );
 
-                return (
-                  <div
-                    key={region}
-                    className="rounded-xl border border-[#302438] bg-[#20232B] p-4"
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-[#A0A0A8]">
-                        {RATING_SYSTEM_NAMES[region] ||
-                          region.toUpperCase()}
-                      </span>
+                  return (
+                    <div
+                      key={region}
+                      className="min-w-0 rounded-xl border border-[#302438] bg-[#20232B] p-4"
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <span className="truncate text-xs font-semibold text-[#A0A0A8]">
+                          {RATING_SYSTEM_NAMES[region] ||
+                            region.toUpperCase()}
+                        </span>
 
-                      <span className="rounded-md bg-[#B39ACF]/15 px-2.5 py-1 text-xs font-bold text-[#C2ADE0]">
-                        {formatRating(rating.rating)}
-                      </span>
-                    </div>
-
-                    {rating.required_age && (
-                      <p className="mb-3 text-[11px] text-[#A0A0A8]">
-                        Minimum age: {rating.required_age}+
-                      </p>
-                    )}
-
-                    {descriptors.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {descriptors.map((descriptor) => (
-                          <span
-                            key={descriptor}
-                            className="rounded-md border border-[#554363]/50 bg-[#17191E] px-2 py-1 text-[10px] text-[#D0C8D8]"
-                          >
-                            {descriptor}
-                          </span>
-                        ))}
+                        <span className="shrink-0 rounded-md bg-[#B39ACF]/15 px-2.5 py-1 text-xs font-bold text-[#C2ADE0]">
+                          {formatRating(rating.rating)}
+                        </span>
                       </div>
-                    ) : (
-                      <p className="text-[10px] text-[#77717F]">
-                        No content descriptors provided.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+
+                      {rating.required_age && (
+                        <p className="mb-3 text-[11px] text-[#A0A0A8]">
+                          Minimum age: {rating.required_age}+
+                        </p>
+                      )}
+
+                      {descriptors.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {descriptors.map((descriptor) => (
+                            <span
+                              key={descriptor}
+                              className="max-w-full break-words rounded-md border border-[#554363]/50 bg-[#17191E] px-2 py-1 text-[10px] text-[#D0C8D8]"
+                            >
+                              {descriptor}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-[#77717F]">
+                          No content descriptors provided.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {hasMoreRatings && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllRatings((prev) => !prev)}
+                  className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#302438] bg-[#20232B]/60 py-2.5 text-xs font-semibold text-[#B39ACF] transition-colors hover:border-[#806B99] hover:text-[#E6E1EA]"
+                >
+                  <span>
+                    {showAllRatings
+                      ? "Show less"
+                      : `View all (${ratings.length})`}
+                  </span>
+                  <ChevronDown
+                    className={`size-4 transition-transform duration-200 ${
+                      showAllRatings ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              )}
             </div>
           ) : (
             <p className="text-sm text-[#A0A0A8]">

@@ -1,4 +1,3 @@
-
 export const RATING_SYSTEM_NAMES: Record<string, string> = {
   esrb: "ESRB (North America)",
   pegi: "PEGI (Europe)",
@@ -20,12 +19,19 @@ export function getRatingDescriptors(
 ): string[] {
   if (!descriptors) return [];
 
-  if (Array.isArray(descriptors)) {
-    return descriptors.map((item) => item.trim()).filter(Boolean);
-  }
+  const rawList = Array.isArray(descriptors)
+    ? descriptors
+    : descriptors.split(/[,;\n]|<br\s*\/?>/i);
 
-  return descriptors
-    .split(/[,;]/)
-    .map((item) => item.trim())
+  return rawList
+    .map((item) =>
+      item
+        // Strip Steam BBCode [img]...[/img] tags and raw image URLs
+        .replace(/\[img\].*?\[\/img\]/gi, "")
+        .replace(/https?:\/\/\S+/gi, "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
     .filter(Boolean);
 }

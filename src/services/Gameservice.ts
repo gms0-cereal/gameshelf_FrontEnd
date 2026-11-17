@@ -225,7 +225,8 @@ export interface SteamGameDetail {
   average_rating?: number | null;
   rating_count?: number;
   my_score?: number | null;
-
+  supported_languages?: string;
+  
   // Multi-platform pricing
   external_prices?: ExternalGamePrice[];
   categories?: {
