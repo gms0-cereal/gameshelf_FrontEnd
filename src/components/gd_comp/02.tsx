@@ -275,35 +275,35 @@ export default function MarketIntelligence({
         <div className="h-px bg-[#302438]" />
 
         {/* COMMUNITY SCORE */}
-        <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#34D399]">
-            Community Score
-          </span>
+{/* COMMUNITY SCORE */}
+<div className="flex flex-col gap-2">
+  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#34D399]">
+    Community Score
+  </span>
 
-          <div className="flex items-end justify-between gap-3">
-            <div className="flex items-baseline gap-2">
-              <Star
-                className="size-5 text-[#FBBF24]"
-                fill="currentColor"
-              />
+  <div className="flex items-end justify-between gap-3">
+    <div className="flex items-baseline gap-2">
+      <Star
+        className="size-5 text-[#FBBF24]"
+        fill="currentColor"
+      />
 
-              <span className="text-[32px] font-semibold leading-none tracking-tight text-[#E6E1EA]">
-                {communityScore !== null
-                  ? communityScore.toFixed(1)
-                  : "—"}
-              </span>
+      <span className="text-[32px] font-semibold leading-none tracking-tight text-[#E6E1EA]">
+        {communityScore !== null
+          ? (communityScore / 2).toFixed(1)
+          : "—"}
+      </span>
 
-              <span className="text-xs text-[#77727F]">
-                / 10
-              </span>
-            </div>
+      <span className="text-xs text-[#77727F]">
+        / 5
+      </span>
 
-            <span className="text-right text-[10px] text-[#A0A0A8]">
+        <span className="text-right text-[10px] text-[#A0A0A8]">
               {totalReviews.toLocaleString()} ratings
             </span>
-          </div>
-        </div>
-
+    </div>
+  </div>
+</div>
         <div className="h-px bg-[#302438]" />
 
         {/* LIKES */}
