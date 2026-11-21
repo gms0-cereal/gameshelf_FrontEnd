@@ -71,7 +71,7 @@ export default function ReviewComposer({
     setBusy(true);
     try {
       await saveScore();
-      toast.success(`You rated ${gameName} ${score} / 10`);
+      toast.success(`You rated ${gameName} ${(score! / 2).toFixed(1)} / 5`);
       onDone();
     } catch (err) {
       toast.error(apiErrorMessage(err, "Couldn’t save your rating."));
@@ -106,8 +106,10 @@ export default function ReviewComposer({
       </h3>
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm text-[#b4aec7]">
-          Your score: {score !== null ? `${score} / 10` : "Not rated"}
+          <p className="text-sm text-[#b4aec7]">
+          Your score: {score !== null
+            ? `${(score / 2).toFixed(1)} / 5`
+            : "Not rated"}
         </p>
         <ScoreStars value={score} onChange={setScore} disabled={busy} />
         {myScore !== null && (

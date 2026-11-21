@@ -268,7 +268,7 @@ export default function MarketIntelligence({
               {myScore !== null ? myScore : "—"}
             </span>
 
-            <span className="text-xs text-[#77727F]">/ 10</span>
+            <span className="text-xs text-[#77727F]">/5</span>
           </div>
         </div>
 

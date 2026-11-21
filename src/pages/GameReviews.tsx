@@ -638,9 +638,9 @@ export default function GameReviews() {
                       </span>
 
                       <span className="font-medium text-[#34D399]">
-                        {stats?.my_score
-                          ? `${stats.my_score} / 5`
-                          : "Not rated"}
+                      {stats?.my_score
+                        ? `${(stats.my_score / 2).toFixed(1)} / 5`
+                        : "Not rated"}
                       </span>
                     </div>
 
