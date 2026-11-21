@@ -274,12 +274,12 @@ export default function Community({
                   {/* REVIEW LIST */}
                   <div className="flex flex-col gap-4">
                     {currentReviews.map((review) => (
-                      <GameshelfReviewItem
-                        key={review.id}
-                        review={review}
-                        onUpdate={replaceReview}
-                        onDelete={removeReview}
-                      />
+                    <GameshelfReviewItem
+                      key={review.id}
+                      review={review}
+                      onUpdated={replaceReview}
+                      onDeleted={removeReview}
+                    />
                     ))}
                   </div>
 

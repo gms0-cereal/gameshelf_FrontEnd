@@ -40,13 +40,13 @@ export function GameCard({ game }: { game: GameSummary }) {
       color: "text-[#34D399]",
     },
     {
-      icon: Star,
-      text:
-        displayScore !== null
-          ? `Score ${Number(displayScore).toFixed(1)}/10`
-          : "No score yet",
-      color: "text-[#FBBF24]",
-    },
+    icon: Star,
+    text:
+      displayScore !== null
+        ? `Score ${(Number(displayScore) / 2).toFixed(1)}/5`
+        : "No score yet",
+    color: "text-[#FBBF24]",
+  },
   ];
 
   return (
@@ -117,5 +117,4 @@ export function GameCard({ game }: { game: GameSummary }) {
   );
 }
 
-// Export both named and default to prevent any import mismatches across files
 export default GameCard;

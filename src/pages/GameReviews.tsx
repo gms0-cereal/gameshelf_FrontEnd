@@ -613,11 +613,12 @@ export default function GameReviews() {
 
                     <p className="flex items-baseline gap-1.5">
                       <span className="text-[44px] font-semibold leading-none text-[#B39ACF]">
-                        {average !== null ? average.toFixed(1) : "—"}
+                        {/* {average !== null ? average.toFixed(1) : "—"} */}
+                        {average !== null ? (average / 2).toFixed(1) : "—"}
                       </span>
 
                       <span className="text-sm text-[#A0A0A8]">
-                        / 10
+                        / 5
                       </span>
                     </p>
 
@@ -638,7 +639,7 @@ export default function GameReviews() {
 
                       <span className="font-medium text-[#34D399]">
                         {stats?.my_score
-                          ? `${stats.my_score} / 10`
+                          ? `${stats.my_score} / 5`
                           : "Not rated"}
                       </span>
                     </div>
