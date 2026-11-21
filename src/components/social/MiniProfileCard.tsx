@@ -121,10 +121,10 @@ export default function MiniProfileCard({
   const containerStyle = position ? { top: position.top, left: position.left } : {};
   
   const containerClassName = position
-    ? "fixed z-[9990] w-[310px] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95"
+    ? "fixed z-[9990] w-[min(310px,calc(100vw-2rem))] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95"
     : side === "top" || side === "openupward"
-      ? "absolute left-0 bottom-full mb-2 z-50 w-[310px] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95"
-      : "absolute left-0 top-full mt-2 z-50 w-[310px] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95";
+      ? "absolute left-0 bottom-full mb-2 z-50 w-[min(310px,calc(100vw-2rem))] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95"
+      : "absolute left-0 top-full mt-2 z-50 w-[min(310px,calc(100vw-2rem))] pointer-events-auto rounded-2xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] shadow-2xl animate-in fade-in-0 zoom-in-95";
 
   return (
     <div

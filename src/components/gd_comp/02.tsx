@@ -149,7 +149,7 @@ function AddToListMenu({ appId }: { appId: number }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 top-12 z-50 w-full min-w-[190px] overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] p-1.5 shadow-2xl"
+            className="absolute left-0 top-12 z-50 w-full min-w-0 overflow-hidden rounded-xl border border-[#302438] bg-[#17191E] p-1.5 shadow-2xl"
           >
             {LIST_STATUS_OPTIONS.map(({ value, label }) => {
               const selected = entry?.status === value;

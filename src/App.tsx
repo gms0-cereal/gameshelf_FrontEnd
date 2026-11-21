@@ -92,7 +92,7 @@ const App = () => (
                 
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
-                <Route path="/account/restrictions" element={<MyRestrictions />} />
+                <Route path="/restrictions" element={<MyRestrictions />} />
                 {/* Legal Routes */}
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />

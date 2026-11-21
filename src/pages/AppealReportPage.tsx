@@ -169,7 +169,7 @@ export default function AppealReportPage() {
 
           <Card className={PANEL}>
             {/* Ticket Type Switcher */}
-            <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#55516c] bg-[#29263b] p-1">
+            <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#55516c] bg-[#29263b] p-1 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => {

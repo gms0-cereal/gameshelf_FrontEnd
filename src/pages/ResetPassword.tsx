@@ -180,7 +180,7 @@ export default function ResetPassword() {
     >
       <Navbar />
 
-      <main className="flex flex-1 flex-col justify-center px-5 py-8 md:px-8 xl:px-16">
+      <main className="flex min-w-0 flex-1 flex-col justify-center px-4 py-6 sm:px-6 md:px-8 xl:px-16">
         <div className="grid w-full gap-8 lg:grid-cols-12 lg:items-center">
 
           {/* Form Side */}

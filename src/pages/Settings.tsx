@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { RotateCcw } from "lucide-react";
+import { ChevronRight, RotateCcw, ShieldAlert } from "lucide-react";
 import InfoPage from "@/components/layout/Infopage";
 import api from "@/lib/api"; // your axios instance
 import { useAuth } from "@/context/AuthContext";
@@ -237,6 +237,43 @@ function MatureFilter() {
   );
 }
 
+/** Link to the page where users can see sanctions on their account and appeal them. */
+function RestrictionsLink() {
+  const { user } = useAuth();
+
+  return (
+    <div className="flex flex-col gap-3">
+      {user ? (
+        <Link
+          to="/restrictions"
+          className="group flex items-center justify-between gap-4 rounded-xl border border-[#302438] bg-[#000000] p-4 transition-colors hover:border-[#554363] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]/50"
+        >
+          <span className="flex items-center gap-3">
+            <ShieldAlert className="size-5 text-[#B39ACF]" aria-hidden="true" />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs font-semibold">View my restrictions</span>
+              <span className="text-[11px] text-[#A0A0A8]">
+                See any warnings or limits on your account and appeal them.
+              </span>
+            </span>
+          </span>
+          <ChevronRight
+            className="size-4 text-[#A0A0A8] transition-transform group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
+        </Link>
+      ) : (
+        <p className="text-xs leading-5 text-[#C9C4CF]">
+          <Link to="/login" className="font-semibold text-[#B39ACF] hover:text-[#C2ADE0]">
+            Log in
+          </Link>{" "}
+          to view any restrictions on your account.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Settings() {
   const { settings, update, reset } = useSettings();
 
@@ -268,6 +305,10 @@ export default function Settings() {
 
       <Card title="Content" description="Control which games appear for you. Saved to your account.">
         <MatureFilter />
+      </Card>
+
+      <Card title="Account" description="Check the standing of your account.">
+        <RestrictionsLink />
       </Card>
 
       <Card title="Playlists" description="How Community Playlists loads and how new playlists start out.">

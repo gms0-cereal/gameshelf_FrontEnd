@@ -46,7 +46,7 @@ export default function ItemMenu({ isMine, onEdit, onDelete, onReport }: Props) 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-8 z-30 w-[150px] overflow-hidden rounded-xl border border-[#55516c] bg-[#2a2838] p-1.5 shadow-xl"
+          className="absolute right-0 top-8 z-30 w-[min(150px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#55516c] bg-[#2a2838] p-1.5 shadow-xl"
         >
           {isMine ? (
             <>

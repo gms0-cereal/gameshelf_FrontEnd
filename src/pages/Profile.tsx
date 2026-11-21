@@ -258,7 +258,7 @@ function ProfileDetailsAndStats({
           </p>
         </div>
 
-        <dl className="grid grid-cols-3 gap-2 rounded-2xl border border-[#302438] bg-[#17191E] p-4 text-center shadow-none">
+        <dl className="grid min-w-0 grid-cols-3 gap-2 rounded-2xl border border-[#302438] bg-[#17191E] p-3 text-center shadow-none sm:p-4">
           {stats.map(({ label, value, color, icon: Icon }, index) => (
             <div
               key={label}

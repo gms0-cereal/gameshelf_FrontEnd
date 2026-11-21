@@ -675,7 +675,7 @@ export default function MyLibrary() {
                           <div className="hidden grid-cols-[minmax(0,2.2fr)_1fr_auto] gap-4 pb-4 text-[10px] uppercase tracking-wide text-[#A0A0A8] md:grid">
                             <span>Game</span>
                             <span>Status</span>
-                            <span className="w-[124px] text-center">
+                            <span className="hidden w-[124px] text-center sm:block">
                               Actions
                             </span>
                           </div>

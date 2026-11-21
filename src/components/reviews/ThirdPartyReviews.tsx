@@ -360,7 +360,7 @@ export default function ThirdPartyReviews({
           </button>
 
           {pickerOpen && (
-            <div className="absolute right-0 top-10 z-30 w-[260px] rounded-xl border border-[#55516c] bg-[#2a2838] p-3 shadow-xl">
+            <div             className="absolute right-0 top-10 z-30 w-[min(260px,calc(100vw-2rem))] rounded-xl border border-[#55516c] bg-[#2a2838] p-3 shadow-xl">
               <p className="mb-2 text-[11px] uppercase tracking-wide text-[#8b86a3]">
                 Show reviews from
               </p>

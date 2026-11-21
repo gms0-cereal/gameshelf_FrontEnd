@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+html,
+body,
+#root {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+main,
+section,
+article,
+aside,
+dialog {
+  min-width: 0;
+}

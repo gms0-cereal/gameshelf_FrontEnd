@@ -99,7 +99,7 @@ useEffect(() => {
       aria-modal="true"
       aria-labelledby="crop-dialog-title"
     >
-      <div className="w-full max-w-xl rounded-2xl border border-[#55516c] bg-[#29263b] p-5 text-[#e0deeb] shadow-2xl">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-[#55516c] bg-[#29263b] p-4 text-[#e0deeb] shadow-2xl sm:p-5">
         <h2 id="crop-dialog-title" className="text-xl font-semibold">
           Adjust {isAvatar ? "avatar" : "banner"}
         </h2>

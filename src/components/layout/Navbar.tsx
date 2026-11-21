@@ -12,6 +12,8 @@ import {
   Search,
   ChevronDown,
   Gamepad2,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -77,6 +79,7 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,7 +208,7 @@ export default function Navbar() {
     <header className="w-full bg-[#17191E] border-b border-[#302438]">
       <nav
         aria-label="Main navigation"
-        className="mx-auto flex min-h-[88px] w-full items-center justify-between px-5 py-4 md:px-8 xl:h-[88px] xl:px-16"
+        className="relative mx-auto flex min-h-[72px] w-full items-center justify-between px-4 py-3 sm:px-6 md:min-h-[88px] md:px-8 xl:h-[88px] xl:px-16"
       >
         {/* Left side: Brand + Nav Links */}
         <div className="flex items-center gap-8 xl:gap-10">
@@ -230,7 +233,7 @@ export default function Navbar() {
           </Link>
           
           {/* Nav Links with Framer Motion feedback */}
-          <ul className="flex items-center gap-6 text-sm leading-[17px]">
+          <ul className="hidden items-center gap-6 text-sm leading-[17px] md:flex">
             {navLinks.map((link) => (
               <li key={link.label} className="relative">
                 <NavLink
@@ -272,7 +275,18 @@ export default function Navbar() {
         </div>
 
         {/* Right side: Search bar + Profile */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-5">
+          <button
+            type="button"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#302438] bg-[#17191E] text-[#E6E1EA] md:hidden"
+            aria-expanded={navOpen}
+            aria-controls="mobile-navigation"
+            aria-label={navOpen ? "Close navigation" : "Open navigation"}
+            onClick={() => setNavOpen((value) => !value)}
+          >
+            {navOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+
           <form
             role="search"
             onSubmit={handleSearch}
@@ -464,6 +478,44 @@ export default function Navbar() {
             )}
           </div>
         </div>
+
+        {navOpen && (
+          <div
+            id="mobile-navigation"
+            className="absolute left-4 right-4 top-[calc(100%-4px)] z-[60] rounded-xl border border-[#302438] bg-[#17191E] p-2 shadow-2xl sm:left-6 sm:right-6 md:hidden"
+          >
+            <form role="search" onSubmit={handleSearch} className="mb-2 flex h-10 items-center gap-2 rounded-lg border border-[#302438] bg-[#000000] px-3">
+              <Search className="size-4 shrink-0 text-[#A0A0A8]" aria-hidden="true" />
+              <Input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Search games"
+                placeholder="Search games..."
+                className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-[#E6E1EA] shadow-none placeholder:text-[#A0A0A8] focus-visible:ring-0"
+              />
+            </form>
+            <ul className="grid gap-1">
+              {navLinks.map((link) => (
+                <li key={link.label}>
+                  <NavLink
+                    to={link.to}
+                    onClick={() => setNavOpen(false)}
+                    className={({ isActive }) =>
+                      `block rounded-lg px-3 py-2.5 text-sm ${
+                        isActive
+                          ? "bg-[#302438] font-semibold text-[#B39ACF]"
+                          : "text-[#A0A0A8] hover:bg-[#20232B] hover:text-[#E6E1EA]"
+                      }`
+                    }
+                  >
+                    {link.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </nav>
     </header>
   );
