@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ChevronRight, RotateCcw, ShieldAlert } from "lucide-react";
-import InfoPage from "@/components/layout/Infopage";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import api from "@/lib/api"; // your axios instance
 import { useAuth } from "@/context/AuthContext";
 import { BIRTHDAY_PATH, ageFrom, getBirthday } from "@/lib/birthday";
@@ -33,18 +35,52 @@ const MOTION: Choice<MotionPref>[] = [
 const COLUMNS = {
   2: "sm:grid-cols-2",
   3: "sm:grid-cols-3",
-  4: "sm:grid-cols-2 lg:grid-cols-4",
+  4: "grid-cols-2 sm:grid-cols-4",
 } as const;
 
-function Card({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" as const },
+  },
+};
+
+/** Same pattern as Home sections: heading + subtitle on top, box below. */
+function Section({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="flex flex-col gap-5 rounded-2xl border border-[#302438] bg-[#17191E] p-6">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-[18px] font-semibold leading-6">{title}</h2>
-        <p className="text-xs leading-5 text-[#A0A0A8]">{description}</p>
+    <motion.section
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-50px" }}
+      aria-labelledby={`${id}-title`}
+      className="flex flex-col gap-5"
+    >
+      <div>
+        <h2
+          id={`${id}-title`}
+          className="text-[24px] font-semibold leading-[29px] tracking-[-0.5px] text-[#E6E1EA]"
+        >
+          {title}
+        </h2>
+        <p className="mt-1 text-[13px] leading-4 text-[#A0A0A8]">{description}</p>
       </div>
-      {children}
-    </section>
+      <div className="flex flex-col gap-6 rounded-2xl border border-[#302438] bg-[#17191E] p-6">
+        {children}
+      </div>
+    </motion.section>
   );
 }
 
@@ -65,7 +101,7 @@ function OptionGroup<T extends string | number>({
 }) {
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-3 text-[11px] font-semibold">{legend}</legend>
+      <legend className="mb-3 text-[13px] font-semibold text-[#E6E1EA]">{legend}</legend>
       <div className={`grid grid-cols-1 gap-3 ${COLUMNS[columns]}`}>
         {options.map((o) => (
           <label
@@ -84,7 +120,7 @@ function OptionGroup<T extends string | number>({
               className="mt-0.5 accent-[#B39ACF]"
             />
             <span className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold">{o.label}</span>
+              <span className="text-[13px] font-semibold">{o.label}</span>
               {o.hint && <span className="text-[11px] text-[#A0A0A8]">{o.hint}</span>}
             </span>
           </label>
@@ -130,16 +166,16 @@ function MatureFilter() {
   }
 
   const linkClass =
-    "inline-flex h-9 w-fit items-center rounded-xl bg-[#B39ACF] px-4 text-xs font-bold text-[#17101F] transition-colors hover:bg-[#C2ADE0]";
+    "inline-flex h-9 w-fit items-center rounded-xl bg-[#B39ACF] px-4 text-[13px] font-semibold text-[#17191E] transition-colors hover:bg-[#C2ADE0]";
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-6">
         <div className="flex flex-col gap-1">
-          <p id="mature-label" className="text-xs font-semibold">
+          <p id="mature-label" className="text-[13px] font-semibold text-[#E6E1EA]">
             Hide 18+ games
           </p>
-          <p className="max-w-md text-[11px] leading-4 text-[#A0A0A8]">
+          <p className="max-w-xl text-[11px] leading-4 text-[#A0A0A8]">
             Removes games rated 18+ from search, browse, playlists and recommendations. Ratings come from the
             game's store listing, so a few games may be missing one.
           </p>
@@ -172,7 +208,7 @@ function MatureFilter() {
       {/* Not logged in */}
       {!user && (
         <div role="alert" className="flex flex-col gap-3 rounded-xl border border-[#554363] bg-[#000000] p-4">
-          <p className="text-xs leading-5 text-[#C9C4CF]">
+          <p className="text-[13px] leading-5 text-[#C9C4CF]">
             Log in and add your birthday to choose whether to see 18+ games. Until then they stay hidden.
           </p>
           <Link to="/login" className={linkClass}>
@@ -184,7 +220,7 @@ function MatureFilter() {
       {/* Logged in, no birthday yet: send them to Edit Profile */}
       {user && !hasBirthday && (
         <div role="alert" className="flex flex-col gap-3 rounded-xl border border-[#B39ACF]/60 bg-[#B39ACF]/10 p-4">
-          <p className="text-xs leading-5 text-[#E6E1EA]">
+          <p className="text-[13px] leading-5 text-[#E6E1EA]">
             Add your birthday in Edit Profile so we can confirm your age. 18+ games stay hidden until you do.
           </p>
           <Link to={BIRTHDAY_PATH} className={linkClass}>
@@ -205,7 +241,7 @@ function MatureFilter() {
           aria-label="Show 18+ games"
           className="flex flex-col gap-3 rounded-xl border border-[#554363] bg-[#000000] p-4"
         >
-          <p className="text-xs leading-5 text-[#C9C4CF]">
+          <p className="text-[13px] leading-5 text-[#C9C4CF]">
             18+ games can contain mature content. Show them in search, playlists and recommendations?
           </p>
           <div className="flex flex-wrap gap-3">
@@ -213,14 +249,14 @@ function MatureFilter() {
               type="button"
               disabled={saving}
               onClick={() => save(false)}
-              className="inline-flex h-9 cursor-pointer items-center rounded-xl bg-[#B39ACF] px-4 text-xs font-bold text-[#17101F] transition-colors hover:bg-[#C2ADE0] disabled:opacity-60"
+              className="inline-flex h-9 cursor-pointer items-center rounded-xl bg-[#B39ACF] px-4 text-[13px] font-semibold text-[#17191E] transition-colors hover:bg-[#C2ADE0] disabled:opacity-60"
             >
               Show 18+ games
             </button>
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="inline-flex h-9 cursor-pointer items-center rounded-xl border border-[#302438] bg-[#17191E] px-4 text-xs font-semibold transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+              className="inline-flex h-9 cursor-pointer items-center rounded-xl border border-[#302438] bg-[#17191E] px-4 text-[13px] font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B]"
             >
               Keep hiding them
             </button>
@@ -241,36 +277,32 @@ function MatureFilter() {
 function RestrictionsLink() {
   const { user } = useAuth();
 
-  return (
-    <div className="flex flex-col gap-3">
-      {user ? (
-        <Link
-          to="/restrictions"
-          className="group flex items-center justify-between gap-4 rounded-xl border border-[#302438] bg-[#000000] p-4 transition-colors hover:border-[#554363] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]/50"
-        >
-          <span className="flex items-center gap-3">
-            <ShieldAlert className="size-5 text-[#B39ACF]" aria-hidden="true" />
-            <span className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold">View my restrictions</span>
-              <span className="text-[11px] text-[#A0A0A8]">
-                See any warnings or limits on your account and appeal them.
-              </span>
-            </span>
+  return user ? (
+    <Link
+      to="/restrictions"
+      className="group flex items-center justify-between gap-4 rounded-xl border border-[#302438] bg-[#000000] p-4 transition-colors hover:border-[#554363] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39ACF]/50"
+    >
+      <span className="flex items-center gap-3">
+        <ShieldAlert className="size-5 text-[#B39ACF]" aria-hidden="true" />
+        <span className="flex flex-col gap-0.5">
+          <span className="text-[13px] font-semibold">View my restrictions</span>
+          <span className="text-[11px] text-[#A0A0A8]">
+            See any warnings or limits on your account and appeal them.
           </span>
-          <ChevronRight
-            className="size-4 text-[#A0A0A8] transition-transform group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
-        </Link>
-      ) : (
-        <p className="text-xs leading-5 text-[#C9C4CF]">
-          <Link to="/login" className="font-semibold text-[#B39ACF] hover:text-[#C2ADE0]">
-            Log in
-          </Link>{" "}
-          to view any restrictions on your account.
-        </p>
-      )}
-    </div>
+        </span>
+      </span>
+      <ChevronRight
+        className="size-4 shrink-0 text-[#A0A0A8] transition-transform group-hover:translate-x-0.5"
+        aria-hidden="true"
+      />
+    </Link>
+  ) : (
+    <p className="text-[13px] leading-5 text-[#C9C4CF]">
+      <Link to="/login" className="font-semibold text-[#B39ACF] hover:text-[#C2ADE0]">
+        Log in
+      </Link>{" "}
+      to view any restrictions on your account.
+    </p>
   );
 }
 
@@ -278,86 +310,124 @@ export default function Settings() {
   const { settings, update, reset } = useSettings();
 
   return (
-    <InfoPage title="Settings" intro="Adjust how GameShelf looks and what it shows you.">
-      <Card title="Appearance" description="Changes apply across the whole site as soon as you pick them.">
-        <OptionGroup
-          legend="Text size"
-          name="text-size"
-          columns={4}
-          value={settings.textSize}
-          onChange={(v) => update({ textSize: v })}
-          options={TEXT_SIZES.map((t) => ({
-            value: t.value,
-            label: t.label,
-            hint: `${Math.round(t.scale * 100)}%`,
-          }))}
-        />
-
-        <OptionGroup
-          legend="Animations"
-          name="motion"
-          columns={3}
-          value={settings.motion}
-          onChange={(v) => update({ motion: v })}
-          options={MOTION}
-        />
-      </Card>
-
-      <Card title="Content" description="Control which games appear for you. Saved to your account.">
-        <MatureFilter />
-      </Card>
-
-      <Card title="Account" description="Check the standing of your account.">
-        <RestrictionsLink />
-      </Card>
-
-      <Card title="Playlists" description="How Community Playlists loads and how new playlists start out.">
-        <OptionGroup
-          legend="Playlists per page"
-          name="page-size"
-          columns={3}
-          value={settings.playlistsPerPage}
-          onChange={(v) => update({ playlistsPerPage: v })}
-          options={PAGE_SIZES.map((n) => ({ value: n, label: `${n} playlists` }))}
-        />
-
-        <label className="flex flex-col gap-2 text-[11px] font-semibold">
-          Default sort order
-          <select
-            value={settings.defaultSort}
-            onChange={(e) => update({ defaultSort: e.target.value as SortKey })}
-            className="h-10 w-full cursor-pointer rounded-xl border border-[#302438] bg-[#000000] px-3 text-xs font-normal text-[#E6E1EA] outline-none transition-colors hover:border-[#554363] focus:border-[#B39ACF] focus:ring-1 focus:ring-[#B39ACF]/20 sm:max-w-xs"
+    <div className="min-h-screen w-full bg-[#000000]">
+      <div
+        className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
+        <Navbar />
+        <main className="flex flex-1 flex-col gap-10 px-5 pb-16 pt-11 md:px-8 xl:px-16">
+          {/* Header (same as Home) */}
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex min-h-[65px] flex-wrap items-center justify-between gap-4"
           >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value} className="bg-[#17191E]">
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <div className="flex flex-col gap-2">
+              <p className="text-[13px] uppercase leading-4 tracking-wider text-[#B39ACF]">
+                Adjust how GameShelf looks and what it shows you
+              </p>
+              <h1 className="text-[36px] font-semibold leading-[41px] tracking-[-0.8px] text-[#E6E1EA]">
+                Settings
+              </h1>
+            </div>
+          </motion.div>
 
-        <OptionGroup
-          legend="Default visibility for new playlists"
-          name="default-visibility"
-          columns={2}
-          value={settings.defaultVisibility}
-          onChange={(v) => update({ defaultVisibility: v })}
-          options={VISIBILITY}
-        />
-      </Card>
+          <Section
+            id="appearance"
+            title="Appearance"
+            description="Changes apply across the whole site as soon as you pick them."
+          >
+            <OptionGroup
+              legend="Text size"
+              name="text-size"
+              columns={4}
+              value={settings.textSize}
+              onChange={(v) => update({ textSize: v })}
+              options={TEXT_SIZES.map((t) => ({
+                value: t.value,
+                label: t.label,
+                hint: `${Math.round(t.scale * 100)}%`,
+              }))}
+            />
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-[11px] text-[#77717F]">
-          Display and playlist settings save automatically and apply to this browser only.
-        </p>
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#302438] bg-[#000000] px-4 text-xs font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B]"
-        >
-          <RotateCcw className="size-3.5" aria-hidden="true" /> Reset to defaults
-        </button>
+            <OptionGroup
+              legend="Animations"
+              name="motion"
+              columns={3}
+              value={settings.motion}
+              onChange={(v) => update({ motion: v })}
+              options={MOTION}
+            />
+          </Section>
+
+          <Section
+            id="content"
+            title="Content"
+            description="Control which games appear for you. Saved to your account."
+          >
+            <MatureFilter />
+          </Section>
+
+          <Section id="account" title="Account" description="Check the standing of your account.">
+            <RestrictionsLink />
+          </Section>
+
+          <Section
+            id="playlists"
+            title="Playlists"
+            description="How Community Playlists loads and how new playlists start out."
+          >
+            <OptionGroup
+              legend="Playlists per page"
+              name="page-size"
+              columns={3}
+              value={settings.playlistsPerPage}
+              onChange={(v) => update({ playlistsPerPage: v })}
+              options={PAGE_SIZES.map((n) => ({ value: n, label: `${n} playlists` }))}
+            />
+
+            <OptionGroup
+              legend="Default visibility for new playlists"
+              name="default-visibility"
+              columns={2}
+              value={settings.defaultVisibility}
+              onChange={(v) => update({ defaultVisibility: v })}
+              options={VISIBILITY}
+            />
+
+            <label className="flex flex-col gap-2 text-[13px] font-semibold text-[#E6E1EA]">
+              Default sort order
+              <select
+                value={settings.defaultSort}
+                onChange={(e) => update({ defaultSort: e.target.value as SortKey })}
+                className="h-10 w-full cursor-pointer rounded-xl border border-[#302438] bg-[#000000] px-3 text-[13px] font-normal text-[#E6E1EA] outline-none transition-colors hover:border-[#554363] focus:border-[#B39ACF] focus:ring-1 focus:ring-[#B39ACF]/20 sm:max-w-xs"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value} className="bg-[#17191E]">
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </Section>
+
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-[11px] text-[#77717F]">
+              Display and playlist settings save automatically and apply to this browser only.
+            </p>
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#302438] bg-[#17191E] px-4 text-[13px] font-semibold text-[#E6E1EA] transition-colors hover:border-[#554363] hover:bg-[#20232B]"
+            >
+              <RotateCcw className="size-3.5" aria-hidden="true" /> Reset to defaults
+            </button>
+          </div>
+        </main>
+        <Footer />
       </div>
-    </InfoPage>
+    </div>
   );
 }
