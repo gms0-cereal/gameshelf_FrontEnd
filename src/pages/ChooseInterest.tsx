@@ -3,12 +3,24 @@ import { Link, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
   Check,
+  ChevronDown,
+  ChevronUp,
+  Compass,
+  Cpu,
+  Flame,
   Gamepad2,
+  Ghost,
+  Layers,
   Loader2,
   Plus,
   Search,
+  Skull,
   Sparkles,
+  Swords,
+  Trophy,
+  Users,
   X,
+  Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -26,14 +38,39 @@ import {
 const AFTER_SAVE_PATH = "/home";
 const MAX_LIKED_GAMES = 20;
 const MAX_TAGS = 30;
-const VISIBLE_GENRES = 40;
-const VISIBLE_TAGS = 40;
+const VISIBLE_GENRES = 15;
+const VISIBLE_TAGS = 24;
+
+const STARTER_GAMES: PickerGame[] = [
+  { appid: 367520, title: "Hollow Knight", cover: null },
+  { appid: 413150, title: "Stardew Valley", cover: null },
+  { appid: 1145360, title: "Hades", cover: null },
+];
 
 const GENRES = [
   "Indie", "Action", "Adventure", "RPG", "Simulation", "Strategy", "Casual",
   "Free To Play", "Early Access", "Massively Multiplayer", "Sports", "Racing",
   "Gore", "Nudity", "Sexual Content"
 ];
+
+const GENRE_ICONS: Record<string, typeof Sparkles> = {
+  Indie: Sparkles,
+  Action: Swords,
+  Adventure: Compass,
+  RPG: Flame,
+  Simulation: Cpu,
+  Strategy: Layers,
+  Casual: Gamepad2,
+  "Free To Play": Zap,
+  "Early Access": ChevronUp,
+  "Massively Multiplayer": Users,
+  Sports: Trophy,
+  Racing: Zap,
+  Gore: Skull,
+  Nudity: Ghost,
+  "Sexual Content": Ghost,
+};
+
 const TAGS = [
   "Singleplayer", "Action", "Adventure", "Indie", "Multiplayer", "Atmospheric",
   "Story Rich", "RPG", "Strategy", "Simulation", "Open World", "Casual", "Co-op",
@@ -167,6 +204,31 @@ function errorMessage(err: unknown) {
   return "Something went wrong. Please try again.";
 }
 
+function GenreCard({ active, name, onClick }: { active: boolean; name: string; onClick: () => void }) {
+  const Icon = GENRE_ICONS[name] ?? Sparkles;
+  return (
+    <motion.button
+      whileTap={{ scale: 0.97 }}
+      whileHover={{ y: -1 }}
+      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2ADE0] ${
+        active
+          ? "border-[#B39ACF] bg-[#302438] text-[#E6E1EA]"
+          : "border-[#302438] bg-[#1D1D25] text-[#A0A0A8] hover:border-[#554363] hover:text-[#E6E1EA]"
+      }`}
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <Icon className={`size-3.5 shrink-0 ${active ? "text-[#C2ADE0]" : "text-[#777780]"}`} aria-hidden="true" />
+        <span className="truncate">{name}</span>
+      </span>
+      {active && <Check className="size-3.5 shrink-0 text-[#C2ADE0]" strokeWidth={2.2} aria-hidden="true" />}
+    </motion.button>
+  );
+}
+
 function Chip({ active, onClick, children, accent = "purple" }: { active: boolean; onClick: () => void; children: ReactNode; accent?: Accent }) {
   const style = ACCENT_STYLES[accent];
   return (
@@ -187,7 +249,21 @@ function Chip({ active, onClick, children, accent = "purple" }: { active: boolea
   );
 }
 
-function Step({ number, title, description, accent = "purple", children }: { number: string; title: string; description: string; accent?: Accent; children: ReactNode }) {
+function Step({
+  number,
+  title,
+  description,
+  badge,
+  accent = "purple",
+  children,
+}: {
+  number: string;
+  title: string;
+  description: string;
+  badge?: string;
+  accent?: Accent;
+  children: ReactNode;
+}) {
   const hex = ACCENT_STYLES[accent].hex;
   return (
     <motion.section
@@ -196,17 +272,24 @@ function Step({ number, title, description, accent = "purple", children }: { num
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="rounded-2xl border border-[#302438] bg-[#141419] p-5 sm:p-6"
     >
-      <div className="flex items-start gap-3">
-        <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
-          style={{ backgroundColor: `${hex}18`, color: hex }}
-        >
-          {number}
-        </span>
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-[#E6E1EA]">{title}</h3>
-          <p className="mt-1 text-xs leading-5 text-[#A0A0A8]">{description}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
+            style={{ backgroundColor: `${hex}18`, color: hex }}
+          >
+            {number}
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-[#E6E1EA]">{title}</h3>
+            <p className="mt-1 text-xs leading-5 text-[#A0A0A8]">{description}</p>
+          </div>
         </div>
+        {badge && (
+          <span className="shrink-0 rounded-md border border-[#302438] bg-black/50 px-2 py-1 text-[11px] font-medium tabular-nums text-[#A0A0A8]">
+            {badge}
+          </span>
+        )}
       </div>
       <div className="mt-5">{children}</div>
     </motion.section>
@@ -272,6 +355,7 @@ export default function ChooseInterest() {
 
   const [genreQuery, setGenreQuery] = useState("");
   const [tagQuery, setTagQuery] = useState("");
+  const [showAllTags, setShowAllTags] = useState(false);
   const [query, setQuery] = useState("");
 
   const [results, setResults] = useState<PickerGame[]>([]);
@@ -325,14 +409,19 @@ export default function ChooseInterest() {
     return search ? names.slice(0, 100) : names.slice(0, VISIBLE_GENRES);
   }, [genreQuery]);
 
-  const chipGenres = useMemo(() => Array.from(new Set([...genres, ...visibleGenres])), [genres, visibleGenres]);
+  const cardGenres = useMemo(() => Array.from(new Set([...genres, ...visibleGenres])), [genres, visibleGenres]);
+
+  const allAvailableTags = useMemo(
+    () => (options?.tags ? options.tags.map((t) => t.name) : TAGS),
+    [options]
+  );
 
   const visibleTags = useMemo(() => {
     const search = tagQuery.trim().toLowerCase();
-    const sourceTags = options?.tags ? options.tags.map(t => t.name) : TAGS;
-    const names = sourceTags.filter((name) => !search || name.toLowerCase().includes(search));
-    return search ? names.slice(0, 100) : names.slice(0, VISIBLE_TAGS);
-  }, [options, tagQuery]);
+    const names = allAvailableTags.filter((name) => !search || name.toLowerCase().includes(search));
+    if (search || showAllTags) return names.slice(0, 120);
+    return names.slice(0, VISIBLE_TAGS);
+  }, [allAvailableTags, tagQuery, showAllTags]);
 
   const chipTags = useMemo(() => Array.from(new Set([...tags, ...visibleTags])), [tags, visibleTags]);
 
@@ -425,7 +514,6 @@ export default function ChooseInterest() {
             </div>
           </motion.div>
 
-          {/* Full-width container layout */}
           <div className="flex w-full flex-col gap-5">
             {preferencesLoading && (
               <p role="status" className="flex items-center gap-2 rounded-xl border border-[#302438] bg-[#141419] px-4 py-3 text-xs text-[#A0A0A8]">
@@ -447,16 +535,20 @@ export default function ChooseInterest() {
               <SelectionSummary label="Liked games" count={liked.length} accent="purple" />
             </div>
 
-            {/* 1. Genres */}
-            <Step number="01" title="Favorite genres" description="Choose the kinds of games you usually enjoy. These help shape genre-based recommendations." accent="purple">
+            {/* 1. Genres — Mini-Card Grid */}
+            <Step
+              number="01"
+              title="Favorite genres"
+              description="Choose the broad kinds of games you usually enjoy. These shape your top-level recommendations."
+              badge={`${genres.length} selected`}
+              accent="purple"
+            >
               {optionsError && <p role="alert" className="mb-3 text-xs text-[#E58B91]">{optionsError}</p>}
               <SearchField id="genre-search" value={genreQuery} onChange={setGenreQuery} placeholder="Search genres: Action, RPG, Strategy…" label="Search genres" accent="purple" />
 
-              <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Available genres">
-                {chipGenres.map((name) => (
-                  <Chip key={name} active={genres.includes(name)} accent="purple" onClick={() => toggleGenre(name)}>
-                    {name}
-                  </Chip>
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5" role="group" aria-label="Available genres">
+                {cardGenres.map((name) => (
+                  <GenreCard key={name} name={name} active={genres.includes(name)} onClick={() => toggleGenre(name)} />
                 ))}
               </div>
 
@@ -465,8 +557,14 @@ export default function ChooseInterest() {
               )}
             </Step>
 
-            {/* 2. Tags */}
-            <Step number="02" title="Favorite tags" description="Get more specific. Tags help the recommendation system understand themes and mechanics." accent="cyan">
+            {/* 2. Tags — Streamlined Chip Bar with Expand Toggle */}
+            <Step
+              number="02"
+              title="Favorite tags"
+              description="Narrow down specific themes, vibes, and mechanics (up to 30)."
+              badge={`${tags.length}/${MAX_TAGS}`}
+              accent="cyan"
+            >
               <SearchField id="tag-search" value={tagQuery} onChange={setTagQuery} placeholder="Search tags: Souls-like, Roguelike, Co-op…" label="Search tags" accent="cyan" />
 
               <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Available tags">
@@ -477,13 +575,39 @@ export default function ChooseInterest() {
                 ))}
               </div>
 
+              {!tagQuery.trim() && allAvailableTags.length > VISIBLE_TAGS && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTags((prev) => !prev)}
+                  className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#263B47] bg-[#1D1D25] px-3 py-1.5 text-xs font-medium text-[#38BDF8] transition-colors hover:border-[#38BDF8]/50"
+                >
+                  {showAllTags ? (
+                    <>
+                      <ChevronUp className="size-3.5" aria-hidden="true" />
+                      Show fewer tags
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="size-3.5" aria-hidden="true" />
+                      Show more tags ({allAvailableTags.length - VISIBLE_TAGS} more)
+                    </>
+                  )}
+                </button>
+              )}
+
               {tagQuery.trim() && visibleTags.length === 0 && (
                 <p className="mt-3 text-xs text-[#A0A0A8]">No tags found. Try another search.</p>
               )}
             </Step>
 
             {/* 3. Platforms */}
-            <Step number="03" title="Preferred platforms" description="Choose the platforms you play on. Recommendations will be filtered accordingly." accent="emerald">
+            <Step
+              number="03"
+              title="Preferred platforms"
+              description="Choose the platforms you play on. Recommendations will be filtered accordingly."
+              badge={`${platforms.length} selected`}
+              accent="emerald"
+            >
               <div className="flex flex-wrap gap-2" role="group" aria-label="Preferred platforms">
                 {options?.platforms.map(({ value, label }) => (
                   <Chip key={value} active={platforms.includes(value)} accent="emerald" onClick={() => togglePlatform(value)}>
@@ -494,7 +618,13 @@ export default function ChooseInterest() {
             </Step>
 
             {/* 4. Liked Games */}
-            <Step number="04" title="Games you like" description="Add games you've enjoyed to power similarity recommendations." accent="purple">
+            <Step
+              number="04"
+              title="Games you like"
+              description="Add games you've enjoyed to power similarity recommendations."
+              badge={`${liked.length}/${MAX_LIKED_GAMES}`}
+              accent="purple"
+            >
               <SearchField id="liked-search" value={query} onChange={setQuery} placeholder="Search Steam: Hollow Knight, Stardew Valley…" label="Search Steam games" accent="purple" />
 
               {searching && (
@@ -533,7 +663,27 @@ export default function ChooseInterest() {
                 </ul>
               )}
 
-              {liked.length > 0 && (
+              {liked.length === 0 ? (
+                <div className="mt-5 rounded-xl border border-dashed border-[#302438] bg-black/40 px-4 py-5 text-center">
+                  <p className="text-xs font-medium text-[#E6E1EA]">No liked games added yet</p>
+                  <p className="mt-1 text-[11px] text-[#A0A0A8]">
+                    Type a title in the search bar above, or quick-add a popular starter to test similarity picks:
+                  </p>
+                  <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
+                    {STARTER_GAMES.map((starter) => (
+                      <button
+                        key={starter.appid}
+                        type="button"
+                        onClick={() => toggleLiked(starter)}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#302438] bg-[#1D1D25] px-3 py-1.5 text-xs font-medium text-[#E6E1EA] transition-colors hover:border-[#B39ACF] hover:bg-[#302438]/60"
+                      >
+                        <Plus className="size-3.5 text-[#38BDF8]" aria-hidden="true" />
+                        {starter.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
                 <div className="mt-6 border-t border-[#302438] pt-5">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h4 className="text-xs font-semibold text-[#E6E1EA]">Your liked games</h4>

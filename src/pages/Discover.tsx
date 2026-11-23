@@ -18,7 +18,6 @@ import { useBrowseGamesQuery } from "@/store/apiSlice";
 
 type Option = { value: string; label: string };
 
-// These values must match the lowercase keys in your backend's GENRE_TAGS dictionary
 const GENRES: Option[] = [
   { value: "", label: "All genres" },
   { value: "indie", label: "Indie" },
@@ -135,7 +134,7 @@ function GameCard({ game }: { game: BrowseGame }) {
     {
       icon: Star,
       text:
-        game.score !== null
+        game.score != null
           ? `Score ${game.score.toFixed(1)}/10`
           : "No score yet",
       color: "text-[#FBBF24]",
@@ -257,6 +256,7 @@ function Pagination({
 
       {pages.map((n) => {
         const isCurrent = n === page;
+
         return (
           <button
             key={n}
@@ -315,7 +315,7 @@ export default function Discover() {
   }, [input]);
 
   const {
-    data,
+    currentData,
     isLoading: loading,
     isError: error,
     isFetching,
@@ -346,13 +346,17 @@ export default function Discover() {
     setPage(1);
   }
 
-  const results = data?.results ?? [];
+  // Only use results belonging to the currently selected query arguments.
+  const results = currentData?.results ?? [];
 
-  const summary = data
-    ? `Showing ${data.count.toLocaleString()} games`
+  const summary = currentData
+    ? `Showing ${currentData.count.toLocaleString()} games`
     : "Loading games…";
 
   const activeQueryKey = `${q}-${genre}-${platform}-${sort}-${page}`;
+
+  // A new page/filter combination has no current data yet.
+  const showSkeletons = isFetching && !currentData;
 
   const externalArchives = [
     {
@@ -489,7 +493,7 @@ export default function Discover() {
               </h2>
 
               <p className="text-[11px] text-[#A0A0A8]">
-                {loading && !data
+                {showSkeletons
                   ? "Loading…"
                   : `${results.length} games on this page`}
               </p>
@@ -497,7 +501,7 @@ export default function Discover() {
 
             <div className="min-h-[500px]">
               <AnimatePresence mode="wait">
-                {loading && !data ? (
+                {showSkeletons || (loading && !currentData) ? (
                   <motion.div
                     key="skeleton-grid"
                     initial={{ opacity: 0 }}
@@ -521,9 +525,7 @@ export default function Discover() {
                     initial="hidden"
                     animate="visible"
                     exit="exit"
-                    className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 transition-opacity duration-200 ${
-                      isFetching ? "opacity-60" : ""
-                    }`}
+                    className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
                   >
                     {results.map((game) => (
                       <GameCard key={game.appid} game={game} />
@@ -545,10 +547,10 @@ export default function Discover() {
             </div>
           </section>
 
-          {!error && data && (
+          {!error && currentData && (
             <Pagination
               page={page}
-              totalPages={data.total_pages}
+              totalPages={currentData.total_pages}
               onChange={changePage}
             />
           )}
