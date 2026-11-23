@@ -264,11 +264,11 @@ export default function MarketIntelligence({
               fill="currentColor"
             />
 
-            <span className="text-xl font-semibold text-[#E6E1EA]">
-              {myScore !== null ? myScore : "—"}
-            </span>
+          <span className="text-xl font-semibold text-[#E6E1EA]">
+            {myScore !== null ? (myScore / 2).toFixed(1) : "—"}
+          </span>
 
-            <span className="text-xs text-[#77727F]">/5</span>
+          <span className="text-xs text-[#77727F]">/5</span>
           </div>
         </div>
 
