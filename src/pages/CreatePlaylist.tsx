@@ -75,7 +75,7 @@ const FALLBACK_POOL: PickerGame[] = [
   { appid: 632470, title: "Disco Elysium", subtitle: "RPG" },
   { appid: 646570, title: "Slay the Spire", subtitle: "Deckbuilder" },
   { appid: 1794680, title: "Vampire Survivors", subtitle: "Roguelike" },
-].map((g) => ({ ...g, cover: getSteamCoverUrls(g.appid, g.cover)[0] }));
+].map((g) => ({ ...g, cover: getSteamCoverUrls(g.appid)[0] }));
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, memo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Gamepad2, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, RotateCcw, Search } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { PlaylistListCard } from "@/components/playlists/PlaylistCards";
@@ -129,7 +129,9 @@ export default function CommunityPlaylists() {
   const q = params.get("q") ?? "";
   const genre = params.get("genre") ?? "";
   const platform = params.get("platform") ?? "";
-  const sort = params.get("sort") || "newest";
+  const sort = (["title", "newest", "oldest", "updated"].includes(params.get("sort") || "")
+    ? params.get("sort")
+    : "newest") as "title" | "newest" | "oldest" | "updated";
   const page = Math.max(1, Number(params.get("page")) || 1);
 
   const [searchText, setSearchText] = useState(q);

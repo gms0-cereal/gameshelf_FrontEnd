@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Wrench } from 'lucide-react';
 import { getSiteStatus } from '../services/Siteservice';
 import type { SiteStatus } from '../services/Siteservice';

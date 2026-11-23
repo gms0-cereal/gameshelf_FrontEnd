@@ -8,7 +8,6 @@ import {
   Search,
   Unlock,
   UserMinus,
-  UserPlus,
   Users,
   X,
   ChevronLeft,

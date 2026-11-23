@@ -68,7 +68,7 @@ export interface SocialUser {
   nickname: string | null;
   avatar_url: string | null;
   banner_url?: string | null; 
-  birth_day: string | null; // Fixed from Date
+  birth_day?: string | null;
   bio?: string | null;
   favorites?: UserFavoriteGameEntry[];
 }
@@ -95,6 +95,7 @@ export interface UserFavoriteGameEntry {
   genres: string[];
   is_favorite: boolean;
   position: number;
+  description?: string | null;
 }
 
 export interface UserAchievement {

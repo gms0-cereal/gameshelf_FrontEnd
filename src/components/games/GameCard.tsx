@@ -20,6 +20,9 @@ export type GameSummary = {
   communityRatingText?: string;
   lastPlayedText?: string;
   bio?: string;
+  description?: string | null;
+  short_description?: string;
+  reason?: string;
   bayesian_score?: number | null;
 };
 

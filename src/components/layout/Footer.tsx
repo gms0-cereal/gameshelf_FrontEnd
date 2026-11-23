@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import gameShelfLogo from "../logo/Gameshelf_Logo.png";
+import gameShelfLogo from "../Logo/Gameshelf_Logo.png";
 const links = [
   ["About", "/about"],
   ["Contact", "/contact"],

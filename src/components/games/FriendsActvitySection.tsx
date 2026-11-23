@@ -52,6 +52,7 @@ export default function FriendsActivitySection() {
                   platforms: ["PC"],
                   score: bayesianScore,
                   bayesian_score: bayesianScore,
+                  description: fav.description,
                   bio: fav.description || "A favorite game of your friend.",
                   reason: `Favorite of friend @${friend.username}`,
                 });

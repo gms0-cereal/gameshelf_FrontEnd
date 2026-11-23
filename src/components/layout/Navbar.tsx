@@ -7,7 +7,7 @@ import {
 } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import gameShelfLogo from "../logo/Gameshelf_Logo.png";
+import gameShelfLogo from "../Logo/Gameshelf_Logo.png";
 import {
   Search,
   ChevronDown,
@@ -129,7 +129,7 @@ export default function Navbar() {
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const games = await searchSteamGames(query, controller.signal);
+        const games = await searchSteamGames(query, {}, controller.signal);
         if (!cancelled) {
           const userCanViewAdult = user?.birth_day && isUserAdult(user.birth_day);
           const filteredGames = games.filter((game) => {
@@ -351,7 +351,7 @@ export default function Navbar() {
                       className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#20232B] focus:bg-[#20232B] focus:outline-none"
                     >
                       <img
-                        src={game.cover}
+                        src={game.cover ?? undefined}
                         alt=""
                         className="h-10 w-[72px] shrink-0 rounded object-cover"
                         loading="lazy"

@@ -18,7 +18,7 @@ export default function RoleRoute({ allowedRoles }: RoleRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user.role)) {
+  if (!allowedRoles.includes(user.role as Role)) {
     return <Navigate to="/home" replace />;
   }
 

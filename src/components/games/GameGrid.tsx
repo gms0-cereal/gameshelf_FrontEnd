@@ -1,3 +1,7 @@
+import { Link } from "react-router-dom";
+import { Calendar, Monitor, Star } from "lucide-react";
+import type { GameSummary } from "@/components/games/GameCard";
+
 export default function GameCard({ game }: { game: GameSummary }) {
   const descText =
     game.bio ||
@@ -16,7 +20,7 @@ export default function GameCard({ game }: { game: GameSummary }) {
       {/* Cover Image Container */}
       <div className="relative h-[160px] w-full shrink-0 overflow-hidden rounded-t-2xl bg-[#20232B]">
         <img
-          src={game.cover}
+          src={game.cover ?? undefined}
           alt={game.title}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:brightness-110"

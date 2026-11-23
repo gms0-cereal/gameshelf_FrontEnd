@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { createImage } from "./cropImage";
 
@@ -40,7 +40,6 @@ useEffect(() => {
   async function handleCrop() {
     if (!imageUrl) return;
 
-    const image = await createImage(imageUrl);
     if (!croppedArea) return;
 
     setSaving(true);

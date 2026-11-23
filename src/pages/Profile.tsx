@@ -107,7 +107,7 @@ function ProfileBanner({
     >
       {hasCustomBanner ? (
         <img
-          src={profileUser?.banner_url}
+          src={profileUser?.banner_url ?? undefined}
           alt=""
           className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
         />

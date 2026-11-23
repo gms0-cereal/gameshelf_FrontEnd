@@ -7,8 +7,8 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
-  ChartNoAxesCombined, ChevronDown, CircleCheck, Database, Download, Gamepad2, Info, LayoutDashboard,
-  PanelLeftClose, PanelLeftOpen, ScrollText, Search, Settings2, ShieldCheck, UserRound, Users, Workflow, X,
+  ChartNoAxesCombined, ChevronDown, CircleCheck, Download, Gamepad2, Info, LayoutDashboard,
+  PanelLeftClose, PanelLeftOpen, ScrollText, Search, Settings2, ShieldCheck, Users, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';

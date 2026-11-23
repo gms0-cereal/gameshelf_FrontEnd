@@ -1,0 +1,1678 @@
+Commit: 9351918
+Author: gms0-cereal
+Date: 2026-11-21 20:49:46 +0800
+Message: patch 2.0
+ src/components/gd_comp/02.tsx | 54 +++++++++++++++++++++----------------------
+ 1 file changed, 27 insertions(+), 27 deletions(-)
+
+Commit: 5e94a5a
+Author: gms0-cereal
+Date: 2026-11-21 20:44:12 +0800
+Message: patch
+ src/components/gd_comp/02.tsx             | 2 +-
+ src/components/reviews/ReviewComposer.tsx | 8 +++++---
+ src/pages/GameReviews.tsx                 | 6 +++---
+ 3 files changed, 9 insertions(+), 7 deletions(-)
+
+Commit: f5eae8d
+Author: gms0-cereal
+Date: 2026-11-21 20:36:19 +0800
+Message: change from 10 stars to 5 stars
+ src/components/games/GameCard.tsx      |  15 ++---
+ src/components/gd_comp/08.tsx          |  12 ++--
+ src/components/reviews/RatingParts.tsx | 117 +++++++++++++++++++++++----------
+ src/pages/GameReviews.tsx              |   7 +-
+ 4 files changed, 98 insertions(+), 53 deletions(-)
+
+Commit: b76becb
+Author: marvin
+Date: 2026-11-21 10:37:43 +0800
+Message:  fixed responisved issue | slight changes on the restriction page | added view restrictions on settings
+ src/App.tsx                                  |   2 +-
+ src/components/ImageCropDialog.tsx           |   2 +-
+ src/components/ItemMenu.tsx                  |   2 +-
+ src/components/gd_comp/02.tsx                |   2 +-
+ src/components/layout/Navbar.tsx             |  58 +++++++-
+ src/components/reviews/ThirdPartyReviews.tsx |   2 +-
+ src/components/social/MiniProfileCard.tsx    |   6 +-
+ src/index.css                                |  27 +++-
+ src/pages/AppealReportPage.tsx               |   2 +-
+ src/pages/MyLibrary.tsx                      |   2 +-
+ src/pages/Profile.tsx                        |   2 +-
+ src/pages/ResetPassword.tsx                  |   2 +-
+ src/pages/Settings.tsx                       |  43 +++++-
+ src/pages/account/MyRestrictions.tsx         | 208 ++++++++++++++++++++++-----
+ 14 files changed, 308 insertions(+), 52 deletions(-)
+
+Commit: 774d94e
+Author: gms0-cereal
+Date: 2026-11-18 01:42:57 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 5bdb1ac
+Author: gms0-cereal
+Date: 2026-11-18 01:42:54 +0800
+Message: game details page ui update
+ src/components/gd_comp/01.tsx               | 463 ++++++++++++++++++----------
+ src/components/gd_comp/05.tsx               | 148 ++++++++-
+ src/components/gd_comp/AgeRatingSection.tsx | 128 +++++---
+ src/components/gd_comp/GamePricing.tsx      |  69 ++++-
+ src/components/gd_comp/GameRatings.ts       |  22 +-
+ src/services/Gameservice.ts                 |   3 +-
+ 6 files changed, 596 insertions(+), 237 deletions(-)
+
+Commit: e874c7d
+Author: marvin
+Date: 2026-11-17 13:28:22 +0800
+Message:  created email mailer | password reset and forget | connected backend api for mailer | adjusted admin and moderation profile
+ src/App.tsx                          |   7 +-
+ src/components/admin/AdminLayout.tsx |  21 +-
+ src/components/layout/Modlayout.tsx  |  29 +-
+ src/hooks/useCurrentUser.ts          |  68 +++++
+ src/pages/ForgetPassword.tsx         | 422 ++++++++++++++++++++--------
+ src/pages/Register.tsx               | 243 ++++++++++-------
+ src/pages/ResetPassword.tsx          | 516 +++++++++++++++++++++++++++++++++++
+ src/pages/VerifyEmail.tsx            | 127 +++++++++
+ 8 files changed, 1183 insertions(+), 250 deletions(-)
+
+Commit: b128c9b
+Author: gms0-cereal
+Date: 2026-11-17 00:34:21 +0800
+Message: redirect to interest
+ src/pages/Login.tsx         | 9 +++++++--
+ src/services/authService.ts | 3 ++-
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+Commit: c502b59
+Author: gms0-cereal
+Date: 2026-11-16 20:53:16 +0800
+Message: discover page update
+ src/components/04 => 0 |  0
+ PHP                    |  0
+ src/pages/Discover.tsx | 83 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 81 insertions(+), 2 deletions(-)
+
+Commit: 8a08368
+Author: gms0-cereal
+Date: 2026-11-16 15:27:25 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 7b1b052
+Author: gms0-cereal
+Date: 2026-11-16 15:27:20 +0800
+Message: game details ui update
+ src/components/04                             |   0
+ src/components/gd_comp/01.tsx                 | 249 ++++++++++++++++++
+ src/components/gd_comp/02.tsx                 | 362 ++++++++++++++++++++++++++
+ src/components/gd_comp/03_GameDescription.tsx |  92 +++++++
+ src/components/gd_comp/03_GameInformation.tsx | 163 ++++++++++++
+ src/components/gd_comp/04.tsx                 | 266 +++++++++++++++++++
+ src/components/gd_comp/05.tsx                 | 122 +++++++++
+ src/components/gd_comp/06.tsx                 | 200 ++++++++++++++
+ src/components/gd_comp/07.tsx                 | 212 +++++++++++++++
+ src/components/gd_comp/08.tsx                 | 341 ++++++++++++++++++++++++
+ src/components/gd_comp/GameDLC.tsx            |  92 -------
+ src/components/gd_comp/GameDetailsHeader.tsx  |  65 -----
+ src/components/gd_comp/GameDetailsReviews.tsx | 226 ----------------
+ src/components/gd_comp/GameMedia.tsx          | 215 ---------------
+ src/components/gd_comp/GameOverview.tsx       | 359 -------------------------
+ src/components/gd_comp/index.ts               |  18 +-
+ src/pages/GameDetails.tsx                     | 327 +++++++----------------
+ src/services/Gameservice.ts                   |   8 +
+ 18 files changed, 2120 insertions(+), 1197 deletions(-)
+
+Commit: 9d689c9
+Author: marvin
+Date: 2026-11-16 12:17:39 +0800
+Message:  implemented captcha | framer-motion for copying playlist | fix admin-data analytics
+ package-lock.json                        | 112 ++++++++++++-
+ package.json                             |   2 +
+ src/components/captcha/Captcha.tsx       | 123 ++++++++++++++
+ src/components/captcha/SliderCaptcha.tsx | 144 ++++++++++++++++
+ src/pages/Login.tsx                      |   3 +-
+ src/pages/PlaylistDetails.tsx            | 173 ++++++++++++++------
+ src/pages/Register.tsx                   | 273 +++++++++++++++++--------------
+ src/services/authService.ts              |   7 +-
+ 8 files changed, 658 insertions(+), 179 deletions(-)
+
+Commit: d9eef6c
+Author: gms0-cereal
+Date: 2026-11-16 03:17:00 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 1edcbaf
+Author: gms0-cereal
+Date: 2026-11-16 03:16:57 +0800
+Message: what is sunlight?
+ src/components/gd_comp/AgeRatingSection.tsx     |  145 +++
+ src/components/gd_comp/GameDLC.tsx              |   92 ++
+ src/components/gd_comp/GameDetailsHeader.tsx    |   65 +
+ src/components/gd_comp/GameDetailsReviews.tsx   |  226 ++++
+ src/components/gd_comp/GameMedia.tsx            |  215 ++++
+ src/components/gd_comp/GameOverview.tsx         |  359 ++++++
+ src/components/gd_comp/GamePricing.tsx          |  150 +++
+ src/components/gd_comp/GameRatings.ts           |   31 +
+ src/components/gd_comp/ScreenshotLightbox.tsx   |   56 +
+ src/components/gd_comp/SimilarGamesCarousel.tsx |  177 +++
+ src/components/gd_comp/SystemRequirements.tsx   |  252 ++++
+ src/components/gd_comp/index.ts                 |   10 +
+ src/pages/GameDetails.tsx                       | 1461 +++++++++--------------
+ src/services/Gameservice.ts                     |  113 +-
+ 14 files changed, 2446 insertions(+), 906 deletions(-)
+
+Commit: 14cbeeb
+Author: marvin
+Date: 2026-11-15 16:32:25 +0800
+Message:  added api calls for admin | re-edit admin layout | deleted other admin files
+ src/App.tsx                            | 120 +++----
+ src/components/MaintenanceGate.tsx     |  84 +++++
+ src/components/admin/AdminLayout.tsx   |   7 +-
+ src/lib/api.ts                         |  11 +
+ src/pages/admin/Dashboard.tsx          | 519 +++++++++++++++++++++--------
+ src/pages/admin/Games.tsx              | 113 -------
+ src/pages/admin/MockData.ts            | 190 -----------
+ src/pages/admin/PlatformAnalytics.tsx  | 587 +++++++++++++++++++++++++++------
+ src/pages/admin/SystemLogs.tsx         | 258 +++++++++------
+ src/pages/admin/UserManagement.tsx     | 263 +++++++++++----
+ src/pages/admin/UserRoleManagement.tsx | 445 ++++++++++++++++---------
+ src/pages/admin/WebsiteSettings.tsx    | 337 +++++++++++++------
+ src/services/Adminservice.ts           | 428 ++++++++++++++++++++++++
+ src/services/Siteservice.ts            |  12 +
+ 14 files changed, 2350 insertions(+), 1024 deletions(-)
+
+Commit: 1cf9ed2
+Author: marvin
+Date: 2026-11-14 16:36:49 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: 60dce9b
+Author: marvin
+Date: 2026-11-14 16:36:39 +0800
+Message:  madea appeal for user who are restricted
+ src/App.tsx                              |   3 +
+ src/lib/moderationApi.ts                 |  27 ++++++-
+ src/pages/MySanctions.tsx                | 129 +++++++++++++++++++++++++++++++
+ src/pages/account/MyRestrictions.tsx     |  81 +++++++++++++++++++
+ src/pages/moderators/ModAppealManage.tsx |  44 +++++++++--
+ 5 files changed, 275 insertions(+), 9 deletions(-)
+
+Commit: 5d32c7c
+Author: gms0-cereal
+Date: 2026-11-13 22:24:49 +0800
+Message: added my beloved framer motion on pages
+ src/pages/CommunityPlaylists.tsx | 120 +++++---
+ src/pages/GameDetails.tsx        | 613 +++++++++++++++++++++++----------------
+ src/pages/PlaylistDetails.tsx    | 131 ++++++---
+ src/pages/Profile.tsx            | 136 +++++----
+ 4 files changed, 616 insertions(+), 384 deletions(-)
+
+Commit: e6f8c95
+Author: gms0-cereal
+Date: 2026-11-13 20:47:14 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 4e9341b
+Author: gms0-cereal
+Date: 2026-11-13 20:47:10 +0800
+Message: changed the genres to the ones that actually works
+ src/pages/ChooseInterest.tsx | 179 +++++++++++++++++-----
+ src/pages/Discover.tsx       | 354 ++++++++++++++++++++++++-------------------
+ src/pages/Home.tsx           |  19 ++-
+ src/services/Gameservice.ts  | 132 ----------------
+ 4 files changed, 354 insertions(+), 330 deletions(-)
+
+Commit: 8c09d91
+Author: marvin
+Date: 2026-11-13 19:10:02 +0800
+Message:  fixed moderation and scrapped off hardcoded data
+ src/components/ui/ModForm.tsx               |  32 ++
+ src/components/ui/Modui.tsx                 |  42 ++-
+ src/lib/moderationApi.ts                    | 496 ++++++++++++++++++++++------
+ src/lib/useDebounced.ts                     |  10 +
+ src/pages/moderators/ModAppealManage.tsx    | 318 ++++++++++++------
+ src/pages/moderators/ModHistory.tsx         | 195 +++++++----
+ src/pages/moderators/ModReport.tsx          | 116 +++++--
+ src/pages/moderators/ModSanctions.tsx       | 495 ++++++++++++++-------------
+ src/pages/moderators/ModeratorDashboard.tsx |  98 +++---
+ src/pages/moderators/modData.ts             | 123 -------
+ src/pages/moderators/modeTones.ts           |  25 ++
+ 11 files changed, 1244 insertions(+), 706 deletions(-)
+
+Commit: e91f513
+Author: gms0-cereal
+Date: 2026-11-13 01:40:51 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: d57a1fe
+Author: gms0-cereal
+Date: 2026-11-13 01:29:18 +0800
+Message: library page change
+ src/pages/MyLibrary.tsx | 1057 ++++++++++++++++++++++++++++-------------------
+ src/pages/Profile.tsx   |    4 +-
+ src/pages/Register.tsx  |    2 +-
+ 3 files changed, 646 insertions(+), 417 deletions(-)
+
+Commit: 05840f8
+Author: marvin
+Date: 2026-11-12 23:28:29 +0800
+Message:  created Mod and Admin with Mock data
+ src/App.tsx                                       |  38 +-
+ src/components/admin/AdminLayout.tsx              | 555 ++++++++++++++++++++--
+ src/components/admin/Sidebar.tsx                  |  72 ---
+ src/{pages/moderators => components/ui}/Modui.tsx |   0
+ src/lib/moderationApi.ts                          | 162 +++++++
+ src/pages/admin/Dashboard.tsx                     | 243 ++++++----
+ src/pages/admin/MockData.ts                       | 190 ++++++++
+ src/pages/admin/PlatformAnalytics.tsx             | 265 +++++++++--
+ src/pages/admin/SystemLogs.tsx                    | 202 ++++++--
+ src/pages/admin/UserManagement.tsx                | 148 ++++++
+ src/pages/admin/UserRoleManagement.tsx            | 247 ++++++++++
+ src/pages/admin/WebsiteSettings.tsx               | 148 ++++++
+ src/pages/moderators/ModAppealManage.tsx          |  18 +-
+ src/pages/moderators/ModHistory.tsx               |  31 +-
+ src/pages/moderators/ModReport.tsx                |  20 +-
+ src/pages/moderators/ModSanctions.tsx             |  20 +-
+ src/pages/moderators/ModeratorDashboard.tsx       |  33 +-
+ src/pages/moderators/modData.ts                   |   2 +-
+ src/pages/moderators/moderationApi.ts             |  69 ---
+ 19 files changed, 2048 insertions(+), 415 deletions(-)
+
+Commit: 6fd4a35
+Author: marvin
+Date: 2026-11-12 18:36:52 +0800
+Message:  merge solved
+Commit: 48bc9cf
+Author: marvin
+Date: 2026-11-12 18:36:18 +0800
+Message:  made moderation stuff
+ src/App.tsx                                        | 10 +--
+ src/components/layout/Modlayout.tsx                | 98 +++++++++++++---------
+ .../moderators/ModAppealManage.tsx                 |  2 +-
+ .../moderators/ModHistory.tsx                      |  2 +-
+ src/{components => pages}/moderators/ModReport.tsx | 20 ++++-
+ .../moderators/ModSanctions.tsx                    |  2 +-
+ .../moderators/ModeratorDashboard.tsx              | 23 +++--
+ src/{components => pages}/moderators/Modui.tsx     | 30 +++----
+ src/{components => pages}/moderators/modData.ts    |  0
+ src/pages/moderators/moderationApi.ts              | 69 +++++++++++++++
+ 10 files changed, 183 insertions(+), 73 deletions(-)
+
+Commit: b08e7d4
+Author: gms0-cereal
+Date: 2026-11-12 16:13:33 +0800
+Message: routing implemented and ui change on the home page cards
+ src/App.tsx                                    |  27 +--
+ src/components/RoleRoute.tsx                   |  26 +++
+ src/components/games/FriendsActvitySection.tsx |   3 +-
+ src/components/games/GenreBrowseSection.tsx    |   3 +-
+ src/components/games/PlayersLikeYouSection.tsx |   3 +-
+ src/components/games/SimilarGamesSection.tsx   |   2 +-
+ src/components/games/TopRatedSection.tsx       |   3 +-
+ src/components/layout/Navbar.tsx               |  16 +-
+ src/components/reviews/GameshelfReviewItem.tsx | 257 +++++++++++++++++--------
+ src/pages/Login.tsx                            | 129 ++++++++++---
+ src/pages/Register.tsx                         | 189 +++++++++++-------
+ 11 files changed, 471 insertions(+), 187 deletions(-)
+
+Commit: b7c9f2c
+Author: gms0-cereal
+Date: 2026-11-12 01:39:59 +0800
+Message: changes in the home sections too show the bayesian rating and also in the game details
+ src/components/games/FriendsActvitySection.tsx   |  60 ++-
+ src/components/games/GameCard.tsx                | 159 +++++---
+ src/components/games/GenreBrowseSection.tsx      |   5 +-
+ src/components/games/PlayersLikeYouSection.tsx   |  89 +++--
+ src/components/games/RecommendedGamesSection.tsx |  90 ++++-
+ src/components/games/SimilarGamesSection.tsx     |  89 ++++-
+ src/components/games/TopRatedSection.tsx         |   3 +-
+ src/pages/GameDetails.tsx                        |  17 +-
+ src/services/Gameservice.ts                      | 464 +++++++++++++++--------
+ src/services/playersLikeYouService.ts            |  35 +-
+ src/services/recommendationService.ts            |   6 +
+ src/services/tasteService.ts                     |  51 ++-
+ 12 files changed, 737 insertions(+), 331 deletions(-)
+
+Commit: adf105a
+Author: gms0-cereal
+Date: 2026-11-11 22:01:32 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: f7b3d20
+Author: gms0-cereal
+Date: 2026-11-11 22:00:49 +0800
+Message: game reviews ui update
+ src/components/games/GameCard.tsx                |   2 +-
+ src/components/games/RecommendedGamesSection.tsx |   2 +-
+ src/pages/GameReviews.tsx                        | 349 ++++++++++-----
+ src/pages/MyLibrary.tsx                          | 520 +++++++++++++++--------
+ 4 files changed, 587 insertions(+), 286 deletions(-)
+
+Commit: 8e7d7e8
+Author: marvin
+Date: 2026-11-11 22:00:43 +0800
+Message:  changed logo and add frontend for moderator
+ index.html                                       |   2 +-
+ src/App.tsx                                      |  12 +
+ src/components/Logo/GameShelf_Logo_Web.png       | Bin 0 -> 685072 bytes
+ src/components/layout/Modlayout.tsx              |  99 +++++++
+ src/components/moderators/ModAppealManage.tsx    | 166 +++++++++++
+ src/components/moderators/ModHistory.tsx         | 100 +++++++
+ src/components/moderators/ModReport.tsx          |  68 +++++
+ src/components/moderators/ModSanctions.tsx       | 295 +++++++++++++++++++
+ src/components/moderators/ModeratorDashboard.tsx |  80 ++++++
+ src/components/moderators/Modui.tsx              | 344 +++++++++++++++++++++++
+ src/components/moderators/modData.ts             | 123 ++++++++
+ 11 files changed, 1288 insertions(+), 1 deletion(-)
+
+Commit: 9ed1e14
+Author: Clark Kent Raguhos
+Date: 2026-11-11 19:55:49 +0800
+Message: done making the reddit review
+ package-lock.json                            |  20 +---
+ src/components/reviews/ThirdPartyReviews.tsx | 132 +++++++++++++++++++++++----
+ src/services/Reviewservice.ts                |   7 ++
+ 3 files changed, 120 insertions(+), 39 deletions(-)
+
+Commit: c7463b3
+Author: gms0-cereal
+Date: 2026-11-10 21:33:29 +0800
+Message: home page gamelist carousel fix
+ src/pages/Home.tsx | 176 +++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 149 insertions(+), 27 deletions(-)
+
+Commit: 92a71cd
+Author: gms0-cereal
+Date: 2026-11-10 21:10:22 +0800
+Message: login page auth issue fixed
+ src/pages/Login.tsx    | 56 +++++++++++++++++++++++++++++++++-----------------
+ src/pages/Register.tsx | 43 +++++++++++++++++++++-----------------
+ 2 files changed, 61 insertions(+), 38 deletions(-)
+
+Commit: 46def04
+Author: gms0-cereal
+Date: 2026-11-10 20:44:06 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: f2a6490
+Author: gms0-cereal
+Date: 2026-11-10 20:44:00 +0800
+Message: major optimization changes in home page and ui changes the login and register pages
+ src/components/games/FriendsActvitySection.tsx     |  153 ++
+ src/components/games/GameCard.tsx                  |  145 +-
+ src/components/games/GameGrid.tsx                  |  112 +-
+ src/components/games/GenreBrowseSection.tsx        |  167 +++
+ src/components/games/HeroBanner.tsx                |  120 ++
+ src/components/games/PlayersLikeYouSection.tsx     |  195 +++
+ src/components/games/RecommendedGamesSection.tsx   |  180 +++
+ .../{SimilarGames.tsx => SimilarGamesSection.tsx}  |   29 +-
+ src/components/games/TopRatedSection.tsx           |  160 ++
+ src/pages/GameDetails.tsx                          |    2 +-
+ src/pages/Home.tsx                                 | 1525 ++------------------
+ src/pages/Login.tsx                                |  554 ++++---
+ src/pages/Register.tsx                             |  675 ++++-----
+ 13 files changed, 1768 insertions(+), 2249 deletions(-)
+
+Commit: cbaa4f6
+Author: marvin
+Date: 2026-11-10 20:42:16 +0800
+Message:  updated taost notif doing double
+ src/pages/PlaylistDetails.tsx | 23 ++++++++++++++++-------
+ 1 file changed, 16 insertions(+), 7 deletions(-)
+
+Commit: 837e7c0
+Author: marvin
+Date: 2026-11-09 12:26:18 +0800
+Message:  changes on community gamelist from adding animation | fixing edit from adding games and deleting games | small fix on navbar
+ src/App.tsx                      |   7 +-
+ src/components/layout/Navbar.tsx |   2 +-
+ src/pages/PlaylistDetails.tsx    | 137 +++++++++++++++++++++++++++++----------
+ src/services/Gameservice.ts      |  87 +++++++++++++++++++++++++
+ src/services/playlistService.ts  |   7 +-
+ 5 files changed, 202 insertions(+), 38 deletions(-)
+
+Commit: c97af59
+Author: marvin
+Date: 2026-11-09 09:31:56 +0800
+Message:  solve my merge conflict
+Commit: 76fbbe2
+Author: gms0-cereal
+Date: 2026-11-09 00:51:11 +0800
+Message: navbar attempt
+ src/components/layout/Navbar.tsx | 98 ++++++++++++++++++----------------------
+ src/pages/Profile.tsx            | 20 ++++++--
+ 2 files changed, 60 insertions(+), 58 deletions(-)
+
+Commit: 37b4517
+Author: gms0-cereal
+Date: 2026-11-08 14:08:36 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 96f5e97
+Author: gms0-cereal
+Date: 2026-11-08 14:08:32 +0800
+Message: home page popular now banner change
+ src/pages/Home.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Commit: 2de8dfa
+Author: kimikola
+Date: 2026-11-08 09:23:00 +0800
+Message: Add Admin Theme, Platform Analytics, System Logs, and frontend features
+ src/App.tsx                           |  4 ++++
+ src/components/admin/AdminLayout.tsx  | 21 ++++++++++++---------
+ src/components/admin/Sidebar.tsx      | 20 ++++++++++++--------
+ src/pages/admin/Dashboard.tsx         | 22 +++++++++++-----------
+ src/pages/admin/Games.tsx             | 22 +++++++++++-----------
+ src/pages/admin/PlatformAnalytics.tsx | 33 +++++++++++++++++++++++++++++++++
+ src/pages/admin/SystemLogs.tsx        | 35 +++++++++++++++++++++++++++++++++++
+ 7 files changed, 118 insertions(+), 39 deletions(-)
+
+Commit: b63f88b
+Author: gms0-cereal
+Date: 2026-11-08 01:19:11 +0800
+Message: added the popular now
+ src/components/layout/Navbar.tsx | 48 +++++++++++++++++++++++++++++++++++--
+ src/pages/Home.tsx               | 51 ++++++++++++++++++++++++++++++++++++----
+ src/services/Gameservice.ts      | 26 ++++++++++++++++++++
+ vite.config.ts                   | 15 +++++++++---
+ 4 files changed, 130 insertions(+), 10 deletions(-)
+
+Commit: 9a6be00
+Author: gms0-cereal
+Date: 2026-11-07 14:11:33 +0800
+Message: just ui changes
+ src/components/social/MiniProfileCard.tsx |  70 ++--
+ src/pages/Home.tsx                        | 653 +++++++++++++++---------------
+ src/pages/Profile.tsx                     |   2 +-
+ 3 files changed, 361 insertions(+), 364 deletions(-)
+
+Commit: 28cc303
+Author: gms0-cereal
+Date: 2026-11-07 10:26:07 +0800
+Message: home update
+ src/components/layout/Footer.tsx |    4 +-
+ src/pages/ChooseInterest.tsx     | 1066 ++++++++------------------------------
+ src/pages/Discover.tsx           |   43 +-
+ src/pages/Home.tsx               |  439 ++++++++++------
+ 4 files changed, 531 insertions(+), 1021 deletions(-)
+
+Commit: bcac7c3
+Author: marvin
+Date: 2026-11-07 09:06:02 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: 74f1e1d
+Author: marvin
+Date: 2026-11-07 09:05:55 +0800
+Message:  did cms on playlist if adding or removing games on that playlist
+ src/App.tsx                     |  73 ++++++++--------
+ src/pages/CreatePlaylist.tsx    | 166 ++++++++++++++++++++++++++++++++----
+ src/pages/PlaylistDetails.tsx   | 183 +++++++++++++++++++++++++++++++++++-----
+ src/services/playlistService.ts |  22 ++++-
+ 4 files changed, 371 insertions(+), 73 deletions(-)
+
+Commit: 8ce8da5
+Author: gms0-cereal
+Date: 2026-11-06 22:03:43 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 15f1f0c
+Author: gms0-cereal
+Date: 2026-11-06 22:03:39 +0800
+Message: interest update
+ src/pages/ChooseInterest.tsx    | 784 ++++++++++++++++++++++++++++++----------
+ src/pages/GameDetails.tsx       |   6 +-
+ src/pages/Home.tsx              |  18 +-
+ src/services/playlistService.ts |   2 +-
+ 4 files changed, 600 insertions(+), 210 deletions(-)
+
+Commit: 4a819c5
+Author: marvin
+Date: 2026-11-06 21:55:04 +0800
+Message: small update for logo
+ index.html                             |   2 +-
+ src/components/Logo/Gameshelf_Logo.png | Bin 0 -> 612239 bytes
+ src/components/layout/Footer.tsx       |   8 ++++++--
+ src/components/layout/Navbar.tsx       |  13 +++++--------
+ 4 files changed, 12 insertions(+), 11 deletions(-)
+
+Commit: e13d009
+Author: marvin
+Date: 2026-11-06 21:18:09 +0800
+Message:  made bday verifyer and toast if user is 18 + | changes on services for bday and mature content
+ src/App.tsx                              |   3 +
+ src/components/layout/BirthdayPrompt.tsx |  73 +++++++++++++++
+ src/lib/birthday.ts                      |  21 +++++
+ src/pages/EditProfile.tsx                | 147 ++++++++++++++++++++++---------
+ src/pages/Settings.tsx                   | 116 +++++++++++++++++++-----
+ src/services/Userservice.ts              |   1 +
+ src/services/authService.ts              |   1 +
+ 7 files changed, 301 insertions(+), 61 deletions(-)
+
+Commit: 03a1375
+Author: gms0-cereal
+Date: 2026-11-06 12:36:15 +0800
+Message: algorithms update
+ src/pages/ChooseInterest.tsx          | 475 ++++++++++++------
+ src/pages/Home.tsx                    | 886 +++++++++++++++++++++++++---------
+ src/pages/Login.tsx                   |  94 ++--
+ src/pages/PlaylistDetails.tsx         |  16 +-
+ src/services/Gameservice.ts           |  17 +-
+ src/services/Userservice.ts           |   3 +-
+ src/services/playersLikeYouService.ts |  23 +-
+ src/services/recommendationService.ts |  62 +++
+ src/services/tasteService.ts          |  13 +-
+ 9 files changed, 1137 insertions(+), 452 deletions(-)
+
+Commit: 05cd1d9
+Author: gms0-cereal
+Date: 2026-11-05 21:19:48 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: b2edbd4
+Author: gms0-cereal
+Date: 2026-11-05 21:19:25 +0800
+Message: color palette update and home page cards update
+ src/pages/CreatePlaylist.tsx  |   2 +-
+ src/pages/GameDetails.tsx     | 127 +++++++++++++++++++++---------------------
+ src/pages/Home.tsx            |  45 ++++++++-------
+ src/pages/PlaylistDetails.tsx |  65 +++++++++++----------
+ src/pages/Profile.tsx         |  93 +++++++++++++++++++++++++++++--
+ src/services/Userservice.ts   |   3 +
+ 6 files changed, 218 insertions(+), 117 deletions(-)
+
+Commit: b27b4d0
+Author: marvin
+Date: 2026-11-05 21:16:44 +0800
+Message: uhhh fr filter change and rename?
+ src/pages/CommunityPlaylists.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Commit: 03ffc88
+Author: marvin
+Date: 2026-11-05 19:54:00 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: d618fd3
+Author: marvin
+Date: 2026-11-05 19:53:50 +0800
+Message:  playlist changes are implemented | updates and functions changes
+ src/components/layout/Infopage.tsx |   6 --
+ src/pages/PlaylistDetails.tsx      | 136 +++++++++++++++++++++++++++----------
+ src/services/playlistService.ts    |   8 ++-
+ 3 files changed, 106 insertions(+), 44 deletions(-)
+
+Commit: 53a0773
+Author: gms0-cereal
+Date: 2026-11-05 18:26:46 +0800
+Message: '
+ src/components/games/GameCard.tsx          |  20 +++--
+ src/components/games/GameGrid.tsx          |   3 +-
+ src/components/playlists/PlaylistCards.tsx |  14 ++--
+ src/pages/Discover.tsx                     |  13 ++-
+ src/pages/Home.tsx                         | 129 ++++++++++++++++++++---------
+ src/pages/PlaylistDetails.tsx              |  31 +++++--
+ 6 files changed, 148 insertions(+), 62 deletions(-)
+
+Commit: 3efc46c
+Author: gms0-cereal
+Date: 2026-11-05 11:22:16 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 2cf3351
+Author: gms0-cereal
+Date: 2026-11-05 11:21:18 +0800
+Message: page jitter fix
+ src/components/playlists/PlaylistCards.tsx | 89 ++++++++++++++++++++++--------
+ src/pages/CommunityPlaylists.tsx           | 69 +++++++++++------------
+ src/pages/Discover.tsx                     | 77 +++++++++++++-------------
+ 3 files changed, 141 insertions(+), 94 deletions(-)
+
+Commit: a12ef62
+Author: marvin
+Date: 2026-11-05 11:17:37 +0800
+Message:  added all the pages for footer
+ src/App.tsx                         |  19 +++
+ src/components/layout/Footer.tsx    |   2 +-
+ src/components/layout/Infopage.tsx  |  49 +++++++
+ src/components/layout/Legalpage.tsx |  73 +++++++++++
+ src/context/Settingscontext.tsx     | 132 +++++++++++++++++++
+ src/pages/About.tsx                 |  77 +++++++++++
+ src/pages/CommunityPlaylists.tsx    |  24 ++--
+ src/pages/Contact.tsx               | 133 +++++++++++++++++++
+ src/pages/Help.tsx                  | 158 +++++++++++++++++++++++
+ src/pages/Privacypolicy.tsx         |  83 ++++++++++++
+ src/pages/Settings.tsx              | 248 ++++++++++++++++++++++++++++++++++++
+ src/pages/Terms.tsx                 |  81 ++++++++++++
+ 12 files changed, 1067 insertions(+), 12 deletions(-)
+
+Commit: 521c0a5
+Author: gms0-cereal
+Date: 2026-11-05 02:46:46 +0800
+Message: ui uniformity
+ src/components/playlists/PlaylistCards.tsx |  75 ++++--
+ src/pages/CommunityPlaylists.tsx           | 371 +++++++++++++++++------------
+ src/pages/CreatePlaylist.tsx               | 239 +++++++++----------
+ src/pages/EditProfile.tsx                  |  18 +-
+ src/pages/Friends.tsx                      |  54 +++--
+ src/pages/Home.tsx                         |   2 +-
+ src/pages/MyLibrary.tsx                    |  11 +-
+ src/pages/PlaylistDetails.tsx              | 174 +++++++-------
+ src/pages/Profile.tsx                      |   2 +-
+ 9 files changed, 519 insertions(+), 427 deletions(-)
+
+Commit: 82f14b6
+Author: gms0-cereal
+Date: 2026-11-04 23:46:40 +0800
+Message: added uniformity
+ src/pages/Discover.tsx  | 23 ++++++++++++-----------
+ src/pages/MyLibrary.tsx | 15 ++++++++++-----
+ 2 files changed, 22 insertions(+), 16 deletions(-)
+
+Commit: 9b87be5
+Author: gms0-cereal
+Date: 2026-11-04 23:28:31 +0800
+Message: color palette change and few minor ui changes on pages like the game details and profile
+ src/App.tsx                            |   4 +-
+ src/components/games/GameCard.tsx      |  58 +++--
+ src/components/games/SimilarGames.tsx  |  56 ++---
+ src/components/layout/Navbar.tsx       | 333 +++++++++++++-------------
+ src/pages/CommunityPlaylists.tsx       |  80 +++----
+ src/pages/{Browse.tsx => Discover.tsx} | 196 +++++++++++-----
+ src/pages/EditProfile.tsx              | 410 +++++++++++++++++++-------------
+ src/pages/Friends.tsx                  | 191 ++++++++-------
+ src/pages/GameDetails.tsx              | 303 +++++++++++-------------
+ src/pages/Home.tsx                     | 416 ++++++++++++++++-----------------
+ src/pages/MyLibrary.tsx                | 148 ++++++------
+ src/pages/Profile.tsx                  | 385 +++++++++++++++++++++---------
+ src/services/Userservice.ts            |   3 +-
+ 13 files changed, 1434 insertions(+), 1149 deletions(-)
+
+Commit: fb4d278
+Author: gms0-cereal
+Date: 2026-11-04 15:43:29 +0800
+Message: profile and friends page update
+ package-lock.json     |  43 +++++
+ package.json          |   1 +
+ src/pages/Friends.tsx | 519 +++++++++++++++++++++++++++++---------------------
+ src/pages/Home.tsx    | 194 +++++++++++--------
+ src/pages/Profile.tsx | 234 ++++++++++++-----------
+ 5 files changed, 580 insertions(+), 411 deletions(-)
+
+Commit: 34f685f
+Author: gms0-cereal
+Date: 2026-11-03 21:21:41 +0800
+Message: updated home page
+ src/components/layout/Navbar.tsx |  76 ++++++-----
+ src/pages/Home.tsx               | 265 +++++++++++++++++++++++++++------------
+ 2 files changed, 220 insertions(+), 121 deletions(-)
+
+Commit: 3267f08
+Author: gms0-cereal
+Date: 2026-11-03 20:50:55 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 98c4b5d
+Author: XAkeno
+Date: 2026-11-02 00:23:41 +0800
+Message: added top rated
+ src/pages/Home.tsx          | 104 ++++++++++++++++++++++++++++++++++++++++++++
+ src/services/Gameservice.ts |  13 ++++++
+ 2 files changed, 117 insertions(+)
+
+Commit: bdbb6b8
+Author: gms0-cereal
+Date: 2026-10-31 10:35:15 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: b548a05
+Author: gms0-cereal
+Date: 2026-10-31 10:35:11 +0800
+Message: sanctions page
+ src/pages/AppealReportPage.tsx | 246 ++++++++++++++++++++++++++++-------------
+ 1 file changed, 168 insertions(+), 78 deletions(-)
+
+Commit: 06e6a3e
+Author: XAkeno
+Date: 2026-10-31 09:40:03 +0800
+Message: added pc requrement
+ src/pages/GameDetails.tsx   | 139 ++++++++++++++++++++++++++++++++++++++++++++
+ src/services/Gameservice.ts |   8 +++
+ 2 files changed, 147 insertions(+)
+
+Commit: 87254d2
+Author: XAkeno
+Date: 2026-10-31 09:03:01 +0800
+Message: fix recommendation
+ src/pages/Home.tsx | 74 +++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 65 insertions(+), 9 deletions(-)
+
+Commit: bdd7298
+Author: XAkeno
+Date: 2026-10-31 08:39:33 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 272e955
+Author: XAkeno
+Date: 2026-10-31 08:16:10 +0800
+Message: working like and spoiler
+ src/components/reviews/GameshelfReviewItem.tsx | 66 +++++++++++++++-----------
+ src/components/reviews/SpoilerMask.tsx         | 54 +++++++++++++++++++++
+ src/pages/GameDetails.tsx                      | 64 ++++++++++++++++++++++---
+ src/services/Reviewservice.ts                  | 26 ++++++++++
+ 4 files changed, 175 insertions(+), 35 deletions(-)
+
+Commit: dcc6673
+Author: marvin
+Date: 2026-10-31 00:45:30 +0800
+Message:  fixed community playlist overall from viewing other users playlist | my playlist are only seen as yours in my library | fix issue on creating playlist
+ src/pages/CreatePlaylist.tsx    | 292 ++++++++++++++++++++++++++++------------
+ src/pages/MyLibrary.tsx         |   4 +-
+ src/pages/PlaylistDetails.tsx   |   2 +-
+ src/services/playlistService.ts |  25 ++--
+ 4 files changed, 229 insertions(+), 94 deletions(-)
+
+Commit: 83ed2d4
+Author: marvin
+Date: 2026-10-31 00:12:25 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: de84764
+Author: gms0-cereal
+Date: 2026-10-30 23:45:10 +0800
+Message: appeal page
+ src/App.tsx                    |   3 +-
+ src/pages/AppealReportPage.tsx | 254 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 256 insertions(+), 1 deletion(-)
+
+Commit: 94c4939
+Author: marvin
+Date: 2026-10-30 23:35:00 +0800
+Message: solve merge conflict on playlist details
+Commit: 540182f
+Author: marvin
+Date: 2026-10-30 23:33:07 +0800
+Message:  several chnages on routinng from apps and playlistcards | made adjustments on playlistdetails to see public playlist from other users
+ src/App.tsx                                |  2 +-
+ src/components/playlists/PlaylistCards.tsx |  4 ++--
+ src/pages/PlaylistDetails.tsx              | 17 ++++++++++++++---
+ 3 files changed, 17 insertions(+), 6 deletions(-)
+
+Commit: b371920
+Author: gms0-cereal
+Date: 2026-10-30 23:28:43 +0800
+Message: updated birthday logic
+ src/components/social/MiniProfileCard.tsx | 148 ++++++++++++++++++++----------
+ src/pages/EditProfile.tsx                 |  82 +++++++++++------
+ src/pages/Friends.tsx                     |  65 +++++++------
+ src/pages/PlaylistDetails.tsx             | 106 ++++++++++++++++-----
+ src/services/Userservice.ts               |   6 ++
+ src/services/authService.ts               |  31 +------
+ src/services/playlistService.ts           |   2 +
+ 7 files changed, 278 insertions(+), 162 deletions(-)
+
+Commit: b4b551b
+Author: marvin
+Date: 2026-10-30 22:23:49 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: 59e60de
+Author: gms0-cereal
+Date: 2026-10-30 20:46:23 +0800
+Message: playlist update
+ src/pages/CommunityPlaylists.tsx |  99 ++++++++++++++++++-----
+ src/pages/CreatePlaylist.tsx     |  16 ++--
+ src/pages/PlaylistDetails.tsx    | 107 ++++++++++++++++++++++---
+ src/pages/Profile.tsx            | 168 ++++++++++++++++++++-------------------
+ src/services/playlistService.ts  |   6 ++
+ 5 files changed, 280 insertions(+), 116 deletions(-)
+
+Commit: d1bfc24
+Author: marvin
+Date: 2026-10-30 13:16:48 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: 3f706e8
+Author: marvin
+Date: 2026-10-30 13:16:37 +0800
+Message: made small changes on package?
+ package-lock.json | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+Commit: 6556651
+Author: gms0-cereal
+Date: 2026-10-30 13:11:46 +0800
+Message: edit profile page changes
+ src/pages/EditProfile.tsx | 160 ++++++++++++++++++++++++++++++++++++++++++----
+ src/pages/Profile.tsx     |  20 ++++--
+ 2 files changed, 160 insertions(+), 20 deletions(-)
+
+Commit: 1c048c9
+Author: gms0-cereal
+Date: 2026-10-30 00:39:36 +0800
+Message: profile page
+ src/pages/Profile.tsx | 207 +++++++++++++++++++-------------------------------
+ 1 file changed, 78 insertions(+), 129 deletions(-)
+
+Commit: 6d4d222
+Author: gms0-cereal
+Date: 2026-10-30 00:26:11 +0800
+Message: game details page update
+ src/pages/GameDetails.tsx | 85 +++++++++++++++++++++++++++++------------------
+ src/pages/MyLibrary.tsx   |  2 +-
+ 2 files changed, 53 insertions(+), 34 deletions(-)
+
+Commit: f6717cb
+Author: gms0-cereal
+Date: 2026-10-29 23:59:50 +0800
+Message: my library update
+ src/pages/MyLibrary.tsx | 111 ++++++++++++++++++++++++++++--------------------
+ 1 file changed, 66 insertions(+), 45 deletions(-)
+
+Commit: a090088
+Author: gms0-cereal
+Date: 2026-10-29 23:47:26 +0800
+Message: browse games optimization
+ src/pages/Browse.tsx  | 129 +++++++++++---------------------------------------
+ src/pages/Home.tsx    |  16 +++----
+ src/store/apiSlice.ts |  28 +++++++++++
+ 3 files changed, 64 insertions(+), 109 deletions(-)
+
+Commit: 757973f
+Author: XAkeno
+Date: 2026-10-29 23:19:17 +0800
+Message: working svd with front
+ src/pages/Home.tsx                    | 121 +++++++++++++++++++++++++++++++++-
+ src/services/playersLikeYouService.ts |  46 +++++++++++++
+ 2 files changed, 166 insertions(+), 1 deletion(-)
+
+Commit: f475e03
+Author: gms0-cereal
+Date: 2026-10-29 23:12:19 +0800
+Message: home page patch
+ src/pages/Home.tsx | 133 ++++++++++++-----------------------------------------
+ 1 file changed, 30 insertions(+), 103 deletions(-)
+
+Commit: 5925dc7
+Author: gms0-cereal
+Date: 2026-10-29 23:08:52 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 9a5c93f
+Author: gms0-cereal
+Date: 2026-10-29 23:08:20 +0800
+Message: optimized home page
+ src/App.tsx                      |  70 +++----
+ src/components/layout/Navbar.tsx |   3 +-
+ src/pages/Home.tsx               | 383 ++++++++++-----------------------------
+ src/pages/Login.tsx              | 161 +++++++++++++---
+ src/pages/Register.tsx           | 127 ++++++++-----
+ src/services/Userservice.ts      |  10 +-
+ src/store/apiSlice.ts            |  64 +++++++
+ src/store/store.ts               |  13 ++
+ 8 files changed, 439 insertions(+), 392 deletions(-)
+
+Commit: fe5ab6f
+Author: XAkeno
+Date: 2026-10-29 20:34:42 +0800
+Message: fixes the 'because you play' section. and made it horizontal scroll
+ src/pages/Home.tsx | 268 ++++++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 226 insertions(+), 42 deletions(-)
+
+Commit: 894b2f2
+Author: gms0-cereal
+Date: 2026-10-27 15:16:41 +0800
+Message: added import steam library
+ src/pages/EditProfile.tsx   | 64 +++++++++++++++++++++++++++++++++++++++++++--
+ src/pages/MyLibrary.tsx     | 60 +++++++++++++++++++++++++++++++++---------
+ src/pages/Profile.tsx       | 18 +++----------
+ src/services/Userservice.ts |  8 +++---
+ 4 files changed, 116 insertions(+), 34 deletions(-)
+
+Commit: 0579d81
+Author: gms0-cereal
+Date: 2026-10-26 23:21:57 +0800
+Message: app tsx patch
+ src/App.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Commit: 249807f
+Author: gms0-cereal
+Date: 2026-10-26 23:19:20 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 4ba1754
+Author: gms0-cereal
+Date: 2026-10-26 23:18:43 +0800
+Message: added additional information on profile
+ src/App.tsx                                 |   3 +-
+ src/components/Profile/SetBirthdayModal.tsx | 253 +++++++++++++++++++
+ src/pages/EditProfile.tsx                   | 379 ++++++++++++++--------------
+ src/pages/Profile.tsx                       |  93 ++++++-
+ src/services/Userservice.ts                 |  37 ++-
+ src/services/authService.ts                 |   7 +-
+ 6 files changed, 570 insertions(+), 202 deletions(-)
+
+Commit: 6bfccf8
+Author: kimikola
+Date: 2026-10-25 10:28:43 +0800
+Message: feat: complete admin dashboard layout and custom line graph
+ package-lock.json                    | 297 ++++++++++++++++++++++++++++++++++-
+ package.json                         |   3 +-
+ src/App.tsx                          |   8 +
+ src/components/admin/AdminLayout.tsx |  59 +++++++
+ src/components/admin/Sidebar.tsx     |  68 ++++++++
+ src/pages/admin/Dashboard.tsx        | 118 ++++++++++++++
+ src/pages/admin/Games.tsx            | 113 +++++++++++++
+ 7 files changed, 661 insertions(+), 5 deletions(-)
+
+Commit: 422ba1b
+Author: kimikola
+Date: 2026-10-24 19:16:01 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into admin-frontend-feature
+Commit: ca713f9
+Author: kimikola
+Date: 2026-10-24 18:20:54 +0800
+Message: Save local progress before pulling
+Commit: 8fbe592
+Author: gms0-cereal
+Date: 2026-10-24 18:12:17 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: c43971d
+Author: gms0-cereal
+Date: 2026-10-24 18:10:54 +0800
+Message: fixed the wrong link in profile page
+ src/App.tsx           | 1 +
+ src/pages/Profile.tsx | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+Commit: a099b78
+Author: XAkeno
+Date: 2026-10-24 17:26:09 +0800
+Message: fix merge conflict
+Commit: ad0d4fc
+Author: XAkeno
+Date: 2026-10-24 17:16:47 +0800
+Message: added recommendation v1
+ src/App.tsx                  |   3 +-
+ src/pages/ChooseInterest.tsx | 549 +++++++++++++++++++++++++++++++++++++++++++
+ src/pages/Home.tsx           | 106 ++++++++-
+ src/services/tasteService.ts |  90 +++++++
+ 4 files changed, 740 insertions(+), 8 deletions(-)
+
+Commit: 85d26b6
+Author: XAkeno
+Date: 2026-10-24 11:24:22 +0800
+Message: added similar games
+ src/components/games/SimilarGames.tsx | 148 ++++++++++++++++++++++++++++++++++
+ src/pages/GameDetails.tsx             |   5 +-
+ src/services/Gameservice.ts           |  34 ++++++++
+ 3 files changed, 186 insertions(+), 1 deletion(-)
+
+Commit: 49b12e2
+Author: marvin
+Date: 2026-10-23 23:11:48 +0800
+Message: fixed merge conflict for home
+Commit: 2efd719
+Author: marvin
+Date: 2026-10-23 23:07:38 +0800
+Message:  improved CommunityPlaylist | changed CreatePlaylist when picking games tags are inserted in genres | Improved PlaylistDetails from grouping genre tags of chosen games
+ src/App.tsx                                |   6 +-
+ src/components/playlists/PlaylistCards.tsx | 118 +++++++++++
+ src/pages/CommunityPlaylists.tsx           | 280 ++++++++++++++++++++++++++
+ src/pages/Home.tsx                         | 131 +++++-------
+ src/pages/PlaylistDetails.tsx              | 313 +++++++++++++++++++++++++++++
+ src/services/playlistService.ts            |  21 +-
+ 6 files changed, 780 insertions(+), 89 deletions(-)
+
+Commit: 92c7528
+Author: gms0-cereal
+Date: 2026-10-23 21:12:13 +0800
+Message: mini profile update in profile
+ src/pages/Profile.tsx | 135 ++++++++++++++++++--------------------------------
+ 1 file changed, 48 insertions(+), 87 deletions(-)
+
+Commit: 96e4403
+Author: gms0-cereal
+Date: 2026-10-23 19:27:45 +0800
+Message: added favorite games of user
+ src/components/games/GameCard.tsx         | 113 ++++++------
+ src/components/social/MiniProfileCard.tsx |  65 +++----
+ src/pages/CreatePlaylist.tsx              |  10 +-
+ src/pages/Friends.tsx                     | 141 +++++++--------
+ src/pages/Home.tsx                        |  38 +----
+ src/pages/MyLibrary.tsx                   | 275 ++++++++++++++++++++++++------
+ src/pages/Profile.tsx                     | 164 +++++++++++++++---
+ src/services/Gameservice.ts               |   1 +
+ src/services/Userservice.ts               |  30 +++-
+ 9 files changed, 568 insertions(+), 269 deletions(-)
+
+Commit: d5d6cc2
+Author: marvin
+Date: 2026-10-23 13:43:57 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: bd64236
+Author: gms0-cereal
+Date: 2026-10-23 13:34:25 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 2e8f920
+Author: gms0-cereal
+Date: 2026-10-23 13:34:22 +0800
+Message: updated nav bar
+ src/components/layout/Navbar.tsx |  4 +-
+ src/pages/Friends.tsx            | 91 +++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 88 insertions(+), 7 deletions(-)
+
+Commit: 010d245
+Author: XAkeno
+Date: 2026-10-23 13:31:50 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 621e6f2
+Author: gms0-cereal
+Date: 2026-10-23 12:57:51 +0800
+Message: mini profile updated ui
+ package-lock.json                         |  10 ++
+ package.json                              |   1 +
+ src/components/social/MiniProfileCard.tsx | 231 ++++++++++++++++++++++--------
+ src/pages/Profile.tsx                     |  10 +-
+ 4 files changed, 189 insertions(+), 63 deletions(-)
+
+Commit: efabae3
+Author: XAkeno
+Date: 2026-10-23 12:28:03 +0800
+Message: fix the front, optimized, and fix the my score not showing
+ package-lock.json           | 795 +++++++++++++++++++++++++++++++++++++++++++-
+ package.json                |   2 +
+ src/lib/request.ts          |  27 ++
+ src/pages/Home.tsx          | 172 +++++-----
+ src/reviews.tsx             |  96 ++++++
+ src/services/Gameservice.ts |  65 +++-
+ src/test-reviews.tsx        |  21 ++
+ 7 files changed, 1082 insertions(+), 96 deletions(-)
+
+Commit: a7da3e2
+Author: kimikola
+Date: 2026-10-23 12:27:55 +0800
+Message: Feat: Complete Admin Dashboard layout with routing and spline chart
+ .gitignore                          |   25 +
+ @/components/ui/button.tsx          |   57 +
+ @/lib/utils.ts                      |    1 +
+ README.md                           |    1 +
+ components.json                     |   25 +
+ eslint.config.js                    |   22 +
+ index.html                          |   13 +
+ package-lock.json                   | 6010 +++++++++++++++++++++++++++++++++++
+ package.json                        |   48 +
+ src/App.css                         |    0
+ src/App.tsx                         |   52 +
+ src/components/ImageCropDialog.tsx  |  174 +
+ src/components/cropImage.tsx        |   13 +
+ src/components/games/GameCard.tsx   |   52 +
+ src/components/games/GameGrid.tsx   |   44 +
+ src/components/layout/Dashboard.tsx |   24 +
+ src/components/layout/Footer.tsx    |   39 +
+ src/components/layout/Header.tsx    |   41 +
+ src/components/layout/Navbar.tsx    |   25 +
+ src/components/layout/Sidebar.tsx   |  112 +
+ src/components/ui/MetricCard.tsx    |   22 +
+ src/components/ui/avatar.tsx        |  106 +
+ src/components/ui/badge.tsx         |   21 +
+ src/components/ui/button.tsx        |   66 +
+ src/components/ui/card.tsx          |  102 +
+ src/components/ui/input.tsx         |   19 +
+ src/components/ui/textarea.tsx      |   17 +
+ src/components/ui/tooltip.tsx       |   63 +
+ src/context/AuthContext.tsx         |   72 +
+ src/index.css                       |    1 +
+ src/lib/api.ts                      |   18 +
+ src/lib/apiError.ts                 |   57 +
+ src/main.tsx                        |   11 +
+ src/pages/AdminGames.tsx            |   13 +
+ src/pages/AdminOverview.tsx         |  312 ++
+ src/pages/AdminSettings.tsx         |   13 +
+ src/pages/AdminUsers.tsx            |   13 +
+ src/pages/EditProfile.tsx           |  517 +++
+ src/pages/Explore.tsx               |    0
+ src/pages/ForgetPassword.tsx        |  206 ++
+ src/pages/GameDetails.tsx           |  800 +++++
+ src/pages/Home.tsx                  |  441 +++
+ src/pages/Login.tsx                 |  229 ++
+ src/pages/MyLibrary.tsx             |  473 +++
+ src/pages/Profile.tsx               |  234 ++
+ src/pages/Register.tsx              |  367 +++
+ src/services/Gameservice.ts         |  254 ++
+ src/services/Userservice.ts         |   60 +
+ src/services/adminService.ts        |   14 +
+ src/services/authService.ts         |  127 +
+ src/types/admin.ts                  |   23 +
+ src/types/game.ts                   |    0
+ tsconfig.app.json                   |   32 +
+ tsconfig.json                       |    7 +
+ tsconfig.node.json                  |   23 +
+ vite.config.ts                      |   15 +
+ 56 files changed, 11526 insertions(+)
+
+Commit: e127ec8
+Author: kimikola
+Date: 2026-10-23 08:29:28 +0800
+Message: Delete src/api.ts
+ src/api.ts | 22 ----------------------
+ 1 file changed, 22 deletions(-)
+
+Commit: a6f2f57
+Author: kimikola
+Date: 2026-10-23 08:28:19 +0800
+Message: Delete src/GameCollection.tsx
+ src/GameCollection.tsx | 45 ---------------------------------------------
+ 1 file changed, 45 deletions(-)
+
+Commit: 66ba06f
+Author: gms0-cereal
+Date: 2026-10-22 22:21:10 +0800
+Message: profile change patch
+ src/pages/Profile.tsx | 366 +++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 269 insertions(+), 97 deletions(-)
+
+Commit: 8cfde7b
+Author: gms0-cereal
+Date: 2026-10-22 18:29:56 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 0d928df
+Author: gms0-cereal
+Date: 2026-10-22 18:29:53 +0800
+Message: added a mini profile and fixed the profile routing
+ src/App.tsx                               |   1 +
+ src/components/social/MiniProfileCard.tsx | 154 ++++++++++++
+ src/pages/ActionConfirmPage.tsx           | 130 ++++++++++
+ src/pages/Friends.tsx                     | 402 +++++++++++++++++++-----------
+ src/pages/Profile.tsx                     | 386 ++++++++++++----------------
+ src/services/Socialservice.ts             | 106 --------
+ src/services/Userservice.ts               | 103 +++++++-
+ 7 files changed, 795 insertions(+), 487 deletions(-)
+
+Commit: eb334c3
+Author: XAkeno
+Date: 2026-10-22 18:25:00 +0800
+Message: fix merge conflict - Done making game browser
+Commit: 16fe654
+Author: XAkeno
+Date: 2026-10-22 18:19:47 +0800
+Message: Added the browse
+ src/App.tsx                      |   2 +
+ src/components/layout/Navbar.tsx |   3 +-
+ src/pages/Browse.tsx             | 431 +++++++++++++++++++++++++++++++++++++++
+ src/services/Gameservice.ts      |  53 +++++
+ 4 files changed, 488 insertions(+), 1 deletion(-)
+
+Commit: 374d731
+Author: marvin
+Date: 2026-10-22 00:00:07 +0800
+Message:  fixed issue for create playlist and fix searchbar again
+ src/pages/Home.tsx | 83 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+ tsconfig.app.json  |  1 +
+ 2 files changed, 78 insertions(+), 6 deletions(-)
+
+Commit: 1b8fb65
+Author: marvin
+Date: 2026-10-21 21:51:18 +0800
+Message: resolved merge conflict
+Commit: b5a110d
+Author: marvin
+Date: 2026-10-21 21:49:27 +0800
+Message: made working search bar and making community playlist
+ package-lock.json                |  19 +-
+ src/App.tsx                      |   3 +
+ src/components/layout/Navbar.tsx | 123 +++++++--
+ src/pages/CreatePlaylist.tsx     | 566 +++++++++++++++++++++++++++++++++++++++
+ src/pages/Home.tsx               | 145 +++++++++-
+ src/services/playlistService.ts  | 160 +++++++++++
+ 6 files changed, 999 insertions(+), 17 deletions(-)
+
+Commit: 6f58a23
+Author: gms0-cereal
+Date: 2026-10-21 21:47:08 +0800
+Message: optimized home page
+ src/components/games/GameCard.tsx | 110 +++++---
+ src/components/games/GameGrid.tsx |   6 +-
+ src/pages/Home.tsx                | 570 +++++++++++++++-----------------------
+ 3 files changed, 306 insertions(+), 380 deletions(-)
+
+Commit: ff49ea0
+Author: gms0-cereal
+Date: 2026-10-21 17:48:04 +0800
+Message: deleted the hard code data from home page
+ src/pages/Home.tsx | 152 ++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 80 insertions(+), 72 deletions(-)
+
+Commit: 9c16a84
+Author: gms0-cereal
+Date: 2026-10-21 17:31:37 +0800
+Message: updated home page
+ src/pages/Home.tsx | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+Commit: e262616
+Author: gms0-cereal
+Date: 2026-10-21 16:59:36 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 96c0774
+Author: gms0-cereal
+Date: 2026-10-21 16:59:32 +0800
+Message: updated home game cards
+ src/pages/Home.tsx | 117 ++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 72 insertions(+), 45 deletions(-)
+
+Commit: 99655e6
+Author: XAkeno
+Date: 2026-10-21 13:23:51 +0800
+Message: resolve conflict
+Commit: 1f0d49d
+Author: XAkeno
+Date: 2026-10-21 13:22:14 +0800
+Message: done making comment
+ src/components/ItemMenu.tsx                    |  87 ++++++
+ src/components/reviews/CommentItem.tsx         | 359 ++++++++++++++++++++++
+ src/components/reviews/GameshelfReviewItem.tsx | 396 +++++++++++++++++++++++++
+ src/pages/GameDetails.tsx                      | 211 ++++++-------
+ src/services/Reviewservice.ts                  |  90 ++++--
+ 5 files changed, 1003 insertions(+), 140 deletions(-)
+
+Commit: 9621b3f
+Author: XAkeno
+Date: 2026-10-21 01:11:47 +0800
+Message: on progress save point. making review
+ src/App.tsx                                  |   2 +
+ src/components/reviews/GameshelfReviews.tsx  | 892 +++++++++++++++++++++++++++
+ src/components/reviews/RatingParts.tsx       | 120 ++++
+ src/components/reviews/ReviewComposer.tsx    | 184 ++++++
+ src/components/reviews/ThirdPartyReviews.tsx | 427 +++++++++++++
+ src/pages/GameDetails.tsx                    | 165 +++--
+ src/pages/GameReviews.tsx                    | 588 ++++++++++++++++++
+ src/services/Gameservice.ts                  |  40 ++
+ src/services/Reviewservice.ts                | 285 +++++++++
+ 9 files changed, 2653 insertions(+), 50 deletions(-)
+
+Commit: aa87b9f
+Author: gms0-cereal
+Date: 2026-10-21 00:30:22 +0800
+Message: updated the profile page to show the friend profile
+ src/pages/Profile.tsx | 214 ++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 131 insertions(+), 83 deletions(-)
+
+Commit: e807f87
+Author: gms0-cereal
+Date: 2026-10-20 23:26:55 +0800
+Message: friends page user details disappearing fixed
+ src/pages/Friends.tsx         |  43 +++++------
+ src/services/Socialservice.ts | 171 ++++++++++++++++++++++--------------------
+ 2 files changed, 110 insertions(+), 104 deletions(-)
+
+Commit: 40d6cb3
+Author: gms0-cereal
+Date: 2026-10-20 22:08:50 +0800
+Message: add friends not working fixed
+ src/pages/Friends.tsx         |  96 ++++++++++---------------
+ src/services/Socialservice.ts | 162 +++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 174 insertions(+), 84 deletions(-)
+
+Commit: eca0a86
+Author: gms0-cereal
+Date: 2026-10-20 21:11:18 +0800
+Message: working friends page
+ src/App.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Commit: cd228b5
+Author: gms0-cereal
+Date: 2026-10-20 21:10:56 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 794f3f0
+Author: gms0-cereal
+Date: 2026-10-20 21:09:56 +0800
+Message: working friends page
+ src/App.tsx                   |   3 +-
+ src/pages/Friends.tsx         | 657 ++++++++++++++++++++++++++++++++++++++++++
+ src/services/Socialservice.ts |  34 +++
+ 3 files changed, 693 insertions(+), 1 deletion(-)
+
+Commit: b71b95b
+Author: kimikola
+Date: 2026-10-20 20:42:13 +0800
+Message: Add files via upload
+ src/GameCollection.tsx | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ src/api.ts             | 22 ++++++++++++++++++++++
+ 2 files changed, 67 insertions(+)
+
+Commit: 870a64b
+Author: XAkeno
+Date: 2026-10-19 23:59:57 +0800
+Message: added library and add list
+ package-lock.json                |  19 +-
+ src/App.tsx                      |   2 +
+ src/components/layout/Navbar.tsx |   4 +-
+ src/pages/GameDetails.tsx        | 105 +++++++--
+ src/pages/MyLibrary.tsx          | 473 +++++++++++++++++++++++++++++++++++++++
+ src/services/Gameservice.ts      |  95 ++++++++
+ 6 files changed, 656 insertions(+), 42 deletions(-)
+
+Commit: 705e69b
+Author: gms0-cereal
+Date: 2026-10-19 19:36:58 +0800
+Message: updated the profile page
+ src/pages/Profile.tsx | 178 +++++++++++++++++++++-----------------------------
+ 1 file changed, 75 insertions(+), 103 deletions(-)
+
+Commit: 3b8c755
+Author: gms0-cereal
+Date: 2026-10-19 12:14:16 +0800
+Message: banner and profile now accept gifs
+ src/pages/EditProfile.tsx | 45 +++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 35 insertions(+), 10 deletions(-)
+
+Commit: 4219f4a
+Author: gms0-cereal
+Date: 2026-10-19 11:58:47 +0800
+Message: fixed tbe stale picture in the edit profile
+ src/pages/EditProfile.tsx | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+Commit: 2a53967
+Author: gms0-cereal
+Date: 2026-10-19 02:04:36 +0800
+Message: edit profile page patch
+ src/components/ImageCropDialog.tsx | 29 +++++++++++++++++++++--------
+ src/components/cropImage.tsx       |  5 ++++-
+ 2 files changed, 25 insertions(+), 9 deletions(-)
+
+Commit: 218da58
+Author: gms0-cereal
+Date: 2026-10-19 01:48:52 +0800
+Message: updated the edit profile page
+ package-lock.json                  |  20 ++++
+ package.json                       |   1 +
+ src/components/ImageCropDialog.tsx | 161 +++++++++++++++++++++++++
+ src/components/cropImage.tsx       |  10 ++
+ src/lib/api.ts                     |   2 +-
+ src/pages/EditProfile.tsx          | 236 ++++++++++++++++++++++++++-----------
+ src/services/authService.ts        |   3 +-
+ 7 files changed, 364 insertions(+), 69 deletions(-)
+
+Commit: 3b96d6b
+Author: gms0-cereal
+Date: 2026-10-19 00:47:01 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 13522a8
+Author: gms0-cereal
+Date: 2026-10-19 00:46:16 +0800
+Message: adjusted the profile in banner
+ src/components/layout/Navbar.tsx |  2 +-
+ src/lib/api.ts                   | 13 --------
+ src/pages/Profile.tsx            |  4 +--
+ src/services/authService.ts      | 68 ++--------------------------------------
+ 4 files changed, 5 insertions(+), 82 deletions(-)
+
+Commit: 4b8a435
+Author: XAkeno
+Date: 2026-10-19 00:29:39 +0800
+Message: done gamedetails
+ src/App.tsx                 |   9 +-
+ src/pages/GameDetails.tsx   | 739 ++++++++++++++++++++++++++++++++++++++++++++
+ src/pages/Home.tsx          | 254 +++++++--------
+ src/services/Gameservice.ts | 121 ++++++--
+ 4 files changed, 969 insertions(+), 154 deletions(-)
+
+Commit: 7b45b8b
+Author: XAkeno
+Date: 2026-10-18 23:32:41 +0800
+Message: X
+Commit: 7f7a6bf
+Author: XAkeno
+Date: 2026-10-18 23:29:23 +0800
+Message: added api data in home
+ src/pages/Home.tsx          | 167 +++++++++++++++++++++++++++++++++++++-------
+ src/services/Gameservice.ts |  52 ++++++++++++--
+ src/services/authService.ts |   1 +
+ 3 files changed, 192 insertions(+), 28 deletions(-)
+
+Commit: 42864de
+Author: marvin
+Date: 2026-10-18 23:16:13 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: 410820b
+Author: marvin
+Date: 2026-10-18 23:16:06 +0800
+Message:  made api gateway for forget pass be ready
+ src/services/authService.ts | 26 ++++++++++++++++++--------
+ 1 file changed, 18 insertions(+), 8 deletions(-)
+
+Commit: 77c408a
+Author: gms0-cereal
+Date: 2026-10-18 22:58:08 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: 29aa8fc
+Author: gms0-cereal
+Date: 2026-10-18 22:57:58 +0800
+Message: edit profile and profile page now working with backend connectivity
+ src/App.tsx                      |   3 +
+ src/components/layout/Navbar.tsx |  31 ++--
+ src/components/ui/textarea.tsx   |  17 ++
+ src/pages/EditProfile.tsx        | 386 +++++++++++++++++++++++++++++++++++++++
+ src/pages/Profile.tsx            | 128 ++++++-------
+ src/services/authService.ts      |   1 +
+ 6 files changed, 486 insertions(+), 80 deletions(-)
+
+Commit: a9130ac
+Author: marvin
+Date: 2026-10-18 21:42:56 +0800
+Message:  made slight changes on tracking for gitignore
+ .env       | 1 -
+ .gitignore | 1 +
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+
+Commit: 550236b
+Author: gms0-cereal
+Date: 2026-10-18 17:04:07 +0800
+Message: fixed backend connectivity for login and register
+ .env                             |  1 +
+ src/components/layout/Navbar.tsx |  2 +-
+ src/pages/Login.tsx              |  2 +-
+ src/services/authService.ts      | 39 +++++++++++++++++++++++++++++----------
+ 4 files changed, 32 insertions(+), 12 deletions(-)
+
+Commit: b15f537
+Author: gms0-cereal
+Date: 2026-10-18 16:07:10 +0800
+Message: profile page frontend only
+ src/App.tsx                  |   2 +
+ src/pages/ForgetPassword.tsx |   5 +-
+ src/pages/Profile.tsx        | 256 +++++++++++++++++++++++++++++++++++++++++++
+ src/services/authService.ts  |  35 +++++-
+ 4 files changed, 293 insertions(+), 5 deletions(-)
+
+Commit: 6ac302e
+Author: gms0-cereal
+Date: 2026-10-18 13:58:15 +0800
+Message: updated the services and the home, login and register page
+ src/components/layout/Footer.tsx |  62 ++++----
+ src/components/layout/Navbar.tsx | 331 +++++++++++++++++++++++++++------------
+ src/lib/api.ts                   |  23 ++-
+ src/lib/basequery.ts             |  21 ---
+ src/lib/gameApi.ts               |  65 --------
+ src/lib/index.ts                 |  15 --
+ src/lib/userApit.ts              | 187 ----------------------
+ src/pages/Home.tsx               | 156 ++----------------
+ src/pages/Login.tsx              |   5 +-
+ src/pages/Register.tsx           |  32 ++--
+ src/services/Gameservice.ts      |  40 +++++
+ src/services/Userservice.ts      |  60 +++++++
+ src/services/authService.ts      | 152 +++++++++++++-----
+ 13 files changed, 524 insertions(+), 625 deletions(-)
+
+Commit: 528e341
+Author: gms0-cereal
+Date: 2026-10-17 22:28:41 +0800
+Message: api patch
+ src/lib/gameApi.ts  | 4 ++--
+ src/lib/index.ts    | 4 ++--
+ src/lib/userApit.ts | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+Commit: 10fa674
+Author: gms0-cereal
+Date: 2026-10-17 22:26:33 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd
+Commit: f3975b6
+Author: gms0-cereal
+Date: 2026-10-17 22:25:47 +0800
+Message: api set up
+ package-lock.json    |  96 ++++++++++++++++++++++++++
+ package.json         |   2 +
+ src/lib/basequery.ts |  21 ++++++
+ src/lib/gameApi.ts   |  65 ++++++++++++++++++
+ src/lib/index.ts     |  15 +++++
+ src/lib/userApit.ts  | 187 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 386 insertions(+)
+
+Commit: 56d606f
+Author: marvin
+Date: 2026-10-17 18:57:57 +0800
+Message: Merge branch 'main' of https://github.com/gms0-cereal/gameshelf_FrontEnd into marvs-branch
+Commit: 248cc55
+Author: marvin
+Date: 2026-10-17 18:55:10 +0800
+Message: made small changes on packages and forgot password
+ src/App.tsx                  | 2 +-
+ src/pages/ForgetPassword.tsx | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+Commit: 955c5ad
+Author: gms0-cereal
+Date: 2026-10-17 18:08:20 +0800
+Message: updated home page
+ src/components/ui/avatar.tsx | 106 +++++++++
+ src/components/ui/card.tsx   | 102 +++++++++
+ src/pages/Home.tsx           | 529 +++++++++++++++++++++++++++++++++++--------
+ 3 files changed, 640 insertions(+), 97 deletions(-)
+
+Commit: 42274cb
+Author: marvin
+Date: 2026-10-17 18:03:59 +0800
+Message:  solved merge conflict
+Commit: d1963e4
+Author: marvin
+Date: 2026-10-17 17:57:50 +0800
+Message:  done doing forget password front-end
+ package-lock.json            |  15 ++++
+ src/App.tsx                  |   2 +
+ src/pages/ForgetPassword.tsx | 205 +++++++++++++++++++++++++++++++++++++++++++
+ src/pages/Login.tsx          |   3 +
+ src/services/authService.ts  |  11 +++
+ 5 files changed, 236 insertions(+)
+
+Commit: 84bba00
+Author: gms0-cereal
+Date: 2026-10-17 17:39:41 +0800
+Message: homepage
+ src/App.tsx                       |   2 +
+ src/components/games/GameCard.tsx |  52 ++++++++++++++++
+ src/components/games/GameGrid.tsx |  44 ++++++++++++++
+ src/pages/Home.tsx                | 121 ++++++++++++++++++++++++++++++++++++++
+ src/pages/Register.tsx            |   2 -
+ 5 files changed, 219 insertions(+), 2 deletions(-)
+
+Commit: 5a76ada
+Author: gms0-cereal
+Date: 2026-10-17 17:08:17 +0800
+Message: register page
+ @/components/ui/button.tsx       |   57 ++
+ @/lib/utils.ts                   |    1 +
+ package-lock.json                | 1454 ++++++++++++++++++++++++++++++++++++--
+ package.json                     |    4 +
+ src/App.tsx                      |    3 +-
+ src/components/Footer.tsx        |   39 -
+ src/components/Navbar.tsx        |  209 ------
+ src/components/layout/Footer.tsx |   39 +
+ src/components/layout/Navbar.tsx |  209 ++++++
+ src/components/ui/button.tsx     |   66 ++
+ src/components/ui/input.tsx      |   19 +
+ src/pages/Login.tsx              |    4 +-
+ src/pages/Register.tsx           |  371 ++++++++++
+ 13 files changed, 2174 insertions(+), 301 deletions(-)
+
+Commit: 5071687
+Author: XAkeno
+Date: 2026-10-17 16:15:46 +0800
+Message: added login
+ package-lock.json           | 327 +++++++++++++++++++++++++++++++++++++++++++-
+ package.json                |   2 +
+ src/App.tsx                 |  22 ++-
+ src/components/Footer.tsx   |  39 ++++++
+ src/components/Navbar.tsx   | 209 ++++++++++++++++++++++++++++
+ src/context/AuthContext.tsx |  72 ++++++++++
+ src/lib/api.ts              |  12 ++
+ src/lib/apiError.ts         |  57 ++++++++
+ src/main.tsx                |  10 +-
+ src/pages/Login.tsx         | 220 ++++++++++++++++++++++++++++-
+ src/services/api.ts         |   0
+ src/services/authService.ts |  50 +++++++
+ 12 files changed, 1007 insertions(+), 13 deletions(-)
+
+Commit: eb9aba3
+Author: XAkeno
+Date: 2026-10-17 15:34:28 +0800
+Message: initial code
+ components.json               |  25 ++
+ package-lock.json             | 676 +++++++++++++++++++++++++++++++++++++++++-
+ package.json                  |   6 +
+ src/App.tsx                   |  20 ++
+ src/components/ui/tooltip.tsx |  63 ++++
+ src/main.tsx                  |   5 +
+ src/pages/Login.tsx           |   9 +
+ tsconfig.app.json             |   6 +
+ vite.config.ts                |   9 +-
+ 9 files changed, 802 insertions(+), 17 deletions(-)
+
+Commit: de0b2cb
+Author: marvin
+Date: 2026-10-17 12:38:52 +0800
+Message:  added tailwind package
+ package-lock.json | 615 +++++++++++++++++++++++++++++++++++++++++++++++++-----
+ package.json      |   4 +-
+ src/index.css     |   1 +
+ vite.config.ts    |   7 +-
+ 4 files changed, 575 insertions(+), 52 deletions(-)
+
+Commit: ca7ad05
+Author: gms0-cereal
+Date: 2026-10-17 12:13:23 +0800
+Message: added pages
+ src/components/games/GameCard.tsx | 0
+ src/components/games/GameGrid.tsx | 0
+ src/components/layout/Footer.tsx  | 0
+ src/components/layout/Navbar.tsx  | 0
+ src/pages/Explore.tsx             | 0
+ src/pages/GameDetails.tsx         | 0
+ src/pages/Home.tsx                | 0
+ src/pages/Login.tsx               | 0
+ src/pages/MyLibrary.tsx           | 0
+ src/pages/Profile.tsx             | 0
+ src/pages/Register.tsx            | 0
+ src/services/api.ts               | 0
+ src/types/game.ts                 | 0
+ 13 files changed, 0 insertions(+), 0 deletions(-)
+
+Commit: 0ceff61
+Author: gms0-cereal
+Date: 2026-10-17 11:35:50 +0800
+Message: merge resolve
+Commit: 0e3e8cb
+Author: gms0-cereal
+Date: 2026-10-17 11:31:24 +0800
+Message: initial commit
+ .gitignore         |   24 +
+ README.md          |   75 ++
+ eslint.config.js   |   22 +
+ index.html         |   13 +
+ package-lock.json  | 2774 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ package.json       |   30 +
+ src/App.css        |    0
+ src/App.tsx        |    0
+ src/index.css      |    0
+ src/main.tsx       |    0
+ tsconfig.app.json  |   26 +
+ tsconfig.json      |    7 +
+ tsconfig.node.json |   23 +
+ vite.config.ts     |    7 +
+ 14 files changed, 3001 insertions(+)
+
+Commit: 988eab8
+Author: lars bernardez
+Date: 2026-10-14 17:30:32 +0800
+Message: update readme
+ README.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Commit: 340e891
+Author: lars bernardez
+Date: 2026-10-14 13:15:59 +0800
+Message: Initial commit
+ README.md | 1 +
+ 1 file changed, 1 insertion(+)

@@ -84,7 +84,7 @@ export default function VisualDocumentation({
   useEffect(() => {
     setActiveIndex(0);
     setIsPlayingTrailer(false);
-  }, [game.id]);
+  }, [game.steam_appid]);
 
   // 3-second auto-rotation (pauses on hover or when video is playing)
     useEffect(() => {

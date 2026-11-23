@@ -13,6 +13,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: [
+      'gameshelf.site',
+      'www.gameshelf.site',
+      'cedar-recipient-actor-suspension.trycloudflare.com',
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

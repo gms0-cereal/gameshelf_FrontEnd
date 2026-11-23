@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import ModLayout from "../../components/layout/Modlayout";
 import { priorityTone } from "./modeTones";
-import { Badge, Button, Card, DataTable, Notice, PageHeader, Pagination, RowAction, StatCard, type Column } from "../../components/ui/Modui";
+import { Badge, Card, DataTable, Notice, PageHeader, Pagination, RowAction, StatCard, type Column } from "../../components/ui/Modui";
 import { errorMessage, getModerationDashboard, type Dashboard, type ReportRow } from "../../lib/moderationApi";
 
 function OverviewContent({ onOpenReport }: { onOpenReport: (r: ReportRow) => void }) {

@@ -98,7 +98,7 @@ export default function AgeRatingsSection({
                         </span>
 
                         <span className="shrink-0 rounded-md bg-[#B39ACF]/15 px-2.5 py-1 text-xs font-bold text-[#C2ADE0]">
-                          {formatRating(rating.rating)}
+                          {formatRating(rating.rating ?? "")}
                         </span>
                       </div>
 

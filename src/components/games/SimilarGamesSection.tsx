@@ -9,7 +9,6 @@ import {
 
 const toGameSummary = ({
   game,
-  score,
   reason,
 }: SimilarGameResult): GameSummary => {
   const releaseYear = game.release_date

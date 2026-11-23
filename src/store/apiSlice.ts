@@ -22,9 +22,9 @@ export interface BrowseGame {
   header_image: string;
   genres: string[];
   platforms: string[];
-  release_year?: number;
-  score?: number;
-  price?: string;
+  release_year: number | null;
+  score: number | null;
+  price: string | null;
 }
 
 export interface BrowseResponse {
