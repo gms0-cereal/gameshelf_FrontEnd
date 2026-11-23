@@ -488,9 +488,9 @@ export default function GameDetails() {
   // ----------------------------------------------------------
 
   return (
-    <div className="min-h-screen w-full bg-[#000000]">
+    <div className="min-h-screen w-full min-w-0 overflow-x-clip bg-[#000000]">
       <div
-        className="flex min-h-screen w-full flex-col bg-[#000000] text-[#E6E1EA] antialiased"
+        className="flex min-h-screen w-full min-w-0 flex-col overflow-x-clip bg-[#000000] text-[#E6E1EA] antialiased"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
         <Navbar />
